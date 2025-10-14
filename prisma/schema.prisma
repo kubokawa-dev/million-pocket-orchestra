@@ -1,0 +1,56 @@
+// Prisma schema for millions.sqlite
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// numbers4_draws(draw_number INTEGER PRIMARY KEY, draw_date TEXT NOT NULL, numbers TEXT NOT NULL)
+model Numbers4Draw {
+  draw_number Int    @id
+  draw_date   String
+  numbers     String
+
+  @@map("numbers4_draws")
+}
+
+// loto6_draws(draw_number INTEGER PRIMARY KEY, draw_date TEXT NOT NULL, numbers TEXT NOT NULL, bonus_number INTEGER [NOT NULL])
+model Loto6Draw {
+  draw_number  Int    @id
+  draw_date    String
+  numbers      String
+  bonus_number Int
+
+  @@map("loto6_draws")
+}
+
+// numbers4_model_events(id INTEGER PRIMARY KEY AUTOINCREMENT, event_ts TEXT NOT NULL, actual_number TEXT NOT NULL,
+// predictions TEXT NOT NULL, hit_exact INTEGER NOT NULL DEFAULT 0, top_match TEXT, max_position_hits INTEGER NOT NULL, notes TEXT)
+model Numbers4ModelEvent {
+  id                Int     @id @default(autoincrement())
+  event_ts          String
+  actual_number     String
+  predictions       String
+  hit_exact         Int     @default(0)
+  top_match         String?
+  max_position_hits Int
+  notes             String?
+
+  @@map("numbers4_model_events")
+}
+
+// numbers4_predictions_log(id INTEGER PRIMARY KEY AUTOINCREMENT, created_at TEXT NOT NULL,
+// source TEXT NOT NULL, label TEXT, number TEXT NOT NULL)
+model Numbers4PredictionLog {
+  id         Int     @id @default(autoincrement())
+  created_at String
+  source     String
+  label      String?
+  number     String
+
+  @@map("numbers4_predictions_log")
+}
