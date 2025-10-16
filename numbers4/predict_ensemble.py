@@ -1,8 +1,11 @@
-import sqlite3
+import psycopg2
 import pandas as pd
 import sys
 import os
 from collections import Counter
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # プロジェクトルートをパスに追加
 # __file__ はこのスクリプト自身のパスを指す
@@ -14,22 +17,26 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from numbers4.prediction_logic import (
     predict_from_basic_stats,
     predict_from_advanced_heuristics,
-    predict_with_model
+    predict_with_model,
+    predict_from_exploratory_heuristics,
+    aggregate_predictions
 )
 from numbers4.learning_logic import learn_model_from_data
 
 # --- 設定 ---
-DB_PATH = 'millions.sqlite'
 MODEL_STATE_PATH = 'numbers4/model_state.json' # predict_with_modelのフォールバック用
 NUM_PREDICTIONS_BASIC = 5
 NUM_PREDICTIONS_ADVANCED = 5
-NUM_PREDICTIONS_MODEL = 12
+NUM_PREDICTIONS_MODEL = 10 # 少し減らして多様性モデルの枠を作る
+NUM_PREDICTIONS_EXPLORATORY = 5 # 新しい探索的モデルの予測数
+
 
 def get_db_connection():
     """データベース接続を取得する"""
-    # スクリプトがどこから実行されてもいいように、DBパスを絶対パスに変換
-    db_abs_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), DB_PATH)
-    return sqlite3.connect(db_abs_path)
+    db_url = os.environ.get('DATABASE_URL')
+    if db_url and '?schema' in db_url:
+        db_url = db_url.split('?schema')[0]
+    return psycopg2.connect(db_url)
 
 def load_all_draws():
     """データベースからすべての抽選データを読み込む"""
@@ -52,76 +59,89 @@ def load_all_draws():
         
     return df
 
-def run_ensemble_prediction():
-    """アンサンブル予測を実行し、結果を表示する"""
-    print("データベースから全抽選データを読み込んでいます...")
+def generate_ensemble_prediction(progress_callback=None):
+    """
+    アンサンブル予測を実行し、結果のDataFrameを返す。
+    StreamlitのUI更新用に、進捗を報告するコールバックを受け取る。
+    """
+    def report_progress(progress, message):
+        if progress_callback:
+            progress_callback(progress, message)
+
+    report_progress(0.0, "データベースから全抽選データを読み込んでいます...")
     all_draws_df = load_all_draws()
 
     if all_draws_df.empty:
-        print("エラー: データベースにデータがありません。")
-        return
+        # Streamlitにエラーを伝えるために空のDataFrameを返すか、例外を発生させる
+        return pd.DataFrame()
 
-    print("各モデルで予測を生成しています...")
+    report_progress(0.1, "各モデルで予測を生成しています...")
     
     # 1. 基本統計モデル
     predictions_basic = predict_from_basic_stats(all_draws_df, NUM_PREDICTIONS_BASIC)
-    print(f"- 基本統計モデル予測: {predictions_basic}")
+    report_progress(0.3, f"- 基本統計モデル予測完了: {len(predictions_basic)}件")
 
     # 2. 高度なヒューリスティックモデル
     predictions_advanced = predict_from_advanced_heuristics(all_draws_df, NUM_PREDICTIONS_ADVANCED)
-    print(f"- 高度ヒューリスティックモデル予測: {predictions_advanced}")
+    report_progress(0.45, f"- 高度ヒューリスティックモデル予測完了: {len(predictions_advanced)}件")
 
     # 3. 機械学習モデル (毎回再学習)
-    print("- 機械学習モデルを再学習中...")
+    report_progress(0.5, "- 機械学習モデルを再学習中...")
     relearned_weights = learn_model_from_data(all_draws_df)
-    predictions_model = predict_with_model(all_draws_df, model_weights=relearned_weights, num_predictions=NUM_PREDICTIONS_MODEL)
-    print(f"- 機械学習モデル予測: {predictions_model}")
+    predictions_model = predict_with_model(relearned_weights, limit=NUM_PREDICTIONS_MODEL)
+    report_progress(0.65, f"- 機械学習モデル予測完了: {len(predictions_model)}件")
+
+    # 4. 探索的ヒューリスティックモデル
+    predictions_exploratory = predict_from_exploratory_heuristics(all_draws_df, NUM_PREDICTIONS_EXPLORATORY)
+    report_progress(0.8, f"- 探索的モデル予測完了: {len(predictions_exploratory)}件")
 
     # --- アンサンブル集計 ---
-    all_predictions = predictions_basic + predictions_advanced + predictions_model
+    report_progress(0.9, "全モデルの予測を統合・集計中...")
+    ensemble_weights = {
+        'basic_stats': 1.5,
+        'advanced_heuristics': 1.0,
+        'ml_model': 1.0,
+        'exploratory': 1.5, 
+    }
     
-    # ストレートのスコアリング
-    straight_scores = Counter(all_predictions)
+    predictions_by_model = {
+        'basic_stats': predictions_basic,
+        'advanced_heuristics': predictions_advanced,
+        'ml_model': predictions_model,
+        'exploratory': predictions_exploratory
+    }
+
+    # 重み付けして集計
+    final_predictions_df = aggregate_predictions(predictions_by_model, ensemble_weights)
+    report_progress(1.0, "予測完了！")
     
-    # ボックスのスコアリング
-    box_predictions = ["".join(sorted(p)) for p in all_predictions]
-    box_scores = Counter(box_predictions)
+    return final_predictions_df, ensemble_weights
+
+
+def run_ensemble_prediction_cli():
+    """アンサンブル予測を実行し、結果をCLIに表示する"""
+    
+    # 予測の実行（コールバックでコンソールに進捗表示）
+    final_predictions_df, ensemble_weights = generate_ensemble_prediction(progress_callback=print)
 
     # --- 結果表示 ---
     print("\n" + "="*40)
-    print("👑 アンサンブル予測結果 👑")
+    print("👑 次回ナンバーズ4 最終予測 👑")
     print("="*40)
+    print(f"使用した重み: {ensemble_weights}")
 
-    # ストレート結果
-    print("\n--- ストレート予測 (推奨度順) ---")
-    sorted_straight = sorted(straight_scores.items(), key=lambda item: item[1], reverse=True)
-    if not sorted_straight:
+    # 上位20件を表示
+    top_20_predictions = final_predictions_df.head(20)
+
+    print("\n--- 最終予測 (上位20件) ---")
+    if top_20_predictions.empty:
         print("予測結果がありません。")
     else:
-        max_score = sorted_straight[0][1]
-        for score in range(max_score, 0, -1):
-            numbers_with_score = [num for num, s in sorted_straight if s == score]
-            if numbers_with_score:
-                print(f"\n[推奨度: {score} (/{len(all_predictions)}回中)]")
-                print(f"  👉 {', '.join(numbers_with_score)}")
+        for index, row in top_20_predictions.iterrows():
+            print(f"  {index+1:2d}位: {row['prediction']} (スコア: {row['score']:.1f})")
 
-    # ボックス結果
-    print("\n--- ボックス予測 (推奨度順) ---")
-    sorted_box = sorted(box_scores.items(), key=lambda item: item[1], reverse=True)
-    if not sorted_box:
-        print("予測結果がありません。")
-    else:
-        max_score = sorted_box[0][1]
-        for score in range(max_score, 0, -1):
-            combinations_with_score = [comb for comb, s in sorted_box if s == score]
-            if combinations_with_score:
-                print(f"\n[推奨度: {score} (/{len(all_predictions)}回中)]")
-                # 組み合わせを見やすくフォーマット
-                formatted_combs = [f"[{','.join(list(c))}]" for c in combinations_with_score]
-                print(f"  👉 {', '.join(formatted_combs)}")
-    
     print("\n" + "="*40)
-    print("推奨度が高いほど、複数のモデルが共通して予測した有望な番号です。")
+    print("スコアが高いほど、複数のモデルが共通して予測した、あるいは実績のあるモデルが強く推奨した有望な番号です。")
 
 if __name__ == "__main__":
-    run_ensemble_prediction()
+    run_ensemble_prediction_cli()

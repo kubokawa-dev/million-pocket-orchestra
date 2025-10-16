@@ -3,12 +3,14 @@ import pandas as pd
 import glob
 import os
 import json
-import sqlite3
+import psycopg2
 from collections import Counter
 import numpy as np
+from dotenv import load_dotenv
+
+load_dotenv()
 
 ROOT = os.path.dirname(os.path.dirname(__file__))
-DB_PATH = os.path.join(ROOT, 'millions.sqlite')
 MODEL_PATH = os.path.join(ROOT, 'numbers4', 'model_state.json')
 
 def _normalize(vec):
@@ -30,7 +32,10 @@ def load_model_prior():
 
 def get_latest_numbers4():
     try:
-        con = sqlite3.connect(DB_PATH)
+        db_url = os.environ.get('DATABASE_URL')
+        if db_url and '?schema' in db_url:
+            db_url = db_url.split('?schema')[0]
+        con = psycopg2.connect(db_url)
         cur = con.cursor()
         cur.execute("SELECT numbers FROM numbers4_draws ORDER BY draw_date DESC, draw_number DESC LIMIT 1")
         row = cur.fetchone()
@@ -166,7 +171,8 @@ def analyze_and_predict():
 
     except ImportError:
         print("エラー: pandasライブラリが見つかりません。")
-        print("ターミナルで 'python -m pip install pandas' を実行してインストールしてください。")
+        print("次のコマンドで依存関係をインストールしてください：")
+        print("pip install -r requirements.txt  または  pip install pandas")
     except Exception as e:
         print(f"予期せぬエラーが発生しました: {e}")
 

@@ -1,82 +1,75 @@
-# million-pocket
+# Numbers4 & Loto6 Prediction Project
 
-ナンバーズ4/ロト6の予測・学習・データ管理用ミニツール群です。
+このプロジェクトは、ナンバーズ4・ロト6の過去データをもとに、複数モデルによる予測・可視化・分析を行うPythonベースのアプリケーションです。
 
-## セットアップ
+## 主な機能
 
-1. Python 3.9+ を用意
-2. 依存パッケージのインストール
+- 過去の抽選データ・予測データの管理（SQLiteデータベース）
+- アンサンブル学習による最新予測の生成
+- StreamlitによるリッチなWeb可視化
+    - 予測ボタンで最新の当選番号予測を即時表示
+    - 過去の予測と実際の当選番号の比較・分析
+    - 的中数やモデルごとのパフォーマンス指標
 
-```pwsh
-python -m pip install -r requirements.txt
-```
-
-## 1コマンド・パイプライン（ナンバーズ4）
-
-次を実行すると、スクレイプ→DB更新→未学習なら学習→予測出力 まで一気に実行されます。
-
-```pwsh
-python tools/run_numbers4_pipeline.py
-```
-
-内部で呼ばれる主なスクリプト:
-- `tools/scrape_numbers4_rakuten.py` … 楽天バックナンバーから当選データを抽出し、`numbers4/YYYYMM.csv` と `millions.sqlite` を差分更新
-- `tools/update_model_from_sqlite.py` … `numbers4_draws` の最新当選が未学習なら `numbers4/learn_from_predictions.py` を実行して学習
-- `numbers4/advanced_predict_numbers4.py` … 高度予測（多視点スコア）
-- `numbers4/predict_numbers_with_model.py` … 学習済み位置分布モデルからTop-K
-- `numbers4/predict_numbers.py` … 基本的な傾向分析＋学習事前分布の軽ブレンド
-
-## 単体での使い方
-
-- 最新10件のDB確認:
-```pwsh
-python tools/query_numbers4_latest.py
-```
-
-- 学習（最新の予想レポートと実当選で更新）:
-```pwsh
-python numbers4/learn_from_predictions.py
-```
-
-- 予測出力（モデルベースTop-K）:
-```pwsh
-python numbers4/predict_numbers_with_model.py
-```
-
-## メモ
-
-- SQLite DB: `millions.sqlite`
-  - `numbers4_draws(draw_number, draw_date, numbers)` を主に使用
-  - 学習ログ: `numbers4_model_events`, 予想ログ: `numbers4_predictions_log`
-- 事前分布: `numbers4/model_state.json`（`learn_from_predictions.py` で更新）
-- スクレイプ対象のHTML構造が変わった場合は `tools/scrape_numbers4_rakuten.py` の正規表現調整が必要です。
-
-## 免責
-
-本ツールの予測は統計的・経験則に基づくものであり、当選を保証するものではありません。利用は自己責任でお願いします。
-
-## PrismaでDBを閲覧（任意）
-
-Prisma Studioから `millions.sqlite` をブラウズできます。
-
-1) ルートに `.env` を作成済み（本リポジトリでは同梱）
+## ディレクトリ構成
 
 ```
-DATABASE_URL="file:./millions.sqlite"
+lottery_numbers.txt
+loto6/
+    ...
+numbers4/
+    predict_ensemble.py  # 予測ロジック本体
+    ...
+streamlit_app.py         # Streamlit Webアプリ
+millions.sqlite          # データベース
 ```
 
-2) Prismaスキーマ `prisma/schema.prisma` を用意済み。Node.js と Prisma CLI が必要です。
+## 必要な環境
 
-```pwsh
-# Prisma Clientの生成（初回）
-npx prisma generate
+- Python 3.10 以上
+- 必要パッケージ: pandas, numpy, streamlit, tqdm など
 
-# Prisma Studioの起動
-npx prisma studio
+### インストール
+
+```bash
+pip install -r requirements.txt
 ```
 
-Studio上で以下のテーブルを閲覧／編集できます。
-- Numbers4Draw (`numbers4_draws`)
-- Loto6Draw (`loto6_draws`)
-- Numbers4ModelEvent (`numbers4_model_events`)
-- Numbers4PredictionLog (`numbers4_predictions_log`)
+## Streamlitアプリの起動方法
+
+1. 必要なパッケージをインストール
+2. データベース（millions.sqlite）が存在することを確認
+3. 以下のコマンドでWebアプリを起動
+
+```bash
+python -m streamlit run streamlit_app.py
+```
+
+- ブラウザで `http://localhost:8501` にアクセス
+- 画面上部の「予測を実行」ボタンで最新予測を表示
+- 下部で過去の予測と当選番号の比較・分析が可能
+
+## 予測ロジックについて
+
+- `numbers4/predict_ensemble.py` にて、
+    - 基本統計モデル
+    - 高度ヒューリスティックモデル
+    - 機械学習モデル
+    - 探索的モデル
+  など複数モデルの予測を統合
+- Streamlit UIから直接呼び出し可能
+
+## よくあるトラブル
+
+- 予測ボタンでエラーが出る場合は、
+    - Pythonバージョンや依存パッケージを確認
+    - データベースファイルの有無・整合性を確認
+    - エラーメッセージをもとに `numbers4/predict_ensemble.py` のカラム名や返り値を調整
+
+## ライセンス
+
+MIT License
+
+---
+
+ご質問・機能追加要望はIssueまたはチャットでご連絡ください。

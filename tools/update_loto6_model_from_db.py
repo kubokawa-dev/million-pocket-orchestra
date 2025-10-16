@@ -1,19 +1,22 @@
 import json
 import os
-import sqlite3
+import psycopg2
 from datetime import datetime
 from collections import Counter, defaultdict
 from itertools import combinations
+from dotenv import load_dotenv
+
+load_dotenv()
 
 ROOT = os.path.dirname(os.path.dirname(__file__))
-DB_PATH = os.path.join(ROOT, 'millions.sqlite')
 STATE_PATH = os.path.join(ROOT, 'loto6', 'model_state.json')
 
 
 def fetch_all_draws():
-    if not os.path.exists(DB_PATH):
-        return []
-    conn = sqlite3.connect(DB_PATH)
+    db_url = os.environ.get('DATABASE_URL')
+    if db_url and '?schema' in db_url:
+        db_url = db_url.split('?schema')[0]
+    conn = psycopg2.connect(db_url)
     cur = conn.cursor()
     cur.execute(
         '''CREATE TABLE IF NOT EXISTS loto6_draws (

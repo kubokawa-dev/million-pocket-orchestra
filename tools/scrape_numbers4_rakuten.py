@@ -1,13 +1,15 @@
 import os
 import re
 import csv
-import sqlite3
+import psycopg2
 import sys
 from datetime import datetime, date
 from urllib.request import urlopen, Request
+from dotenv import load_dotenv
+
+load_dotenv()
 
 ROOT = os.path.dirname(os.path.dirname(__file__))
-DB_PATH = os.path.join(ROOT, 'millions.sqlite')
 CSV_DIR = os.path.join(ROOT, 'numbers4')
 
 HEADERS = {
@@ -166,8 +168,11 @@ def ensure_db(conn):
     conn.commit()
 
 
-def upsert_sqlite(rows):
-    conn = sqlite3.connect(DB_PATH)
+def upsert_postgres(rows):
+    db_url = os.environ.get('DATABASE_URL')
+    if db_url and '?schema' in db_url:
+        db_url = db_url.split('?schema')[0]
+    conn = psycopg2.connect(db_url)
     ensure_db(conn)
     cur = conn.cursor()
     inserted = 0
@@ -175,11 +180,11 @@ def upsert_sqlite(rows):
         kai = r['kai']
         if kai is None:
             continue
-        cur.execute('SELECT 1 FROM numbers4_draws WHERE draw_number = ?', (kai,))
+        cur.execute('SELECT 1 FROM numbers4_draws WHERE draw_number = %s', (kai,))
         if cur.fetchone():
             continue
         cur.execute(
-            'INSERT INTO numbers4_draws(draw_number, draw_date, numbers) VALUES (?,?,?)',
+            'INSERT INTO numbers4_draws(draw_number, draw_date, numbers) VALUES (%s,%s,%s)',
             (kai, r['date'], r['number'])
         )
         inserted += 1
@@ -206,11 +211,11 @@ def run(url: str):
         return
 
     appended, csv_path = upsert_csv(mstr, rows)
-    inserted = upsert_sqlite(rows)
+    inserted = upsert_postgres(rows)
 
     print(f"[scrape] Parsed range: 第{start}回～第{end}回 | Rows: {len(rows)}")
     print(f"[scrape] CSV updated: +{appended} rows -> {csv_path}")
-    print(f"[scrape] SQLite updated: +{inserted} rows -> {DB_PATH}")
+    print(f"[scrape] PostgreSQL updated: +{inserted} rows")
 
 
 if __name__ == '__main__':

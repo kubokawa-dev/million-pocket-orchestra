@@ -39,7 +39,7 @@ def load_data(pattern=None) -> pd.DataFrame:
     for c in num_cols + ['bonus']:
         df[c] = pd.to_numeric(df[c], errors='coerce')
     # 日付
-    df['date_dt'] = pd.to_datetime(df['date'], errors='coerce')
+    df['date_dt'] = pd.to_datetime(df['date'], errors='coerce', format='mixed')
     df.dropna(subset=num_cols, inplace=True)
     for c in num_cols:
         df[c] = df[c].astype(int)

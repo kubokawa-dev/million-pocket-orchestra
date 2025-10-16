@@ -5,7 +5,7 @@ import json
 import os
 
 # --- 1. predict_numbers.py からのロジック ---
-def predict_from_basic_stats(df: pd.DataFrame, num_predictions: int = 5):
+def predict_from_basic_stats(df: pd.DataFrame, limit: int = 5):
     """
     基本的な統計情報（出現頻度、最新の数字）に基づいて予測を生成する。
     元々の predict_numbers.py のロジック。
@@ -26,7 +26,7 @@ def predict_from_basic_stats(df: pd.DataFrame, num_predictions: int = 5):
     latest_draw = df.iloc[-1]
     
     predictions = []
-    for _ in range(num_predictions):
+    for _ in range(limit):
         prediction = ""
         # 1桁目: 出現回数が多く、かつ最新の数字に近いものを優先
         prediction += str(sorted(first_counts.keys(), key=lambda x: (first_counts[x], -abs(x - latest_draw['d1'])), reverse=True)[len(predictions) % len(first_counts)])
@@ -42,11 +42,13 @@ def predict_from_basic_stats(df: pd.DataFrame, num_predictions: int = 5):
     return list(dict.fromkeys(predictions))
 
 # --- 2. advanced_predict_numbers4.py からのロジック ---
-def predict_from_advanced_heuristics(df: pd.DataFrame, num_predictions: int = 5):
+def predict_from_advanced_heuristics(df: pd.DataFrame, limit: int = 5):
     """
     高度なヒューリスティック（合計値、偶数奇数、ペアの頻度）に基づいて予測を生成する。
     元々の advanced_predict_numbers4.py のロジック。
     """
+    # コピーして安全に列を追加（SettingWithCopyWarning 回避）
+    df = df.copy()
     df['sum'] = df[['d1', 'd2', 'd3', 'd4']].sum(axis=1)
     df['even_count'] = df[['d1', 'd2', 'd3', 'd4']].apply(lambda row: sum(x % 2 == 0 for x in row), axis=1)
     
@@ -90,32 +92,28 @@ def predict_from_advanced_heuristics(df: pd.DataFrame, num_predictions: int = 5)
     for num, _ in scored_numbers:
         if num != latest_number:
             predictions.append(num)
-        if len(predictions) == num_predictions:
+        if len(predictions) == limit:
             break
             
     return predictions
 
 # --- 3. predict_numbers_with_model.py からのロジック ---
-def predict_with_model(df: pd.DataFrame, model_state_path: str, num_predictions: int = 12):
+def predict_with_model(
+    model_weights: list | None,
+    limit: int = 12,
+):
     """
     機械学習モデルの状態に基づいて予測を生成する。
-    元々の predict_numbers_with_model.py のロジック。
     """
-    if not os.path.exists(model_state_path):
-        # モデルがない場合は、基本的な予測にフォールバック
-        return predict_from_basic_stats(df, num_predictions)
-
-    with open(model_state_path, 'r') as f:
-        model_state = json.load(f)
-
-    weights = [np.array(w) for w in model_state['weights']]
+    if model_weights is None:
+        # モデルがなければ空リストを返す
+        return []
     
-    # 最新の当選番号
-    latest_number = "".join(map(str, df.iloc[-1][['d1', 'd2', 'd3', 'd4']].values))
-
+    weights = [np.array(w) for w in model_weights]
+    
     predictions = set()
     attempts = 0
-    while len(predictions) < num_predictions and attempts < 1000:
+    while len(predictions) < limit and attempts < 1000:
         prediction_list = []
         for i in range(4):
             # 重み付き確率で数字を選択
@@ -123,10 +121,97 @@ def predict_with_model(df: pd.DataFrame, model_state_path: str, num_predictions:
             prediction_list.append(str(digit))
         
         prediction = "".join(prediction_list)
-        
-        # 最新の当選番号と重複しないようにする
-        if prediction != latest_number:
-            predictions.add(prediction)
+        predictions.add(prediction)
         attempts += 1
         
     return list(predictions)
+
+
+# --- 4. Exploratory Prediction (New) ---
+def predict_from_exploratory_heuristics(df: pd.DataFrame, limit: int = 5):
+    """
+    探索的ヒューリスティックに基づき、統計的な「穴」を狙う予測を生成する。
+    合計値が極端に低い/高い組み合わせや、長期間出現していない数字を重視する。
+    """
+    df = df.copy()
+    df['sum'] = df[['d1', 'd2', 'd3', 'd4']].sum(axis=1)
+
+    # 長期間出現していない数字（コールドナンバー）を特定
+    all_digits = pd.concat([df[f'd{i+1}'] for i in range(4)])
+    digit_counts = Counter(all_digits)
+    cold_digits = [digit for digit, count in digit_counts.items() if count <= np.percentile(list(digit_counts.values()), 25)]
+    if not cold_digits: # もしコールドな数字がなければ、最も出現頻度の低いものを選ぶ
+        cold_digits = [digit_counts.most_common()[-1][0]]
+
+    predictions = set()
+    attempts = 0
+
+    # 1. 超低合計値/超高合計値を狙う
+    low_sum_target = 9  # e.g., 0-9
+    high_sum_target = 28 # e.g., 28-36
+
+    while len(predictions) < limit and attempts < 20000:
+        attempts += 1
+        # 候補をランダムに生成
+        pred = np.random.randint(0, 10000)
+        num_str = f"{pred:04d}"
+        n1, n2, n3, n4 = [int(d) for d in num_str]
+        current_sum = sum([n1, n2, n3, n4])
+
+        # 50%の確率で低合計値、50%の確率で高合計値を狙う
+        if np.random.rand() < 0.5:
+            # 低合計値に近ければ採用
+            if current_sum <= low_sum_target:
+                predictions.add(num_str)
+        else:
+            # 高合計値に近ければ採用
+            if current_sum >= high_sum_target:
+                predictions.add(num_str)
+
+    # 2. コールドな数字を積極的に使う
+    while len(predictions) < limit * 2 and attempts < 40000:
+        attempts += 1
+        pred_list = np.random.choice(cold_digits, 4, replace=True)
+        np.random.shuffle(pred_list)
+        num_str = "".join(map(str, pred_list))
+        if len(num_str) == 4:
+            predictions.add(num_str)
+
+    # 最新の当選番号を除外
+    latest_number = "".join(map(str, df.iloc[-1][['d1', 'd2', 'd3', 'd4']].values))
+    if latest_number in predictions:
+        predictions.remove(latest_number)
+
+    return list(predictions)[:limit]
+
+
+def aggregate_predictions(predictions_by_model: dict, weights: dict):
+    """
+    モデルごとの予測リストと重みを受け取り、重み付け集計してスコア付きのDataFrameを返す。
+
+    Args:
+        predictions_by_model (dict): モデル名をキー、予測文字列のリストを値とする辞書。
+                                     例: {'basic_stats': ['1111', '2222'], ...}
+        weights (dict): モデル名をキー、重み（数値）を値とする辞書。
+                        例: {'basic_stats': 1.5, ...}
+
+    Returns:
+        pd.DataFrame: 'prediction'と'score'列を持つ、スコア順にソートされたDataFrame。
+    """
+    scores = Counter()
+    for model_name, predictions in predictions_by_model.items():
+        weight = weights.get(model_name, 1) # 重みがなければデフォルトで1
+        for pred in predictions:
+            scores[pred] += weight
+
+    if not scores:
+        return pd.DataFrame({'prediction': [], 'score': []})
+
+    # DataFrameを作成
+    df = pd.DataFrame(scores.items(), columns=['prediction', 'score'])
+    
+    # スコアの高い順にソート
+    df = df.sort_values(by='score', ascending=False).reset_index(drop=True)
+    
+    return df
+

@@ -18,7 +18,7 @@ COLS = [
 
 
 ROOT = os.path.dirname(os.path.dirname(__file__))
-DB_PATH = os.path.join(ROOT, 'millions.sqlite')
+DB_PATH = os.path.join(ROOT, 'prisma', 'millions.sqlite')
 MODEL_PATH = os.path.join(ROOT, 'numbers4', 'model_state.json')
 
 
@@ -53,9 +53,16 @@ def load_model_prior():
     return [[0.1] * 10 for _ in range(4)]
 
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 def get_latest_numbers4():
     try:
-        con = sqlite3.connect(DB_PATH)
+        db_url = os.environ.get('DATABASE_URL')
+        if db_url and '?schema' in db_url:
+            db_url = db_url.split('?schema')[0]
+        con = psycopg2.connect(db_url)
         cur = con.cursor()
         cur.execute("SELECT numbers FROM numbers4_draws ORDER BY draw_date DESC, draw_number DESC LIMIT 1")
         row = cur.fetchone()

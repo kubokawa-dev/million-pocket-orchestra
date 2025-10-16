@@ -1,23 +1,28 @@
-import sqlite3
+import psycopg2
 import os
 from datetime import datetime
+from dotenv import load_dotenv
 
-ROOT = os.path.dirname(os.path.dirname(__file__))
-DB = os.path.join(ROOT, 'millions.sqlite')
-
+load_dotenv()
 
 def main():
-    if not os.path.exists(DB):
-        print(f"DB not found: {DB}")
+    db_url = os.environ.get('DATABASE_URL')
+    if not db_url:
+        print("DATABASE_URL not found in .env file")
         return
 
-    con = sqlite3.connect(DB)
+    if db_url and '?schema' in db_url:
+        db_url = db_url.split('?schema')[0]
+    con = psycopg2.connect(db_url)
     cur = con.cursor()
 
     # Check table
-    cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='numbers4_draws'")
-    if not cur.fetchone():
-        cur.execute("SELECT name FROM sqlite_master WHERE type='table'")
+    cur.execute("SELECT to_regclass('numbers4_draws')")
+    if not cur.fetchone()[0]:
+        cur.execute("""
+            SELECT table_name FROM information_schema.tables
+            WHERE table_schema = 'public'
+        """)
         print('[Error] Table numbers4_draws not found. Existing tables:', [r[0] for r in cur.fetchall()])
         con.close()
         return

@@ -2,15 +2,17 @@ import json
 import os
 import random
 from typing import List, Tuple
-import sqlite3
+import psycopg2
 import glob
 import pandas as pd
 import numpy as np
 from collections import Counter
+from dotenv import load_dotenv
+
+load_dotenv()
 
 ROOT_DIR = os.path.dirname(os.path.dirname(__file__))
 MODEL_PATH = os.path.join(ROOT_DIR, 'numbers4', 'model_state.json')
-DB_PATH = os.path.join(ROOT_DIR, 'millions.sqlite')
 CSV_PATTERN = os.path.join(ROOT_DIR, 'numbers4', '*.csv')
 
 random.seed(4649)
@@ -25,7 +27,10 @@ def load_model(path: str):
 
 def get_latest_numbers4() -> str | None:
     try:
-        con = sqlite3.connect(DB_PATH)
+        db_url = os.environ.get('DATABASE_URL')
+        if db_url and '?schema' in db_url:
+            db_url = db_url.split('?schema')[0]
+        con = psycopg2.connect(db_url)
         cur = con.cursor()
         cur.execute("SELECT numbers FROM numbers4_draws ORDER BY draw_date DESC, draw_number DESC LIMIT 1")
         row = cur.fetchone()

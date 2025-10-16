@@ -1,0 +1,16 @@
+[tools]
+python = "3.10"
+node = "lts"
+
+[settings]
+# Python仮想環境をmise経由で有効化
+python_venv = true
+
+[env]
+# 必要なら環境変数をここに追加
+
+[plugins]
+# 追加プラグイン例
+# poetry = true
+# pipenv = true
+# npm = true

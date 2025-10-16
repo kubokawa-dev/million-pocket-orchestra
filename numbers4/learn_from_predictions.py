@@ -1,12 +1,14 @@
 import json
 import os
 import re
-import sqlite3
+import psycopg2
 from datetime import datetime, timezone
 from typing import List, Tuple, Dict
+from dotenv import load_dotenv
+
+load_dotenv()
 
 ROOT_DIR = os.path.dirname(os.path.dirname(__file__))
-DB_PATH = os.path.join(ROOT_DIR, 'millions.sqlite')
 ADV_PATH = os.path.join(ROOT_DIR, 'numbers4', 'advanced_numbers4_prediction_result.md')
 BASIC_PATH = os.path.join(ROOT_DIR, 'numbers4', 'prediction_result.md')
 MODEL_PATH = os.path.join(ROOT_DIR, 'numbers4', 'model_state.json')
@@ -24,20 +26,22 @@ def ensure_dirs(path: str):
 
 
 # -----------------------------
-# SQLite Setup
+# PostgreSQL Setup
 # -----------------------------
 
-def get_conn(db_path: str):
-    ensure_dirs(db_path)
-    return sqlite3.connect(db_path)
+def get_conn():
+    db_url = os.environ.get('DATABASE_URL')
+    if db_url and '?schema' in db_url:
+        db_url = db_url.split('?schema')[0]
+    return psycopg2.connect(db_url)
 
 
-def ensure_tables(conn: sqlite3.Connection):
+def ensure_tables(conn: psycopg2.extensions.connection):
     cur = conn.cursor()
     cur.execute(
         '''
         CREATE TABLE IF NOT EXISTS numbers4_model_events (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             event_ts TEXT NOT NULL,
             actual_number TEXT NOT NULL,
             predictions TEXT NOT NULL, -- JSON array of {source,label,number}
@@ -51,7 +55,7 @@ def ensure_tables(conn: sqlite3.Connection):
     cur.execute(
         '''
         CREATE TABLE IF NOT EXISTS numbers4_predictions_log (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             created_at TEXT NOT NULL,
             source TEXT NOT NULL,
             label TEXT,
@@ -219,8 +223,8 @@ def learn(actual_number: str):
             max_hit = h
             top_match = num
 
-    # Log into SQLite
-    conn = get_conn(DB_PATH)
+    # Log into PostgreSQL
+    conn = get_conn()
     ensure_tables(conn)
     cur = conn.cursor()
 

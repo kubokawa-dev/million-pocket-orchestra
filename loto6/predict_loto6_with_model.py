@@ -1,14 +1,16 @@
 import os
 import json
-import sqlite3
+import psycopg2
 import itertools
 import random
 import numpy as np
 import pandas as pd
 from collections import Counter, defaultdict
+from dotenv import load_dotenv
+
+load_dotenv()
 
 ROOT = os.path.dirname(os.path.dirname(__file__))
-DB_PATH = os.path.join(ROOT, 'millions.sqlite')
 CSV_GLOB = os.path.join(ROOT, 'loto6', '*.csv')
 STATE_PATH = os.path.join(ROOT, 'loto6', 'model_state.json')
 RANDOM_SEED = 2042
@@ -20,10 +22,11 @@ DECADES = [(1, 9), (10, 19), (20, 29), (30, 39), (40, 43)]
 
 
 def get_latest_from_db():
-    if not os.path.exists(DB_PATH):
-        return None
     try:
-        conn = sqlite3.connect(DB_PATH)
+        db_url = os.environ.get('DATABASE_URL')
+        if db_url and '?schema' in db_url:
+            db_url = db_url.split('?schema')[0]
+        conn = psycopg2.connect(db_url)
         cur = conn.cursor()
         cur.execute('''
             CREATE TABLE IF NOT EXISTS loto6_draws (

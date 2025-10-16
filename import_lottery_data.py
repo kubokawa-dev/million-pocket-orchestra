@@ -1,20 +1,26 @@
-import sqlite3
+import psycopg2
 import glob
 import os
 import re
+from dotenv import load_dotenv
 
-def create_connection(db_file):
-    """ create a database connection to a SQLite database """
+load_dotenv()
+
+def create_connection():
+    """ create a database connection to a PostgreSQL database """
     conn = None
     try:
-        conn = sqlite3.connect(db_file)
-        print(f"Successfully connected to SQLite database: {db_file}")
-    except sqlite3.Error as e:
+        db_url = os.environ.get('DATABASE_URL')
+        if db_url and '?schema' in db_url:
+            db_url = db_url.split('?schema')[0]
+        conn = psycopg2.connect(db_url)
+        print(f"Successfully connected to PostgreSQL database")
+    except Exception as e:
         print(e)
     return conn
 
 def create_tables(conn):
-    """ create tables in the SQLite database """
+    """ create tables in the PostgreSQL database """
     try:
         cursor = conn.cursor()
         cursor.execute("""
@@ -33,7 +39,7 @@ def create_tables(conn):
         );
         """)
         print("Tables 'loto6_draws' and 'numbers4_draws' created or already exist.")
-    except sqlite3.Error as e:
+    except Exception as e:
         print(e)
 
 def import_loto6_data(conn):
@@ -101,10 +107,8 @@ def import_numbers4_data(conn):
 
 
 def main():
-    database = "millions.sqlite"
-
     # create a database connection
-    conn = create_connection(database)
+    conn = create_connection()
 
     if conn is not None:
         # create tables

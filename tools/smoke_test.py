@@ -1,22 +1,21 @@
 import os
-import sqlite3
+import psycopg2
+from dotenv import load_dotenv
 
-ROOT = os.path.dirname(os.path.dirname(__file__))
-DB = os.path.join(ROOT, 'millions.sqlite')
-
+load_dotenv()
 
 def check_tables():
-    if not os.path.exists(DB):
-        print('[fail] DB not found:', DB)
+    db_url = os.environ.get('DATABASE_URL')
+    if not db_url:
+        print("[fail] DATABASE_URL not found in .env file")
         return False
-    con = sqlite3.connect(DB)
+    if db_url and '?schema' in db_url:
+        db_url = db_url.split('?schema')[0]
+    con = psycopg2.connect(db_url)
     cur = con.cursor()
-    cur.execute("SELECT name FROM sqlite_master WHERE type='table'")
-    names = {r[0] for r in cur.fetchall()}
-    need = {'numbers4_draws'}
-    miss = need - names
-    if miss:
-        print('[fail] Missing tables:', miss)
+    cur.execute("SELECT to_regclass('numbers4_draws')")
+    if not cur.fetchone()[0]:
+        print('[fail] Missing table: numbers4_draws')
         con.close()
         return False
     cur.execute('SELECT COUNT(*) FROM numbers4_draws')

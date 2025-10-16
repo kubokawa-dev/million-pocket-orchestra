@@ -1,32 +1,44 @@
 import os
 import sys
-import sqlite3
+import psycopg2
+import psycopg2.extras
 import argparse
 import csv
 from datetime import datetime
+from dotenv import load_dotenv
+
+load_dotenv()
 
 ROOT = os.path.dirname(os.path.dirname(__file__))
-DB_PATH = os.path.join(ROOT, 'millions.sqlite')
 
-
-def connect(db_path: str):
-    if not os.path.exists(db_path):
-        print(f"[dump] DB not found: {db_path}")
+def connect(db_url: str):
+    if not db_url:
+        print("[dump] DATABASE_URL not found in .env file")
         sys.exit(1)
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
+    if db_url and '?schema' in db_url:
+        db_url = db_url.split('?schema')[0]
+    conn = psycopg2.connect(db_url)
     return conn
 
 
 def list_tables(conn):
     cur = conn.cursor()
-    cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name")
+    cur.execute("""
+        SELECT table_name FROM information_schema.tables
+        WHERE table_schema = 'public'
+        ORDER BY table_name
+    """)
     return [r[0] for r in cur.fetchall()]
 
 
 def get_schema(conn):
+    # This is a simplified version for PostgreSQL as it doesn't have a direct equivalent of sqlite_master's sql column
     cur = conn.cursor()
-    cur.execute("SELECT name, sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name")
+    cur.execute("""
+        SELECT table_name, 'schema not easily available in this script' FROM information_schema.tables
+        WHERE table_schema = 'public'
+        ORDER BY table_name
+    """)
     return cur.fetchall()
 
 
@@ -40,8 +52,12 @@ def print_schema(conn):
 
 def table_info(conn, table):
     cur = conn.cursor()
-    cur.execute(f'PRAGMA table_info({table})')
-    cols = [r[1] for r in cur.fetchall()]
+    cur.execute(f"""
+        SELECT column_name FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = '{table}'
+        ORDER BY ordinal_position
+    """)
+    cols = [r[0] for r in cur.fetchall()]
     return cols
 
 
@@ -127,8 +143,8 @@ def print_summary(conn):
 
 
 def main():
-    ap = argparse.ArgumentParser(description='Dump and inspect millions.sqlite')
-    ap.add_argument('--db', default=DB_PATH, help='Path to SQLite DB (default: millions.sqlite)')
+    ap = argparse.ArgumentParser(description='Dump and inspect PostgreSQL database')
+    ap.add_argument('--db', default=os.environ.get('DATABASE_URL'), help='Database connection string')
     ap.add_argument('--head', type=int, default=10, help='Head rows per table to print')
     ap.add_argument('--schema-only', action='store_true', help='Print only schema')
     ap.add_argument('--no-data', action='store_true', help='Skip printing table head rows')

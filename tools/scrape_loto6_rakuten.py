@@ -1,13 +1,15 @@
 import os
 import re
 import csv
-import sqlite3
+import psycopg2
 import sys
 from datetime import datetime, date
 from urllib.request import urlopen, Request
+from dotenv import load_dotenv
+
+load_dotenv()
 
 ROOT = os.path.dirname(os.path.dirname(__file__))
-DB_PATH = os.path.join(ROOT, 'millions.sqlite')
 CSV_DIR = os.path.join(ROOT, 'loto6')
 
 HEADERS = {
@@ -186,8 +188,11 @@ def ensure_db(conn):
     conn.commit()
 
 
-def upsert_sqlite(rows):
-    conn = sqlite3.connect(DB_PATH)
+def upsert_postgres(rows):
+    db_url = os.environ.get('DATABASE_URL')
+    if db_url and '?schema' in db_url:
+        db_url = db_url.split('?schema')[0]
+    conn = psycopg2.connect(db_url)
     ensure_db(conn)
     cur = conn.cursor()
     inserted = 0
@@ -195,13 +200,13 @@ def upsert_sqlite(rows):
         kai = r['kai']
         if kai is None:
             continue
-        cur.execute('SELECT 1 FROM loto6_draws WHERE draw_number = ?', (kai,))
+        cur.execute('SELECT 1 FROM loto6_draws WHERE draw_number = %s', (kai,))
         if cur.fetchone():
             continue
         numbers_str = ','.join(str(x) for x in r['nums'])
         bonus = int(r['bonus']) if r['bonus'] is not None else None
         cur.execute(
-            'INSERT INTO loto6_draws(draw_number, draw_date, numbers, bonus_number) VALUES (?,?,?,?)',
+            'INSERT INTO loto6_draws(draw_number, draw_date, numbers, bonus_number) VALUES (%s,%s,%s,%s)',
             (kai, r['date'], numbers_str, bonus)
         )
         inserted += 1
@@ -228,11 +233,11 @@ def run(url: str):
         return
 
     appended, csv_path = upsert_csv(mstr, rows)
-    inserted = upsert_sqlite(rows)
+    inserted = upsert_postgres(rows)
 
     print(f"[scrape-loto6] Parsed range: 第{start}回～第{end}回 | Rows: {len(rows)}")
     print(f"[scrape-loto6] CSV updated: +{appended} rows -> {csv_path}")
-    print(f"[scrape-loto6] SQLite updated: +{inserted} rows -> {DB_PATH}")
+    print(f"[scrape-loto6] PostgreSQL updated: +{inserted} rows")
 
 
 if __name__ == '__main__':
