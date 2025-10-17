@@ -72,6 +72,24 @@ def generate_ensemble_prediction(progress_callback=None):
     if all_draws_df.empty:
         # Streamlitにエラーを伝えるために空のDataFrameを返すか、例外を発生させる
         return pd.DataFrame()
+    
+    # モデルの更新状況を確認
+    model_path = os.path.join(os.path.dirname(__file__), 'model_state.json')
+    if os.path.exists(model_path):
+        import json
+        from datetime import datetime, timezone
+        with open(model_path, 'r') as f:
+            model_state = json.load(f)
+        updated_at = model_state.get('updated_at', '')
+        events = model_state.get('events', 0)
+        if updated_at:
+            try:
+                updated_dt = datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
+                age_hours = (datetime.now(timezone.utc) - updated_dt).total_seconds() / 3600
+                if age_hours > 24 or events < 10:
+                    report_progress(0.05, f"⚠️ 警告: モデルが{age_hours:.1f}時間前に更新（学習イベント{events}回）。learn_from_predictions.pyの実行を推奨。")
+            except:
+                pass
 
     report_progress(0.1, "各モデルで予測を生成しています...")
     
@@ -94,12 +112,14 @@ def generate_ensemble_prediction(progress_callback=None):
 
     # --- アンサンブル集計 ---
     report_progress(0.9, "全モデルの予測を統合・集計中...")
-    # 新しいMLモデルの重みを高く設定
+    
+    # 動的重み調整：最新データへの適応性を重視
+    # MLモデルは学習データに依存するため、統計モデルの重みを相対的に上げる
     ensemble_weights = {
-        'basic_stats': 0.8,
-        'advanced_heuristics': 1.0,
-        'ml_model_new': 2.0, # 新しいモデルを重視
-        'exploratory': 0.7, 
+        'basic_stats': 1.2,  # 時系列重み付けで最新データに適応
+        'advanced_heuristics': 1.5,  # トレンド重視の改善版
+        'ml_model_new': 1.0,  # 学習データが古い場合は控えめに
+        'exploratory': 0.9,  # 探索的予測
     }
     
     predictions_by_model = {
@@ -118,6 +138,10 @@ def generate_ensemble_prediction(progress_callback=None):
 
 def run_ensemble_prediction_cli():
     """アンサンブル予測を実行し、結果をCLIに表示する"""
+    
+    print("\n" + "="*60)
+    print("🎯 ナンバーズ4 アンサンブル予測システム")
+    print("="*60)
     
     # 予測の実行（コールバックでコンソールに進捗表示）
     final_predictions_df, ensemble_weights = generate_ensemble_prediction(progress_callback=print)

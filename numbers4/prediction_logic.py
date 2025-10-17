@@ -9,38 +9,58 @@ from numbers4.predict_numbers_with_model import predict_top_k as _predict_top_k_
 def predict_from_basic_stats(df: pd.DataFrame, limit: int = 5):
     """
     基本的な統計情報（出現頻度、最新の数字）に基づいて予測を生成する。
-    元々の predict_numbers.py のロジック。
+    改善版：時系列重み付け、多様性向上。
     """
-    # 各桁の数字をリストに変換
-    first_digits = df['d1'].tolist()
-    second_digits = df['d2'].tolist()
-    third_digits = df['d3'].tolist()
-    fourth_digits = df['d4'].tolist()
-
-    # 各桁の数字の出現回数をカウント
-    first_counts = Counter(first_digits)
-    second_counts = Counter(second_digits)
-    third_counts = Counter(third_digits)
-    fourth_counts = Counter(fourth_digits)
+    # 最近のデータにより高い重みを付与（指数減衰）
+    n = len(df)
+    weights = np.exp(np.linspace(-2, 0, n))  # 最新に近いほど重みが大きい
+    weights = weights / weights.sum()
+    
+    # 各桁の重み付き出現頻度を計算
+    def weighted_counter(series, weights):
+        counter = Counter()
+        for val, w in zip(series, weights):
+            counter[val] += w
+        return counter
+    
+    first_counts = weighted_counter(df['d1'], weights)
+    second_counts = weighted_counter(df['d2'], weights)
+    third_counts = weighted_counter(df['d3'], weights)
+    fourth_counts = weighted_counter(df['d4'], weights)
 
     # 最新の抽選番号
     latest_draw = df.iloc[-1]
     
-    predictions = []
-    for _ in range(limit):
-        prediction = ""
-        # 1桁目: 出現回数が多く、かつ最新の数字に近いものを優先
-        prediction += str(sorted(first_counts.keys(), key=lambda x: (first_counts[x], -abs(x - latest_draw['d1'])), reverse=True)[len(predictions) % len(first_counts)])
-        # 2桁目: 同様に、出現回数と近さでソート
-        prediction += str(sorted(second_counts.keys(), key=lambda x: (second_counts[x], -abs(x - latest_draw['d2'])), reverse=True)[len(predictions) % len(second_counts)])
-        # 3桁目
-        prediction += str(sorted(third_counts.keys(), key=lambda x: (third_counts[x], -abs(x - latest_draw['d3'])), reverse=True)[len(predictions) % len(third_counts)])
-        # 4桁目
-        prediction += str(sorted(fourth_counts.keys(), key=lambda x: (fourth_counts[x], -abs(x - latest_draw['d4'])), reverse=True)[len(predictions) % len(fourth_counts)])
-        predictions.append(prediction)
+    # 多様性を確保するため、確率的サンプリングを使用
+    predictions = set()
+    attempts = 0
+    max_attempts = limit * 100
     
-    # 重複を除去して返す
-    return list(dict.fromkeys(predictions))
+    while len(predictions) < limit and attempts < max_attempts:
+        attempts += 1
+        prediction = ""
+        
+        # 各桁を確率的に選択（重み付き頻度に基づく）
+        for counts in [first_counts, second_counts, third_counts, fourth_counts]:
+            total = sum(counts.values())
+            probs = {k: v/total for k, v in counts.items()}
+            # 上位候補から確率的に選択（多様性確保）
+            candidates = sorted(probs.items(), key=lambda x: x[1], reverse=True)[:7]
+            if candidates:
+                digit = np.random.choice(
+                    [c[0] for c in candidates],
+                    p=[c[1]/sum(c[1] for c in candidates) for c in candidates]
+                )
+                prediction += str(digit)
+            else:
+                prediction += str(np.random.randint(0, 10))
+        
+        # 最新の当選番号を除外
+        latest_number = "".join(map(str, latest_draw[['d1', 'd2', 'd3', 'd4']].values))
+        if prediction != latest_number:
+            predictions.add(prediction)
+    
+    return list(predictions)[:limit]
 
 # --- 2. advanced_predict_numbers4.py からのロジック ---
 def predict_from_advanced_heuristics(df: pd.DataFrame, limit: int = 5):
@@ -61,28 +81,68 @@ def predict_from_advanced_heuristics(df: pd.DataFrame, limit: int = 5):
 
     pair_counts = Counter(pairs)
     
-    # スコアリング
+def calculate_heuristic_score(num_str: str, sum_mode: float, even_count_mode: float, pair_counts: Counter):
+    """指定された番号文字列のヒューリスティックスコアを計算する"""
+    n1, n2, n3, n4 = [int(d) for d in num_str]
+    
+    current_sum = n1 + n2 + n3 + n4
+    current_even_count = sum(x % 2 == 0 for x in [n1, n2, n3, n4])
+    
+    score = 0
+    # 合計値の近さ
+    score += 1 / (1 + abs(current_sum - sum_mode))
+    # 偶数・奇数のバランス
+    score += 1 / (1 + abs(current_even_count - even_count_mode))
+    # ペアの頻度
+    score += pair_counts[tuple(sorted((n1, n2)))]
+    score += pair_counts[tuple(sorted((n2, n3)))]
+    score += pair_counts[tuple(sorted((n3, n4)))]
+    
+    return score
+
+# --- 2. advanced_predict_numbers4.py からのロジック ---
+def predict_from_advanced_heuristics(df: pd.DataFrame, limit: int = 5):
+    """
+    高度なヒューリスティック（合計値、偶数奇数、ペアの頻度）に基づいて予測を生成する。
+    改善版：時系列重み付け、最近のトレンドを反映。
+    """
+    # コピーして安全に列を追加（SettingWithCopyWarning 回避）
+    df = df.copy()
+    df['sum'] = df[['d1', 'd2', 'd3', 'd4']].sum(axis=1)
+    df['even_count'] = df[['d1', 'd2', 'd3', 'd4']].apply(lambda row: sum(x % 2 == 0 for x in row), axis=1)
+    
+    # 最近のデータに重みを付けてペア頻度を計算
+    n = len(df)
+    weights = np.exp(np.linspace(-1.5, 0, n))  # 時系列重み
+    
+    pair_counts = Counter()
+    for idx, row in df.iterrows():
+        w = weights[idx]
+        for i in range(3):
+            pair_counts[tuple(sorted((row[f'd{i+1}'], row[f'd{i+2}'])))] += w
+    
+    # 最近100件の統計（トレンド重視）
+    recent_df = df.tail(100)
+    sum_mode = recent_df['sum'].mode()[0] if not recent_df['sum'].mode().empty else df['sum'].mode()[0]
+    even_count_mode = recent_df['even_count'].mode()[0] if not recent_df['even_count'].mode().empty else df['even_count'].mode()[0]
+    
+    # スコアリング（全組み合わせは重いので、サンプリング戦略を使用）
     scored_numbers = []
-    for i in range(10000):
-        num_str = f"{i:04d}"
-        n1, n2, n3, n4 = [int(d) for d in num_str]
+    
+    # 1. 高スコア候補を効率的に生成（全探索の代わり）
+    for _ in range(min(5000, limit * 500)):
+        # 合計値を目標に近づける
+        target_sum = int(sum_mode + np.random.normal(0, 3))
+        target_sum = max(0, min(36, target_sum))
         
-        current_sum = n1 + n2 + n3 + n4
-        current_even_count = sum(x % 2 == 0 for x in [n1, n2, n3, n4])
+        # 偶奇バランスを目標に近づける
+        target_even = int(even_count_mode)
         
-        # スコア計算
-        score = 0
-        # 合計値の近さ
-        score += 1 / (1 + abs(current_sum - df['sum'].mode()[0]))
-        # 偶数・奇数のバランス
-        score += 1 / (1 + abs(current_even_count - df['even_count'].mode()[0]))
-        # ペアの頻度
-        score += pair_counts[tuple(sorted((n1, n2)))]
-        score += pair_counts[tuple(sorted((n2, n3)))]
-        score += pair_counts[tuple(sorted((n3, n4)))]
-        
+        # ランダム生成して条件に近いものを選択
+        num_str = f"{np.random.randint(0, 10000):04d}"
+        score = calculate_heuristic_score(num_str, sum_mode, even_count_mode, pair_counts)
         scored_numbers.append((num_str, score))
-        
+    
     # スコア上位を予測とする
     scored_numbers.sort(key=lambda x: x[1], reverse=True)
     
@@ -90,9 +150,11 @@ def predict_from_advanced_heuristics(df: pd.DataFrame, limit: int = 5):
     latest_number = "".join(map(str, df.iloc[-1][['d1', 'd2', 'd3', 'd4']].values))
     
     predictions = []
+    seen = set()
     for num, _ in scored_numbers:
-        if num != latest_number:
+        if num != latest_number and num not in seen:
             predictions.append(num)
+            seen.add(num)
         if len(predictions) == limit:
             break
             
@@ -181,14 +243,30 @@ def predict_from_exploratory_heuristics(df: pd.DataFrame, limit: int = 5):
             if current_sum >= high_sum_target:
                 predictions.add(num_str)
 
-    # 2. コールドな数字を積極的に使う
-    while len(predictions) < limit * 2 and attempts < 40000:
-        attempts += 1
-        pred_list = np.random.choice(cold_digits, 4, replace=True)
-        np.random.shuffle(pred_list)
-        num_str = "".join(map(str, pred_list))
-        if len(num_str) == 4:
+    # 2. ゼロ頻度ペアとコールドナンバーを組み合わせる (Refined)
+    # 過去の全ペアを計算
+    historical_pairs = set()
+    for _, row in df.iterrows():
+        for i in range(3):
+            historical_pairs.add(tuple(sorted((row[f'd{i+1}'], row[f'd{i+2}']))) )
+    
+    # ゼロ頻度のペアを特定
+    all_possible_pairs = {tuple(sorted((i, j))) for i in range(10) for j in range(10)}
+    zero_freq_pairs = list(all_possible_pairs - historical_pairs)
+
+    if zero_freq_pairs and cold_digits:
+        while len(predictions) < limit * 2 and attempts < 40000:
+            attempts += 1
+            # ゼロ頻度ペアをランダムに1つ選択
+            target_pair = list(zero_freq_pairs[np.random.randint(len(zero_freq_pairs))])
+            # 残りの2桁をコールドナンバーから選択
+            other_digits = np.random.choice(cold_digits, 2, replace=True).tolist()
+            # 4桁のリストを作成してシャッフル
+            pred_list = target_pair + other_digits
+            np.random.shuffle(pred_list)
+            num_str = "".join(map(str, pred_list))
             predictions.add(num_str)
+
 
     # 最新の当選番号を除外
     latest_number = "".join(map(str, df.iloc[-1][['d1', 'd2', 'd3', 'd4']].values))
