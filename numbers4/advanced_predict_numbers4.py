@@ -3,7 +3,7 @@ import numpy as np
 import glob
 import os
 import json
-import sqlite3
+import psycopg2
 from collections import Counter, defaultdict
 from itertools import combinations
 
@@ -18,7 +18,6 @@ COLS = [
 
 
 ROOT = os.path.dirname(os.path.dirname(__file__))
-DB_PATH = os.path.join(ROOT, 'prisma', 'millions.sqlite')
 MODEL_PATH = os.path.join(ROOT, 'numbers4', 'model_state.json')
 
 

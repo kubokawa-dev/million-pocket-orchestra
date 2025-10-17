@@ -21,7 +21,6 @@ numbers4/
     predict_ensemble.py  # 予測ロジック本体
     ...
 streamlit_app.py         # Streamlit Webアプリ
-millions.sqlite          # データベース
 ```
 
 ## 必要な環境
@@ -38,7 +37,7 @@ pip install -r requirements.txt
 ## Streamlitアプリの起動方法
 
 1. 必要なパッケージをインストール
-2. データベース（millions.sqlite）が存在することを確認
+2. 環境変数 `DATABASE_URL` に PostgreSQL 接続文字列を設定（例: `postgresql://user:pass@host:5432/dbname`）
 3. 以下のコマンドでWebアプリを起動
 
 ```bash

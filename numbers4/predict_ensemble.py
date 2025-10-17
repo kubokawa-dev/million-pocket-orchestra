@@ -7,28 +7,26 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# プロジェクトルートをパスに追加
-# __file__ はこのスクリプト自身のパスを指す
-# os.path.abspath(__file__) で絶対パスに変換
-# os.path.dirname() で親ディレクトリを取得
-# これを2回繰り返すことで、'numbers4'の一つ上の'million-pocket'のパスが得られる
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# --- モジュール検索パスを追加 ---
+# スクリプトの親ディレクトリ（numbers4）の親ディレクトリ（million-pocket）をパスに追加
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if project_root not in sys.path:
+    sys.path.append(project_root)
 
 from numbers4.prediction_logic import (
     predict_from_basic_stats,
     predict_from_advanced_heuristics,
-    predict_with_model,
+    predict_with_new_ml_model,  # 古いpredict_with_modelを新しいものに置き換え
     predict_from_exploratory_heuristics,
     aggregate_predictions
 )
-from numbers4.learning_logic import learn_model_from_data
+# learn_model_from_data は不要になったので削除
 
 # --- 設定 ---
-MODEL_STATE_PATH = 'numbers4/model_state.json' # predict_with_modelのフォールバック用
 NUM_PREDICTIONS_BASIC = 5
 NUM_PREDICTIONS_ADVANCED = 5
-NUM_PREDICTIONS_MODEL = 10 # 少し減らして多様性モデルの枠を作る
-NUM_PREDICTIONS_EXPLORATORY = 5 # 新しい探索的モデルの予測数
+NUM_PREDICTIONS_ML_NEW = 15 # 新しいMLモデルの予測数を増やす
+NUM_PREDICTIONS_EXPLORATORY = 5
 
 
 def get_db_connection():
@@ -85,11 +83,10 @@ def generate_ensemble_prediction(progress_callback=None):
     predictions_advanced = predict_from_advanced_heuristics(all_draws_df, NUM_PREDICTIONS_ADVANCED)
     report_progress(0.45, f"- 高度ヒューリスティックモデル予測完了: {len(predictions_advanced)}件")
 
-    # 3. 機械学習モデル (毎回再学習)
-    report_progress(0.5, "- 機械学習モデルを再学習中...")
-    relearned_weights = learn_model_from_data(all_draws_df)
-    predictions_model = predict_with_model(relearned_weights, limit=NUM_PREDICTIONS_MODEL)
-    report_progress(0.65, f"- 機械学習モデル予測完了: {len(predictions_model)}件")
+    # 3. 新しい機械学習モデル (学習済みモデルを使用)
+    report_progress(0.5, "- 新しいMLモデルで予測中...")
+    predictions_ml_new = predict_with_new_ml_model(all_draws_df, limit=NUM_PREDICTIONS_ML_NEW)
+    report_progress(0.65, f"- 新MLモデル予測完了: {len(predictions_ml_new)}件")
 
     # 4. 探索的ヒューリスティックモデル
     predictions_exploratory = predict_from_exploratory_heuristics(all_draws_df, NUM_PREDICTIONS_EXPLORATORY)
@@ -97,17 +94,18 @@ def generate_ensemble_prediction(progress_callback=None):
 
     # --- アンサンブル集計 ---
     report_progress(0.9, "全モデルの予測を統合・集計中...")
+    # 新しいMLモデルの重みを高く設定
     ensemble_weights = {
-        'basic_stats': 1.5,
+        'basic_stats': 0.8,
         'advanced_heuristics': 1.0,
-        'ml_model': 1.0,
-        'exploratory': 1.5, 
+        'ml_model_new': 2.0, # 新しいモデルを重視
+        'exploratory': 0.7, 
     }
     
     predictions_by_model = {
         'basic_stats': predictions_basic,
         'advanced_heuristics': predictions_advanced,
-        'ml_model': predictions_model,
+        'ml_model_new': predictions_ml_new,
         'exploratory': predictions_exploratory
     }
 

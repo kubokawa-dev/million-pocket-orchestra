@@ -268,5 +268,78 @@ def predict_with_model(model_weights, top_n=12, exclude_last_draw=None):
     
     return final_predictions[:top_n]
 
+
 # groupbyのインポート
 from itertools import groupby
+
+def predict_with_new_ml_model(df: pd.DataFrame, limit: int = 10, main_window=20):
+    """
+    学習済みのRandomForestモデルを使って予測を生成する。
+    特徴量生成ロジックを train_ml_model.py と同期させる。
+    """
+    MODEL_DIR = os.path.join(os.path.dirname(__file__), 'ml_models')
+    if not os.path.exists(MODEL_DIR):
+        print("ML Models directory not found. Please train models first.")
+        return []
+
+    # Load models
+    models = {}
+    for i in range(1, 5):
+        model_path = os.path.join(MODEL_DIR, f'numbers4_model_d{i}.joblib')
+        if not os.path.exists(model_path):
+            print(f"Model for d{i} not found.")
+            return []
+        models[f'd{i}'] = joblib.load(model_path)
+
+    # --- Create features for the next prediction ---
+    feature_vector = []
+    i = len(df) # Use the full length of the dataframe to get the latest data
+
+    # ラグ特徴量
+    for lag in [1, 2, 3]:
+        past_row = df.iloc[i - lag]
+        for d in range(1, 5):
+            feature_vector.append(past_row[f'd{d}'])
+
+    # 統計的特徴量
+    for window_size in [5, 10, 20]:
+        window = df.iloc[i-window_size:i]
+        for d in range(1, 5):
+            feature_vector.append(window[f'd{d}'].mean())
+        for d in range(1, 5):
+            feature_vector.append(window[f'd{d}'].std())
+        feature_vector.append(window[['d1', 'd2', 'd3', 'd4']].sum(axis=1).mean())
+
+    # 未出現期間 & 移動度数
+    window_main = df.iloc[i-main_window:i]
+    for d in range(1, 5):
+        col = f'd{d}'
+        for num in range(10):
+            freq = (window_main[col] == num).sum()
+            feature_vector.append(freq)
+            if freq > 0:
+                # Use .index.max() for safety
+                last_seen_index = window_main[window_main[col] == num].index.max()
+                overdue = i - last_seen_index
+                feature_vector.append(overdue)
+            else:
+                feature_vector.append(main_window + 1)
+
+    # NaNを0で埋める
+    features_np = np.array([feature_vector])
+    features_np = np.nan_to_num(features_np)
+
+    # Predict probabilities
+    digit_probs = []
+    for i in range(1, 5):
+        model = models[f'd{i}']
+        probs = model.predict_proba(features_np)[0]
+        digit_probs.append(probs)
+
+    # Generate candidates
+    predictions = set()
+    for _ in range(3000):
+        pred_list = [str(np.random.choice(10, p=probs)) for probs in digit_probs]
+        predictions.add("".join(pred_list))
+
+    return list(predictions)[:limit]

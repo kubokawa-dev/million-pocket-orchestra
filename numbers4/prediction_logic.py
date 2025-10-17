@@ -3,6 +3,7 @@ import numpy as np
 from collections import Counter
 import json
 import os
+from numbers4.predict_numbers_with_model import predict_top_k as _predict_top_k_model
 
 # --- 1. predict_numbers.py からのロジック ---
 def predict_from_basic_stats(df: pd.DataFrame, limit: int = 5):
@@ -126,6 +127,18 @@ def predict_with_model(
         
     return list(predictions)
 
+
+# --- 3b. Wrapper for new ML model API expected by ensemble ---
+def predict_with_new_ml_model(df: pd.DataFrame, limit: int = 12):
+    """
+    新しいMLモデルの予測を返すための互換ラッパー関数。
+    既存の `numbers4.predict_numbers_with_model.predict_top_k` を委譲して、
+    アンサンブル側の想定シグネチャ(df, limit)を満たす。
+    """
+    try:
+        return _predict_top_k_model(limit)
+    except Exception:
+        return []
 
 # --- 4. Exploratory Prediction (New) ---
 def predict_from_exploratory_heuristics(df: pd.DataFrame, limit: int = 5):

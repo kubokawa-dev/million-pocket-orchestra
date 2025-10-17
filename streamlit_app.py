@@ -257,6 +257,27 @@ tabs = st.tabs(["ナンバーズ4", "ロト6"])
 with tabs[0]:
     # --- ナンバーズ4タブ ---
     st.header("🔮 最新の当選番号を予測する (ナンバーズ4)")
+
+        # --- モデル学習ボタン (ナンバーズ4) ---
+    st.subheader("🤖 MLモデルの学習")
+    if st.button("ナンバーズ4のMLモデルを学習する"):
+        from numbers4.train_ml_model import load_all_draws, create_features, train_and_save_models
+        try:
+            with st.spinner("データ読込と特徴量生成..."):
+                df_train = load_all_draws()
+                features, labels = create_features(df_train)
+                st.write(f"学習データ: {len(features)}件")
+            
+            with st.spinner("モデル学習中... (数分かかることがあります)"):
+                train_and_save_models(features, labels)
+                st.success("ナンバーズ4のMLモデル学習が完了しました！")
+
+        except Exception as e:
+            st.error(f"処理中にエラーが発生しました: {e}")
+            st.exception(e)
+    
+    st.divider()
+
     # Prediction Section
     if st.button("予測を実行"):
         st.info("アンサンブル予測を開始します。これには数分かかることがあります...")
