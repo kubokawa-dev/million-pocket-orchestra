@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@million-pocket/database';
-import { requireAuth } from '@/lib/auth';
+import { createPublicClient } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,54 +9,69 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const pageSize = parseInt(searchParams.get('pageSize') || '20');
 
-    const skip = (page - 1) * pageSize;
+    const supabase = createPublicClient();
 
-    const where: any = {
-      isPublic: true,
-      isHidden: false,
-    };
+    // クエリの構築
+    let query = supabase
+      .from('predictions')
+      .select(`
+        *,
+        users!predictions_userId_fkey (
+          id,
+          username,
+          displayName,
+          avatarUrl
+        ),
+        likes(count),
+        comments(count)
+      `)
+      .eq('isPublic', true)
+      .eq('isHidden', false)
+      .order('createdAt', { ascending: false })
+      .range((page - 1) * pageSize, page * pageSize - 1);
 
     if (lotteryType) {
-      where.lotteryType = lotteryType;
+      query = query.eq('lotteryType', lotteryType);
     }
 
     if (userId) {
-      where.userId = userId;
+      query = query.eq('userId', userId);
     }
 
-    const [predictions, total] = await Promise.all([
-      prisma.prediction.findMany({
-        where,
-        skip,
-        take: pageSize,
-        orderBy: { createdAt: 'desc' },
-        include: {
-          user: {
-            select: {
-              id: true,
-              username: true,
-              displayName: true,
-              avatarUrl: true,
-            },
-          },
-          _count: {
-            select: {
-              likes: true,
-              comments: true,
-            },
-          },
-        },
-      }),
-      prisma.prediction.count({ where }),
-    ]);
+    const { data: predictions, error: predictionsError } = await query;
+
+    if (predictionsError) {
+      throw predictionsError;
+    }
+
+    // 総数を取得
+    let countQuery = supabase
+      .from('predictions')
+      .select('*', { count: 'exact', head: true })
+      .eq('isPublic', true)
+      .eq('isHidden', false);
+
+    if (lotteryType) {
+      countQuery = countQuery.eq('lotteryType', lotteryType);
+    }
+
+    if (userId) {
+      countQuery = countQuery.eq('userId', userId);
+    }
+
+    const { count, error: countError } = await countQuery;
+
+    if (countError) {
+      throw countError;
+    }
 
     return NextResponse.json({
-      predictions: predictions.map((p) => ({
+      predictions: predictions?.map((p) => ({
         ...p,
-        likeCount: p._count.likes,
-        commentCount: p._count.comments,
-      })),
-      total,
+        likeCount: p.likes?.[0]?.count || 0,
+        commentCount: p.comments?.[0]?.count || 0,
+      })) || [],
+      total: count || 0,
       page,
       pageSize,
     });
@@ -72,11 +86,20 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireAuth();
+    const supabase = createPublicClient();
+    
+    // 認証チェック
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !user) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
 
-    const prediction = await prisma.prediction.create({
-      data: {
+    const { data: prediction, error } = await supabase
+      .from('predictions')
+      .insert({
         userId: user.id,
         lotteryType: body.lotteryType,
         numbers: body.numbers,
@@ -84,27 +107,27 @@ export async function POST(request: NextRequest) {
         confidence: body.confidence,
         reasoning: body.reasoning,
         targetDrawNumber: body.targetDrawNumber,
-        targetDrawDate: body.targetDrawDate ? new Date(body.targetDrawDate) : null,
+        targetDrawDate: body.targetDrawDate ? new Date(body.targetDrawDate).toISOString() : null,
         isPublic: body.isPublic ?? true,
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            username: true,
-            displayName: true,
-            avatarUrl: true,
-          },
-        },
-      },
-    });
+      })
+      .select(`
+        *,
+        users!predictions_userId_fkey (
+          id,
+          username,
+          displayName,
+          avatarUrl
+        )
+      `)
+      .single();
+
+    if (error) {
+      throw error;
+    }
 
     return NextResponse.json(prediction, { status: 201 });
   } catch (error) {
     console.error('Error creating prediction:', error);
-    if (error instanceof Error && error.message === 'Unauthorized') {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-    }
     return NextResponse.json(
       { message: 'Internal server error' },
       { status: 500 }
