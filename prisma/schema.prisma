@@ -102,3 +102,137 @@ model Numbers4PredictionCandidate {
   @@index([ensemble_prediction_id])
   @@index([number])
 }
+
+// numbers3_model_events(id INTEGER PRIMARY KEY AUTOINCREMENT, event_ts TEXT NOT NULL, actual_number TEXT NOT NULL,
+// predictions TEXT NOT NULL, hit_exact INTEGER NOT NULL DEFAULT 0, top_match TEXT, max_position_hits INTEGER NOT NULL, notes TEXT)
+model Numbers3ModelEvent {
+  id                Int     @id @default(autoincrement())
+  event_ts          String
+  actual_number     String
+  predictions       String
+  hit_exact         Int     @default(0)
+  top_match         String?
+  max_position_hits Int
+  notes             String?
+
+  @@map("numbers3_model_events")
+}
+
+// numbers3_predictions_log(id INTEGER PRIMARY KEY AUTOINCREMENT, created_at TEXT NOT NULL,
+// source TEXT NOT NULL, label TEXT, number TEXT NOT NULL, target_draw_number INTEGER)
+model Numbers3PredictionLog {
+  id                 Int     @id @default(autoincrement())
+  created_at         String
+  source             String
+  label              String?
+  number             String
+  target_draw_number Int?    // 予測対象の抽選回
+
+  @@map("numbers3_predictions_log")
+  @@index([target_draw_number])
+}
+
+// アンサンブル予測の実行履歴を保存（ナンバーズ3用）
+model Numbers3EnsemblePrediction {
+  id                    Int      @id @default(autoincrement())
+  created_at            DateTime @default(now())
+  target_draw_number    Int?     // 予測対象の回（次回の抽選回）
+  model_updated_at      String?  // 使用したモデルの更新日時
+  model_events_count    Int?     // 使用したモデルの学習イベント数
+  ensemble_weights      String   // JSON: アンサンブルの重み設定
+  predictions_count     Int      // 生成した予測候補の総数
+  top_predictions       String   // JSON: 上位予測結果（番号とスコア）
+  model_predictions     String   // JSON: モデル別の予測結果
+  actual_draw_number    Int?     // 実際の抽選回（結果判明後に更新）
+  actual_numbers        String?  // 実際の当選番号（結果判明後に更新）
+  hit_status            String?  // 的中状況（exact/partial/miss）
+  hit_count             Int?     // 的中した桁数（0-3）
+  notes                 String?  // メモ・備考
+
+  @@map("numbers3_ensemble_predictions")
+  @@index([created_at])
+  @@index([target_draw_number])
+}
+
+// 個別の予測候補の詳細（アンサンブル予測の内訳）（ナンバーズ3用）
+model Numbers3PredictionCandidate {
+  id                    Int      @id @default(autoincrement())
+  ensemble_prediction_id Int     // 親のアンサンブル予測ID
+  rank                  Int      // 順位（1から始まる）
+  number                String   // 予測番号（3桁）
+  score                 Float    // アンサンブルスコア
+  contributing_models   String   // JSON: この番号を予測したモデルのリスト
+  created_at            DateTime @default(now())
+
+  @@map("numbers3_prediction_candidates")
+  @@index([ensemble_prediction_id])
+  @@index([number])
+}
+
+// loto6_model_events(id INTEGER PRIMARY KEY AUTOINCREMENT, event_ts TEXT NOT NULL, actual_number TEXT NOT NULL,
+// predictions TEXT NOT NULL, hit_exact INTEGER NOT NULL DEFAULT 0, top_match TEXT, max_position_hits INTEGER NOT NULL, notes TEXT)
+model Loto6ModelEvent {
+  id                Int     @id @default(autoincrement())
+  event_ts          String
+  actual_number     String
+  predictions       String
+  hit_exact         Int     @default(0)
+  top_match         String?
+  max_position_hits Int
+  notes             String?
+
+  @@map("loto6_model_events")
+}
+
+// loto6_predictions_log(id INTEGER PRIMARY KEY AUTOINCREMENT, created_at TEXT NOT NULL,
+// source TEXT NOT NULL, label TEXT, number TEXT NOT NULL, target_draw_number INTEGER)
+model Loto6PredictionLog {
+  id                 Int     @id @default(autoincrement())
+  created_at         String
+  source             String
+  label              String?
+  number             String
+  target_draw_number Int?    // 予測対象の抽選回
+
+  @@map("loto6_predictions_log")
+  @@index([target_draw_number])
+}
+
+// アンサンブル予測の実行履歴を保存（ロト6用）
+model Loto6EnsemblePrediction {
+  id                    Int      @id @default(autoincrement())
+  created_at            DateTime @default(now())
+  target_draw_number    Int?     // 予測対象の回（次回の抽選回）
+  model_updated_at      String?  // 使用したモデルの更新日時
+  model_events_count    Int?     // 使用したモデルの学習イベント数
+  ensemble_weights      String   // JSON: アンサンブルの重み設定
+  predictions_count     Int      // 生成した予測候補の総数
+  top_predictions       String   // JSON: 上位予測結果（番号とスコア）
+  model_predictions     String   // JSON: モデル別の予測結果
+  actual_draw_number    Int?     // 実際の抽選回（結果判明後に更新）
+  actual_numbers        String?  // 実際の当選番号（結果判明後に更新）
+  actual_bonus_number   Int?     // 実際のボーナス数字（結果判明後に更新）
+  hit_status            String?  // 的中状況（exact/partial/miss）
+  hit_count             Int?     // 的中した桁数（0-6）
+  bonus_hit             Boolean? // ボーナス数字の的中
+  notes                 String?  // メモ・備考
+
+  @@map("loto6_ensemble_predictions")
+  @@index([created_at])
+  @@index([target_draw_number])
+}
+
+// 個別の予測候補の詳細（アンサンブル予測の内訳）（ロト6用）
+model Loto6PredictionCandidate {
+  id                    Int      @id @default(autoincrement())
+  ensemble_prediction_id Int     // 親のアンサンブル予測ID
+  rank                  Int      // 順位（1から始まる）
+  number                String   // 予測番号（6桁）
+  score                 Float    // アンサンブルスコア
+  contributing_models   String   // JSON: この番号を予測したモデルのリスト
+  created_at            DateTime @default(now())
+
+  @@map("loto6_prediction_candidates")
+  @@index([ensemble_prediction_id])
+  @@index([number])
+}

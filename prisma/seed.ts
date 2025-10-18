@@ -10,6 +10,13 @@ interface DrawData {
   numbers: string
 }
 
+interface Loto6DrawData {
+  draw_number: number
+  draw_date: string
+  numbers: string
+  bonus_number: number
+}
+
 function extractDrawNumber(roundText: string): number | null {
   const match = roundText.match(/第(\d+)回/)
   return match ? parseInt(match[1]) : null
@@ -201,21 +208,136 @@ async function seedNumbers4() {
   }
 }
 
+function extractBonusNumber(bonusText: string): number | null {
+  const match = bonusText.match(/\((\d+)\)/)
+  return match ? parseInt(match[1]) : null
+}
+
+function parseLoto6CSV(filePath: string): Loto6DrawData[] {
+  const data: Loto6DrawData[] = []
+  
+  try {
+    const content = fs.readFileSync(filePath, 'utf-8')
+    const lines = content.split('\n')
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim()
+      if (!line) continue
+      
+      const columns = line.split(',')
+      
+      if (columns.length >= 9) {
+        try {
+          // 回号から抽選番号を抽出
+          const drawNumber = extractDrawNumber(columns[0])
+          if (!drawNumber) continue
+          
+          // 抽せん日
+          const drawDate = columns[1]
+          
+          // 本数字（6個）
+          const mainNumbers = []
+          for (let j = 2; j < 8; j++) {
+            if (j < columns.length && columns[j].match(/^\d+$/)) {
+              mainNumbers.push(columns[j])
+            }
+          }
+          
+          if (mainNumbers.length !== 6) continue
+          
+          // ボーナス数字
+          const bonusNumber = extractBonusNumber(columns[8])
+          if (bonusNumber === null) continue
+          
+          // 本数字を文字列として結合
+          const numbersStr = mainNumbers.join(',')
+          
+          data.push({
+            draw_number: drawNumber,
+            draw_date: drawDate,
+            numbers: numbersStr,
+            bonus_number: bonusNumber
+          })
+          
+        } catch (error) {
+          console.log(`行の解析エラー: ${line}, エラー: ${error}`)
+          continue
+        }
+      }
+    }
+  } catch (error) {
+    console.error(`ファイル読み込みエラー (${filePath}):`, error)
+  }
+  
+  return data
+}
+
+async function seedLoto6() {
+  console.log('ロト6のデータをシード中...')
+  
+  const loto6Dir = path.join(process.cwd(), 'loto6')
+  
+  if (!fs.existsSync(loto6Dir)) {
+    console.log('loto6ディレクトリが見つかりません')
+    return
+  }
+  
+  const csvFiles = fs.readdirSync(loto6Dir)
+    .filter(file => file.endsWith('.csv'))
+    .sort()
+  
+  let allData: Loto6DrawData[] = []
+  
+  for (const file of csvFiles) {
+    const filePath = path.join(loto6Dir, file)
+    console.log(`ファイル ${file} から ${parseLoto6CSV(filePath).length} 件のデータを読み込みました`)
+    const data = parseLoto6CSV(filePath)
+    allData = allData.concat(data)
+  }
+  
+  console.log(`ロト6: 合計 ${allData.length} 件のデータを取得しました`)
+  
+  if (allData.length > 0) {
+    // データをupsertで挿入
+    for (const item of allData) {
+      await prisma.loto6Draw.upsert({
+        where: { draw_number: item.draw_number },
+        update: {
+          draw_date: item.draw_date,
+          numbers: item.numbers,
+          bonus_number: item.bonus_number
+        },
+        create: {
+          draw_number: item.draw_number,
+          draw_date: item.draw_date,
+          numbers: item.numbers,
+          bonus_number: item.bonus_number
+        }
+      })
+    }
+    
+    console.log(`ロト6: ${allData.length} 件のデータを挿入しました`)
+  }
+}
+
 async function main() {
   console.log('データベースシード開始...')
   
   try {
     await seedNumbers3()
     await seedNumbers4()
+    await seedLoto6()
     
     // 最終的なデータ数を確認
     const numbers3Count = await prisma.numbers3Draw.count()
     const numbers4Count = await prisma.numbers4Draw.count()
+    const loto6Count = await prisma.loto6Draw.count()
     
     console.log('シード完了!')
     console.log(`ナンバーズ3: ${numbers3Count} 件`)
     console.log(`ナンバーズ4: ${numbers4Count} 件`)
-    console.log(`合計: ${numbers3Count + numbers4Count} 件`)
+    console.log(`ロト6: ${loto6Count} 件`)
+    console.log(`合計: ${numbers3Count + numbers4Count + loto6Count} 件`)
     
   } catch (error) {
     console.error('シードエラー:', error)
