@@ -235,7 +235,7 @@ def position_hits(actual: str, pred: str) -> int:
 # Main entry
 # -----------------------------
 
-def learn(actual_number: str):
+def learn(actual_number: str, actual_draw_number: int = None):
     actual_number = actual_number.strip()
     if not re.fullmatch(r"\d{4}", actual_number):
         raise ValueError("actual_number must be a 4-digit string like '6896'")
@@ -263,6 +263,12 @@ def learn(actual_number: str):
     sync_identity_sequence(conn, 'numbers4_model_events')
     sync_identity_sequence(conn, 'numbers4_predictions_log')
     cur = conn.cursor()
+    
+    # Get actual draw number if not provided
+    if actual_draw_number is None:
+        cur.execute("SELECT MAX(draw_number) FROM numbers4_draws")
+        row = cur.fetchone()
+        actual_draw_number = row[0] if row and row[0] else None
 
     preds_json = json.dumps([
         {'source': s, 'label': l, 'number': n} for (s, l, n) in preds
@@ -289,8 +295,8 @@ def learn(actual_number: str):
     ts = now_iso()
     for s, l, n in preds:
         cur.execute(
-            'INSERT INTO numbers4_predictions_log(created_at, source, label, number) VALUES (%s, %s, %s, %s)',
-            (ts, s, l, n)
+            'INSERT INTO numbers4_predictions_log(created_at, source, label, number, target_draw_number) VALUES (%s, %s, %s, %s, %s)',
+            (ts, s, l, n, actual_draw_number)
         )
 
     conn.commit()

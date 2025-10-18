@@ -9,6 +9,15 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// numbers3_draws(draw_number INTEGER PRIMARY KEY, draw_date TEXT NOT NULL, numbers TEXT NOT NULL)
+model Numbers3Draw {
+  draw_number Int    @id
+  draw_date   String
+  numbers     String
+
+  @@map("numbers3_draws")
+}
+
 // numbers4_draws(draw_number INTEGER PRIMARY KEY, draw_date TEXT NOT NULL, numbers TEXT NOT NULL)
 model Numbers4Draw {
   draw_number Int    @id
@@ -44,13 +53,52 @@ model Numbers4ModelEvent {
 }
 
 // numbers4_predictions_log(id INTEGER PRIMARY KEY AUTOINCREMENT, created_at TEXT NOT NULL,
-// source TEXT NOT NULL, label TEXT, number TEXT NOT NULL)
+// source TEXT NOT NULL, label TEXT, number TEXT NOT NULL, target_draw_number INTEGER)
 model Numbers4PredictionLog {
-  id         Int     @id @default(autoincrement())
-  created_at String
-  source     String
-  label      String?
-  number     String
+  id                 Int     @id @default(autoincrement())
+  created_at         String
+  source             String
+  label              String?
+  number             String
+  target_draw_number Int?    // 予測対象の抽選回
 
   @@map("numbers4_predictions_log")
+  @@index([target_draw_number])
+}
+
+// アンサンブル予測の実行履歴を保存
+model Numbers4EnsemblePrediction {
+  id                    Int      @id @default(autoincrement())
+  created_at            DateTime @default(now())
+  target_draw_number    Int?     // 予測対象の回（次回の抽選回）
+  model_updated_at      String?  // 使用したモデルの更新日時
+  model_events_count    Int?     // 使用したモデルの学習イベント数
+  ensemble_weights      String   // JSON: アンサンブルの重み設定
+  predictions_count     Int      // 生成した予測候補の総数
+  top_predictions       String   // JSON: 上位予測結果（番号とスコア）
+  model_predictions     String   // JSON: モデル別の予測結果
+  actual_draw_number    Int?     // 実際の抽選回（結果判明後に更新）
+  actual_numbers        String?  // 実際の当選番号（結果判明後に更新）
+  hit_status            String?  // 的中状況（exact/partial/miss）
+  hit_count             Int?     // 的中した桁数（0-4）
+  notes                 String?  // メモ・備考
+
+  @@map("numbers4_ensemble_predictions")
+  @@index([created_at])
+  @@index([target_draw_number])
+}
+
+// 個別の予測候補の詳細（アンサンブル予測の内訳）
+model Numbers4PredictionCandidate {
+  id                    Int      @id @default(autoincrement())
+  ensemble_prediction_id Int     // 親のアンサンブル予測ID
+  rank                  Int      // 順位（1から始まる）
+  number                String   // 予測番号（4桁）
+  score                 Float    // アンサンブルスコア
+  contributing_models   String   // JSON: この番号を予測したモデルのリスト
+  created_at            DateTime @default(now())
+
+  @@map("numbers4_prediction_candidates")
+  @@index([ensemble_prediction_id])
+  @@index([number])
 }

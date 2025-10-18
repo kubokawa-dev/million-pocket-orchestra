@@ -1,6 +1,14 @@
 {
+  "name": "million-pocket",
+  "version": "1.0.0",
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
   "devDependencies": {
-    "prisma": "^6.17.1"
+    "prisma": "^6.17.1",
+    "tsx": "^4.7.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
   },
   "dependencies": {
     "@prisma/client": "^6.17.1"

@@ -45,7 +45,7 @@ def get_latest_number_from_db():
         if row:
             draw_number, draw_date, numbers = row
             print(f"📊 最新の抽選結果: 第{draw_number}回 ({draw_date}) = {numbers}")
-            return numbers
+            return (draw_number, numbers)
         else:
             print("❌ データベースに抽選結果が見つかりません。")
             return None
@@ -89,13 +89,13 @@ def main():
         # 自動取得モード
         latest = get_latest_number_from_db()
         if latest:
-            numbers_to_learn.append(latest)
+            numbers_to_learn.append(latest)  # (draw_number, numbers) のタプル
         else:
             print("⚠️  自動取得に失敗しました。手動で番号を指定してください。")
             sys.exit(1)
     elif args.numbers:
-        # 手動指定モード
-        numbers_to_learn = args.numbers
+        # 手動指定モード（抽選回番号なし）
+        numbers_to_learn = [(None, num) for num in args.numbers]
     else:
         # 引数なし：使い方を表示
         parser.print_help()
@@ -106,15 +106,25 @@ def main():
     print(f"\n🔄 モデル更新を開始します... ({len(numbers_to_learn)}件)")
     print("="*60)
     
-    for num in numbers_to_learn:
+    for item in numbers_to_learn:
+        # itemは (draw_number, numbers) または (None, numbers) のタプル
+        if isinstance(item, tuple):
+            draw_num, num = item
+        else:
+            draw_num, num = None, str(item)
+        
         num = str(num).strip()
         if len(num) != 4 or not num.isdigit():
             print(f"⚠️  スキップ: '{num}' は4桁の数字ではありません。")
             continue
         
-        print(f"\n📝 学習中: {num}")
+        if draw_num:
+            print(f"\n📝 学習中: 第{draw_num}回 = {num}")
+        else:
+            print(f"\n📝 学習中: {num}")
+        
         try:
-            learn(num)
+            learn(num, draw_num)
             print(f"✅ 完了: {num}")
         except Exception as e:
             print(f"❌ エラー: {num} - {e}")

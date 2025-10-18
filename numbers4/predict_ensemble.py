@@ -20,6 +20,7 @@ from numbers4.prediction_logic import (
     predict_from_exploratory_heuristics,
     aggregate_predictions
 )
+from numbers4.save_prediction_history import save_ensemble_prediction
 # learn_model_from_data は不要になったので削除
 
 # --- 設定 ---
@@ -132,6 +133,27 @@ def generate_ensemble_prediction(progress_callback=None):
     # 重み付けして集計
     final_predictions_df = aggregate_predictions(predictions_by_model, ensemble_weights)
     report_progress(1.0, "予測完了！")
+    
+    # 予測履歴をデータベースに保存
+    try:
+        # モデル状態を読み込み
+        model_state = None
+        if os.path.exists(model_path):
+            import json
+            with open(model_path, 'r') as f:
+                model_state = json.load(f)
+        
+        # 履歴を保存
+        save_ensemble_prediction(
+            predictions_df=final_predictions_df,
+            ensemble_weights=ensemble_weights,
+            predictions_by_model=predictions_by_model,
+            model_state=model_state,
+            notes="Ensemble prediction with improved time-weighted models"
+        )
+    except Exception as e:
+        # 履歴保存に失敗しても予測結果は返す
+        print(f"⚠️  予測履歴の保存に失敗しました: {e}")
     
     return final_predictions_df, ensemble_weights
 
