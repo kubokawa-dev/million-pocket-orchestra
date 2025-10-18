@@ -4,7 +4,7 @@ node = "lts"
 
 [settings]
 # Python仮想環境をmise経由で有効化
-python_venv = true
+# python_venv = true
 
 [env]
 # 必要なら環境変数をここに追加

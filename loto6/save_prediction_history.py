@@ -368,3 +368,4 @@ def save_model_event(
             cur.close()
         if conn:
             conn.close()
+
