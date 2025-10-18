@@ -1,5 +1,5 @@
 {
-  "extends": "@million-pocket/typescript-config/react-native.json",
+  "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
     "paths": {
@@ -12,10 +12,6 @@
     "**/*.ts",
     "**/*.tsx",
     ".expo/types/**/*.ts",
-    "expo-env.d.ts",
-    "nativewind-env.d.ts"
-  ],
-  "exclude": [
-    "node_modules"
+    "expo-env.d.ts"
   ]
 }
