@@ -101,6 +101,31 @@ importers:
         specifier: ^5.6.0
         version: 5.9.3
 
+  apps/api-server:
+    dependencies:
+      '@hono/node-server':
+        specifier: ^1.11.2
+        version: 1.19.5(hono@4.10.1)
+      '@supabase/supabase-js':
+        specifier: ^2.43.5
+        version: 2.75.1
+      dotenv:
+        specifier: ^16.4.5
+        version: 16.6.1
+      hono:
+        specifier: ^4.4.6
+        version: 4.10.1
+    devDependencies:
+      '@types/node':
+        specifier: ^20.14.2
+        version: 20.19.22
+      tsx:
+        specifier: ^4.15.6
+        version: 4.20.6
+      typescript:
+        specifier: ^5.4.5
+        version: 5.9.3
+
   apps/customer-mobile:
     dependencies:
       '@expo/vector-icons':
@@ -1074,6 +1099,12 @@ packages:
 
   '@gerrit0/mini-shiki@3.13.1':
     resolution: {integrity: sha512-fDWM5QQc70jwBIt/WYMybdyXdyBmoJe7r1hpM+V/bHnyla79sygVDK2/LlVxIPc4n5FA3B5Wzt7AQH2+psNphg==}
+
+  '@hono/node-server@1.19.5':
+    resolution: {integrity: sha512-iBuhh+uaaggeAuf+TftcjZyWh2GEgZcVGXkNtskLVoWaXhnJtC5HLHrU8W1KHDoucqO1MswwglmkWLFyiDn4WQ==}
+    engines: {node: '>=18.14.1'}
+    peerDependencies:
+      hono: ^4
 
   '@humanwhocodes/config-array@0.13.0':
     resolution: {integrity: sha512-DZLEEqFWQFiyK6h5YIeynKx7JlvCYWL0cImfSRXZ9l4Sg2efkFGTuFf6vzXjK1cq6IYkU+Eg/JizXw+TD2vRNw==}
@@ -3573,6 +3604,10 @@ packages:
 
   hermes-parser@0.32.0:
     resolution: {integrity: sha512-g4nBOWFpuiTqjR3LZdRxKUkij9iyveWeuks7INEsMX741f3r9xxrOe8TeQfUxtda0eXmiIFiMQzoeSQEno33Hw==}
+
+  hono@4.10.1:
+    resolution: {integrity: sha512-rpGNOfacO4WEPClfkEt1yfl8cbu10uB1lNpiI33AKoiAHwOS8lV748JiLx4b5ozO/u4qLjIvfpFsPXdY5Qjkmg==}
+    engines: {node: '>=16.9.0'}
 
   hosted-git-info@7.0.2:
     resolution: {integrity: sha512-puUZAUKT5m8Zzvs72XWy3HtvVbTWljRE66cP60bxJzAqf2DgICo7lYTY2IHUmLnNpjYvw5bvmoHvPc0QO2a62w==}
@@ -6957,6 +6992,10 @@ snapshots:
       '@shikijs/types': 3.13.0
       '@shikijs/vscode-textmate': 10.0.2
 
+  '@hono/node-server@1.19.5(hono@4.10.1)':
+    dependencies:
+      hono: 4.10.1
+
   '@humanwhocodes/config-array@0.13.0':
     dependencies:
       '@humanwhocodes/object-schema': 2.0.3
@@ -9994,6 +10033,8 @@ snapshots:
   hermes-parser@0.32.0:
     dependencies:
       hermes-estree: 0.32.0
+
+  hono@4.10.1: {}
 
   hosted-git-info@7.0.2:
     dependencies:
