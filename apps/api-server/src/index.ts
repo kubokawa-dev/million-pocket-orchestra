@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 
 dotenv.config({ path: '.env.development' });
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
@@ -16,6 +17,9 @@ type Env = {
 };
 
 const app = new Hono<Env>();
+
+// CORSミドルウェアを適用
+app.use('*', cors());
 
 // Supabaseクライアントを初期化するミドルウェア
 app.use('*', async (c, next) => {

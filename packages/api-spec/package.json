@@ -2,7 +2,9 @@
   "name": "@million-pocket/api-spec",
   "version": "0.0.0",
   "private": true,
+  "main": "index.js",
   "scripts": {
+    "build": "tsp compile . --emit @typespec/openapi3",
     "api:generate": "tsp compile . --emit @typespec/openapi3",
     "api:watch": "tsp compile . --watch --emit @typespec/openapi3"
   },

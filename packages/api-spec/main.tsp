@@ -7,11 +7,17 @@ using TypeSpec.Rest;
 
 @service({
   title: "Million Pocket API",
-  version: "1.0.0",
 })
 @server("http://localhost:3000/api", "Development server")
 @server("https://million-pocket.vercel.app/api", "Production server")
 namespace MillionPocketAPI;
+
+model Loto6Draw {
+  draw_number: int32;
+  draw_date: string;
+  numbers: string;
+  bonus_number: int32;
+}
 
 // ============================================
 // Common Types
@@ -303,6 +309,20 @@ namespace Admin {
 // ============================================
 // Public Draw Results
 // ============================================
+
+@route("/loto6-draws")
+@tag("Draws")
+interface Loto6Draws {
+  @get
+  list(): Loto6Draw[];
+}
+
+@route("/sample")
+@tag("Sample")
+interface Sample {
+  @get
+  getSample(): Loto6Draw[];
+}
 
 @route("/draws")
 namespace Draws {
