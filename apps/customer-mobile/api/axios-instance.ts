@@ -26,4 +26,3 @@ export const axiosInstance = <T>(
 };
 
 export default axiosInstance;
-

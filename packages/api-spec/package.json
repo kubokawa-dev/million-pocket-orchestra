@@ -4,10 +4,12 @@
   "private": true,
   "main": "index.js",
   "scripts": {
-    "lint": "redocly lint openapi.yaml",
-    "bundle": "redocly bundle openapi.yaml -o bundle.yaml",
-    "preview": "redocly preview-docs openapi.yaml",
-    "generate:mobile": "openapi-typescript openapi.yaml -o ../../apps/customer-mobile/src/api/types.gen.ts"
+    "build": "tsp compile tsp/main.tsp --emit @typespec/openapi3",
+    "watch": "tsp compile tsp/main.tsp --watch --emit @typespec/openapi3",
+    "lint": "redocly lint openapi.generated.yaml",
+    "bundle": "redocly bundle openapi.generated.yaml -o bundle.yaml",
+    "preview": "redocly preview-docs openapi.generated.yaml",
+    "generate:mobile": "orval --config orval.config.ts"
   },
   "devDependencies": {
     "@typespec/compiler": "^0.61.0",

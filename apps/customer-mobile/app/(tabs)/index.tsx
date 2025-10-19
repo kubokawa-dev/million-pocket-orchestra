@@ -1,18 +1,18 @@
 import { StyleSheet, FlatList } from 'react-native';
 
 import { Text, View } from '@/components/Themed';
-import { useSampleGetSample } from '@/api/client';
+// import { useSampleGetSample } from '@/api/client';
 
 export default function TabOneScreen() {
-  const { data, isLoading, error } = useSampleGetSample();
+  // const { data, isLoading, error } = useSampleGetSample();
 
-  if (isLoading) {
-    return <Text>Loading...</Text>;
-  }
+  // if (isLoading) {
+  //   return <Text>Loading...</Text>;
+  // }
 
-  if (error) {
-    return <Text>Error fetching data</Text>;
-  }
+  // if (error) {
+  //   return <Text>Error fetching data</Text>;
+  // }
 
   return (
     <View style={styles.container}>
@@ -22,7 +22,7 @@ export default function TabOneScreen() {
         keyExtractor={(item) => item.draw_number.toString()}
         renderItem={({ item }) => (
           <View style={styles.itemContainer}>
-            <Text>Draw #{item.draw_number}</Text>
+            {/* <Text>Draw #{item.draw_number}</Text> */}
             <Text>{item.numbers}</Text>
           </View>
         )}

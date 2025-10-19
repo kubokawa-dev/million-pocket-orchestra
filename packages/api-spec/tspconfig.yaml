@@ -1,7 +1,7 @@
 emit:
   - "@typespec/openapi3"
-# options:
-#   "@typespec/openapi3":
-#     # このパッケージ内にスキーマを出力する
-#     output-file: "./dist/openapi.yaml"
-#     omit-unreachable-types: true
+options:
+  "@typespec/openapi3":
+    output-file: "{output-dir}/openapi.generated.yaml"
+    new-line: lf
+    omit-unreachable-types: true
