@@ -26,7 +26,7 @@ model User {
   updatedAt       DateTime  @updatedAt
 
   // Relations
-  predictions     Prediction[]
+  predictionPosts PredictionPost[] // ユーザーは複数の予測投稿を持つ
   likes           Like[]
   comments        Comment[]
 
@@ -37,54 +37,44 @@ model User {
 // Predictions (User-generated lottery predictions)
 // ============================================
 
+// ユーザーによる1回の「予測投稿」
+model PredictionPost {
+  id        String   @id @default(cuid())
+  userId    String   // 投稿したユーザーのID
+  drawId    String   // どの回号に対する投稿か
+  createdAt DateTime @default(now()) // 投稿日時 (17時締切の判定に使う)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  draw Draw @relation(fields: [drawId], references: [id], onDelete: Cascade)
+
+  predictions Prediction[] // この投稿に含まれる個別の予測 (最大5つ)
+  likes       Like[]
+  comments    Comment[]
+
+  @@map("prediction_posts")
+  @@index([userId])
+  @@index([drawId])
+}
+
+// 個別の予測数字
 model Prediction {
-  id              String    @id @default(uuid())
-  userId          String
-  lotteryType     LotteryType
-  
-  // Prediction content
-  numbers         String    // JSON array of numbers
-  bonusNumber     Int?      // For Loto6
-  confidence      Float?    // 0.0 - 1.0
-  reasoning       String?   // User's explanation
-  
-  // Target draw
-  targetDrawNumber Int?
-  targetDrawDate  DateTime?
-  
-  // Visibility & moderation
-  isPublic        Boolean   @default(true)
-  isHidden        Boolean   @default(false) // Admin can hide
-  flagCount       Int       @default(0)
-  
-  // Result tracking
-  actualDrawNumber Int?
-  actualNumbers    String?
-  actualBonusNumber Int?
-  hitStatus        String?  // exact/partial/miss
-  hitCount         Int?
-  
-  // Metadata
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  
-  // Relations
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  likes           Like[]
-  comments        Comment[]
+  id             String @id @default(cuid())
+  predictionPostId String // どの投稿に属しているか
+  numbers        Json   // 予測した数字の配列例: "[10, 22, 31, 33, 40, 41]"
+
+  predictionPost PredictionPost @relation(fields: [predictionPostId], references: [id], onDelete: Cascade)
 
   @@map("predictions")
-  @@index([userId])
-  @@index([lotteryType])
-  @@index([targetDrawNumber])
-  @@index([createdAt])
-  @@index([isPublic, isHidden])
+  @@index([predictionPostId])
 }
 
 enum LotteryType {
   NUMBERS3
   NUMBERS4
   LOTO6
+  BINGO5
+  LOTO7
+  MINILOTO
 }
 
 // ============================================
@@ -92,34 +82,34 @@ enum LotteryType {
 // ============================================
 
 model Like {
-  id            String      @id @default(uuid())
-  userId        String
-  predictionId  String
-  createdAt     DateTime    @default(now())
-  
-  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  prediction    Prediction  @relation(fields: [predictionId], references: [id], onDelete: Cascade)
+  id               String         @id @default(cuid())
+  userId           String
+  predictionPostId String
+  createdAt        DateTime       @default(now())
 
-  @@unique([userId, predictionId])
+  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  predictionPost   PredictionPost @relation(fields: [predictionPostId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, predictionPostId])
   @@map("likes")
-  @@index([predictionId])
+  @@index([predictionPostId])
   @@index([userId])
 }
 
 model Comment {
-  id            String      @id @default(uuid())
-  userId        String
-  predictionId  String
-  content       String
-  isHidden      Boolean     @default(false)
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  
-  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  prediction    Prediction  @relation(fields: [predictionId], references: [id], onDelete: Cascade)
+  id               String         @id @default(cuid())
+  userId           String
+  predictionPostId String
+  content          String
+  isHidden         Boolean        @default(false)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  predictionPost   PredictionPost @relation(fields: [predictionPostId], references: [id], onDelete: Cascade)
 
   @@map("comments")
-  @@index([predictionId])
+  @@index([predictionPostId])
   @@index([userId])
   @@index([createdAt])
 }
@@ -128,29 +118,20 @@ model Comment {
 // Official Draw Results (from Python scripts)
 // ============================================
 
-model Numbers3Draw {
-  draw_number Int    @id
-  draw_date   String
-  numbers     String
+// 宝くじの「回号」情報
+model Draw {
+  id             String      @id @default(cuid())
+  lotteryType    LotteryType // ロト6, ナンバーズ4, or ナンバーズ3
+  drawNumber     Int         // 第xxxx回
+  drawDate       DateTime    // 抽選日
+  winningNumbers String?     // 当選番号 (結果発表後に更新)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
 
-  @@map("numbers3_draws")
-}
+  predictionPosts PredictionPost[] // この回号には多くの予測投稿が紐づく
 
-model Numbers4Draw {
-  draw_number Int    @id
-  draw_date   String
-  numbers     String
-
-  @@map("numbers4_draws")
-}
-
-model Loto6Draw {
-  draw_number  Int    @id
-  draw_date    String
-  numbers      String
-  bonus_number Int
-
-  @@map("loto6_draws")
+  @@map("draws")
+  @@unique([lotteryType, drawNumber]) // 宝くじの種類と回号の組み合わせはユニーク
 }
 
 // ============================================
