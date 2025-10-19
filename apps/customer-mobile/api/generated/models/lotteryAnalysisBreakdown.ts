@@ -7,5 +7,8 @@
 
 /**
  * 詳細内訳
+
+将来的な拡張用フィールド。
+等級別当選数、よく選ぶ数字の分析などを格納予定。
  */
 export type LotteryAnalysisBreakdown = { [key: string]: unknown };

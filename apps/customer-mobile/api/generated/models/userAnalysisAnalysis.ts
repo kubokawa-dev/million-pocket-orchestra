@@ -8,9 +8,15 @@ import type { LotteryAnalysis } from "./lotteryAnalysis";
 
 /**
  * 宝くじ種類別の分析結果
+
+各宝くじ種類（LOTO6、NUMBERS3、NUMBERS4など）ごとの
+予測成績を格納します。データがない種類はundefinedとなります。
  */
 export type UserAnalysisAnalysis = {
+  /** LOTO6の予測成績 */
   loto6?: LotteryAnalysis;
+  /** NUMBERS4の予測成績 */
   numbers4?: LotteryAnalysis;
+  /** NUMBERS3の予測成績 */
   numbers3?: LotteryAnalysis;
 };

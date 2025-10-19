@@ -9,10 +9,18 @@ import type { User } from "./user";
 
 /**
  * 認証レスポンス
+
+サインアップまたはログイン時に返される認証情報。
+Supabaseのセッショントークンとユーザー情報を含みます。
  */
 export interface AuthResponse {
-  /** Supabaseセッション情報 */
+  /** Supabaseセッション情報
+
+JWTアクセストークンとリフレッシュトークンを含むセッションデータ。
+access_tokenをAuthorizationヘッダーに設定してAPIリクエストを行います。 */
   session?: AuthResponseSession;
-  /** ユーザー情報 */
+  /** ユーザー情報
+
+認証成功時に返されるユーザーの詳細情報。 */
   user?: User;
 }

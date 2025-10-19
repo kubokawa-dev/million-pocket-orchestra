@@ -7,10 +7,17 @@
 
 /**
  * Supabaseセッション情報
+
+JWTアクセストークンとリフレッシュトークンを含むセッションデータ。
+access_tokenをAuthorizationヘッダーに設定してAPIリクエストを行います。
  */
 export type AuthResponseSession = {
+  /** アクセストークン（JWT） */
   access_token: string;
+  /** リフレッシュトークン */
   refresh_token: string;
+  /** 有効期限（秒） */
   expires_in: number;
+  /** トークンタイプ（'Bearer'） */
   token_type: string;
 };

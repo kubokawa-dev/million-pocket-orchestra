@@ -8,12 +8,22 @@ import type { PredictionNumbers } from "./predictionNumbers";
 
 /**
  * 個別の予測
+
+1つの予測数字の組み合わせを表します。
+1回の予測投稿には最大5つの予測を含めることができます。
  */
 export interface Prediction {
-  /** 予測ID */
+  /** 予測ID
+
+個別の予測を一意に識別するID。 */
   id: string;
-  /** 予測投稿ID */
+  /** 予測投稿ID
+
+この予測が属する予測投稿のID。 */
   predictionPostId: string;
-  /** 予測数字 */
+  /** 予測数字
+
+実際に予測した数字の組み合わせ。
+宝くじ種類により形式が異なります。 */
   numbers: PredictionNumbers;
 }

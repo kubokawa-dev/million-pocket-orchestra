@@ -8,14 +8,25 @@ import type { PredictionNumbers } from "./predictionNumbers";
 
 /**
  * 予測投稿作成リクエスト
+
+新しい予測を投稿する際のリクエストボディ。
  */
 export interface CreatePredictionPostRequest {
-  /** ユーザーID（将来は認証トークンから取得） */
+  /** ユーザーID
+
+投稿するユーザーのID。
+将来的には認証トークンから自動取得予定。 */
   userId: string;
-  /** 対象の抽選ID */
+  /** 対象の抽選ID
+
+予測対象となる抽選回のID。
+存在する抽選IDである必要があります。 */
   drawId: string;
   /**
-   * 予測数字のリスト（1〜5個）
+   * 予測数字のリスト
+
+1〜5個の予測数字を含む配列。
+各予測は宝くじ種類に応じた形式である必要があります。
    * @minItems 1
    * @maxItems 5
    */

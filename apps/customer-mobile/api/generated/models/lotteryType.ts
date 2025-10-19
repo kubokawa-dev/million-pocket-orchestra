@@ -7,6 +7,9 @@
 
 /**
  * 宝くじの種類
+
+対応している宝くじの種類を定義する列挙型。
+各種類によって数字の形式やルールが異なります。
  */
 export type LotteryType = (typeof LotteryType)[keyof typeof LotteryType];
 

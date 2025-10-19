@@ -7,9 +7,21 @@
 import type { PredictionNumbersNumbers } from "./predictionNumbersNumbers";
 
 /**
- * 予測数字（宝くじ種類により形式が異なる）
+ * 予測数字
+
+宝くじの種類によって異なる形式の予測数字を表現します。
+- LOTO6系: 数値の配列（例: [1, 10, 22, 33, 40, 41]）
+- NUMBERS3/4系: 文字列（例: "1234"）
  */
 export interface PredictionNumbers {
-  /** 予測数字（LOTO6: 数値配列、NUMBERS3/4: 文字列） */
+  /** 予測数字
+
+宝くじ種類による形式:
+- LOTO6, MINILOTO, LOTO7: 数値配列
+  例: [1, 10, 22, 33, 40, 41]
+- NUMBERS3: 3桁の数字文字列
+  例: "123"
+- NUMBERS4: 4桁の数字文字列
+  例: "1234" */
   numbers: PredictionNumbersNumbers;
 }

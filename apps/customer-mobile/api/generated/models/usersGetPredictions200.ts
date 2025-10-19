@@ -8,14 +8,16 @@ import type { PredictionPost } from "./predictionPost";
 
 /**
  * ページネーションレスポンス
+
+一覧取得APIの標準的なページネーション形式
  */
 export type UsersGetPredictions200 = {
-  /** ページ内のアイテム */
+  /** ページ内のアイテム配列 */
   items: PredictionPost[];
-  /** 総件数 */
+  /** 総件数（フィルタ後） */
   total: number;
-  /** 現在のページ番号 */
+  /** 現在のページ番号（1始まり） */
   page: number;
-  /** 1ページあたりの件数 */
+  /** 1ページあたりの最大件数 */
   limit: number;
 };

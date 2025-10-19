@@ -8,14 +8,27 @@ import type { LotteryAnalysisBreakdown } from "./lotteryAnalysisBreakdown";
 
 /**
  * 宝くじ種類別の成績分析
+
+特定の宝くじ種類における予測成績の詳細データです。
+総予測数、当選数、的中率などの統計情報を提供します。
  */
 export interface LotteryAnalysis {
-  /** 総予測数 */
+  /** 総予測数
+
+このユーザーが行った予測の総数（結果が確定したもののみ）。 */
   totalPredictions: number;
-  /** 当選数 */
+  /** 当選数
+
+予測が的中した回数。部分的中も含む場合があります。 */
   totalWins: number;
-  /** 的中率 */
+  /** 的中率
+
+当選数 ÷ 総予測数で算出される成功率（0.0〜1.0）。
+例: 0.15 = 15%の的中率 */
   winRate: number;
-  /** 詳細内訳 */
+  /** 詳細内訳
+
+将来的な拡張用フィールド。
+等級別当選数、よく選ぶ数字の分析などを格納予定。 */
   breakdown: LotteryAnalysisBreakdown;
 }

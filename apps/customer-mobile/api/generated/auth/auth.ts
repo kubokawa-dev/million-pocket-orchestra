@@ -28,6 +28,12 @@ type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 /**
  * ログイン
+
+メールアドレスとパスワードで認証し、セッショントークンを取得します。
+
+レスポンス:
+- 200: ログイン成功、セッション情報を返却
+- 401: メールまたはパスワードが不正
  */
 export const authLogin = (
   loginRequest: LoginRequest,
@@ -113,6 +119,13 @@ export const useAuthLogin = <
 };
 /**
  * 新規ユーザー登録
+
+メールアドレスとパスワードで新規アカウントを作成します。
+Supabase Authにより認証され、セッショントークンが発行されます。
+
+レスポンス:
+- 201: 登録成功、セッション情報を返却
+- 400: メール重複、パスワードポリシー違反など
  */
 export const authSignup = (
   signupRequest: SignupRequest,

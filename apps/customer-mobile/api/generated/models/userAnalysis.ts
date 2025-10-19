@@ -8,12 +8,22 @@ import type { UserAnalysisAnalysis } from "./userAnalysisAnalysis";
 
 /**
  * ユーザーの予測成績分析
+
+特定ユーザーの全宝くじ種類における予測成績を集計・分析した結果です。
+的中率や傾向分析により、ユーザーの予測精度を評価します。
  */
 export interface UserAnalysis {
-  /** ユーザーID */
+  /** ユーザーID
+
+分析対象のユーザーを識別するID。 */
   userId: string;
-  /** ユーザー名 */
+  /** ユーザー名
+
+表示用のユーザー名。 */
   username: string;
-  /** 宝くじ種類別の分析結果 */
+  /** 宝くじ種類別の分析結果
+
+各宝くじ種類（LOTO6、NUMBERS3、NUMBERS4など）ごとの
+予測成績を格納します。データがない種類はundefinedとなります。 */
   analysis: UserAnalysisAnalysis;
 }
