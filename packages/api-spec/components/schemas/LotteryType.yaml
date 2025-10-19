@@ -1,0 +1,9 @@
+type: string
+enum:
+  - NUMBERS3
+  - NUMBERS4
+  - LOTO6
+  - BINGO5
+  - LOTO7
+  - MINILOTO
+description: 宝くじの種類

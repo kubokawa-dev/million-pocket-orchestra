@@ -1,0 +1,32 @@
+type: object
+required:
+  - id
+  - userId
+  - predictionPostId
+  - content
+  - createdAt
+properties:
+  id:
+    type: string
+    description: コメントID
+  userId:
+    type: string
+    description: コメントしたユーザーID
+  predictionPostId:
+    type: string
+    description: コメント対象の投稿ID
+  content:
+    type: string
+    description: コメント内容
+  isHidden:
+    type: boolean
+    default: false
+    description: 非表示フラグ
+  createdAt:
+    type: string
+    format: date-time
+    description: コメント日時
+  updatedAt:
+    type: string
+    format: date-time
+    description: 更新日時

@@ -1,0 +1,20 @@
+type: object
+required:
+  - id
+  - userId
+  - predictionPostId
+  - createdAt
+properties:
+  id:
+    type: string
+    description: いいねID
+  userId:
+    type: string
+    description: いいねしたユーザーID
+  predictionPostId:
+    type: string
+    description: いいね対象の投稿ID
+  createdAt:
+    type: string
+    format: date-time
+    description: いいね日時

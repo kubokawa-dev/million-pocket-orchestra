@@ -1,0 +1,34 @@
+post:
+  tags:
+    - auth
+  summary: ログイン
+  description: メールアドレスとパスワードでログインします
+  operationId: login
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - email
+            - password
+          properties:
+            email:
+              type: string
+              format: email
+              description: メールアドレス
+              example: user@example.com
+            password:
+              type: string
+              description: パスワード
+              example: password123
+  responses:
+    '200':
+      description: ログイン成功
+      content:
+        application/json:
+          schema:
+            $ref: ../../components/schemas/AuthResponse.yaml
+    '401':
+      $ref: ../../openapi.yaml#/components/responses/Unauthorized

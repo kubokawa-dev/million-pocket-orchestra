@@ -1,0 +1,38 @@
+type: object
+required:
+  - id
+  - email
+properties:
+  id:
+    type: string
+    format: uuid
+    description: ユーザーID（Supabase auth.users.idと一致）
+  email:
+    type: string
+    format: email
+    description: メールアドレス
+  username:
+    type: string
+    nullable: true
+    description: ユーザー名
+  displayName:
+    type: string
+    nullable: true
+    description: 表示名
+  avatarUrl:
+    type: string
+    format: uri
+    nullable: true
+    description: アバター画像URL
+  bio:
+    type: string
+    nullable: true
+    description: 自己紹介
+  createdAt:
+    type: string
+    format: date-time
+    description: 作成日時
+  updatedAt:
+    type: string
+    format: date-time
+    description: 更新日時

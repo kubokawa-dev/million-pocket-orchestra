@@ -1,0 +1,17 @@
+get:
+  tags:
+    - users
+  summary: ユーザーの予測成績分析取得
+  description: 特定のユーザーの宝くじ種類別予測成績を分析した結果を取得します
+  operationId: getUserPredictionAnalysis
+  parameters:
+    - $ref: ../../openapi.yaml#/components/parameters/UserIdPath
+  responses:
+    '200':
+      description: 成功
+      content:
+        application/json:
+          schema:
+            $ref: ../../components/schemas/UserAnalysis.yaml
+    '404':
+      $ref: ../../openapi.yaml#/components/responses/NotFound

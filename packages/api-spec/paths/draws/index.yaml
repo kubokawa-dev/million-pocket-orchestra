@@ -1,0 +1,29 @@
+get:
+  tags:
+    - draws
+  summary: 抽選情報一覧取得
+  description: 抽選情報の一覧をページネーション付きで取得します
+  operationId: getDraws
+  parameters:
+    - name: lotteryType
+      in: query
+      required: false
+      description: 宝くじの種類でフィルタ
+      schema:
+        $ref: ../../components/schemas/LotteryType.yaml
+    - $ref: ../../openapi.yaml#/components/parameters/PageParam
+    - $ref: ../../openapi.yaml#/components/parameters/LimitParam
+  responses:
+    '200':
+      description: 成功
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../../components/schemas/Pagination.yaml
+              - type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: ../../components/schemas/Draw.yaml

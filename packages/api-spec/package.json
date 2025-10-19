@@ -4,9 +4,10 @@
   "private": true,
   "main": "index.js",
   "scripts": {
-    "build": "tsp compile . --emit @typespec/openapi3",
-    "api:generate": "tsp compile . --emit @typespec/openapi3",
-    "api:watch": "tsp compile . --watch --emit @typespec/openapi3"
+    "lint": "redocly lint openapi.yaml",
+    "bundle": "redocly bundle openapi.yaml -o bundle.yaml",
+    "preview": "redocly preview-docs openapi.yaml",
+    "generate:mobile": "openapi-typescript openapi.yaml -o ../../apps/customer-mobile/src/api/types.gen.ts"
   },
   "devDependencies": {
     "@typespec/compiler": "^0.61.0",

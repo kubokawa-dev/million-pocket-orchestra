@@ -1,0 +1,24 @@
+get:
+  tags:
+    - users
+  summary: ユーザーの予測投稿一覧取得
+  description: 特定のユーザーの予測投稿履歴を取得します
+  operationId: getUserPredictionPosts
+  parameters:
+    - $ref: ../../openapi.yaml#/components/parameters/UserIdPath
+    - $ref: ../../openapi.yaml#/components/parameters/PageParam
+    - $ref: ../../openapi.yaml#/components/parameters/LimitParam
+  responses:
+    '200':
+      description: 成功
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../../components/schemas/Pagination.yaml
+              - type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: ../../components/schemas/PredictionPost.yaml

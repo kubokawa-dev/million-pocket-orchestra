@@ -1,0 +1,20 @@
+type: object
+properties:
+  totalPredictions:
+    type: integer
+    description: 総予測数
+    example: 50
+  totalWins:
+    type: integer
+    description: 当選数
+    example: 5
+  winRate:
+    type: number
+    format: float
+    description: 的中率
+    example: 0.1
+  breakdown:
+    type: array
+    items:
+      type: object
+    description: 詳細内訳（将来拡張用）

@@ -1,0 +1,33 @@
+type: object
+required:
+  - id
+  - lotteryType
+  - drawNumber
+  - drawDate
+properties:
+  id:
+    type: string
+    description: 抽選ID
+  lotteryType:
+    $ref: ./LotteryType.yaml
+  drawNumber:
+    type: integer
+    description: 回号
+    example: 1850
+  drawDate:
+    type: string
+    format: date-time
+    description: 抽選日時
+  winningNumbers:
+    type: string
+    nullable: true
+    description: 当選番号（結果発表後に設定）
+    example: "1,10,22,33,40,41"
+  createdAt:
+    type: string
+    format: date-time
+    description: 作成日時
+  updatedAt:
+    type: string
+    format: date-time
+    description: 更新日時

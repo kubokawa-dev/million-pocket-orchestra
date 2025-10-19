@@ -1,0 +1,60 @@
+post:
+  tags:
+    - predictions
+  summary: 投稿に「いいね」する
+  description: 特定の予測投稿に「いいね」を追加します
+  operationId: likePredictionPost
+  parameters:
+    - $ref: ../../openapi.yaml#/components/parameters/PostIdPath
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - userId
+          properties:
+            userId:
+              type: string
+              description: ユーザーID（将来は認証トークンから取得）
+  responses:
+    '201':
+      description: いいね成功
+      content:
+        application/json:
+          schema:
+            $ref: ../../components/schemas/Like.yaml
+    '400':
+      $ref: ../../openapi.yaml#/components/responses/BadRequest
+delete:
+  tags:
+    - predictions
+  summary: 「いいね」を取り消す
+  description: 特定の予測投稿の「いいね」を取り消します
+  operationId: unlikePredictionPost
+  parameters:
+    - $ref: ../../openapi.yaml#/components/parameters/PostIdPath
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - userId
+          properties:
+            userId:
+              type: string
+              description: ユーザーID（将来は認証トークンから取得）
+  responses:
+    '200':
+      description: 取り消し成功
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: true

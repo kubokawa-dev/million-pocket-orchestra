@@ -1,0 +1,116 @@
+openapi: 3.1.0
+info:
+  title: Million Pocket API
+  version: 0.1.0
+  description: |
+    Million Pocket宝くじ予測アプリのAPI仕様。
+    Supabase認証、予測投稿、抽選情報、ユーザー分析機能を提供。
+  contact:
+    name: Million Pocket Team
+servers:
+  - url: http://localhost:8787
+    description: Local development server
+  - url: https://api.million-pocket.app
+    description: Production server (future)
+tags:
+  - name: auth
+    description: 認証関連エンドポイント
+  - name: draws
+    description: 抽選情報関連エンドポイント
+  - name: predictions
+    description: 予測投稿関連エンドポイント
+  - name: users
+    description: ユーザー情報関連エンドポイント
+paths:
+  /auth/signup:
+    $ref: ./paths/auth/signup.yaml
+  /auth/login:
+    $ref: ./paths/auth/login.yaml
+  /draws:
+    $ref: ./paths/draws/index.yaml
+  /draws/upcoming:
+    $ref: ./paths/draws/upcoming.yaml
+  /draws/{drawId}:
+    $ref: ./paths/draws/detail.yaml
+  /predictions:
+    $ref: ./paths/predictions/index.yaml
+  /predictions/{postId}:
+    $ref: ./paths/predictions/detail.yaml
+  /predictions/{postId}/likes:
+    $ref: ./paths/predictions/likes.yaml
+  /predictions/{postId}/comments:
+    $ref: ./paths/predictions/comments.yaml
+  /users/{userId}:
+    $ref: ./paths/users/profile.yaml
+  /users/{userId}/predictions:
+    $ref: ./paths/users/predictions.yaml
+  /users/{userId}/analysis:
+    $ref: ./paths/users/analysis.yaml
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Supabase JWTトークン
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      required: false
+      description: ページ番号（1始まり）
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    LimitParam:
+      name: limit
+      in: query
+      required: false
+      description: 1ページあたりの件数
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 20
+    UserIdPath:
+      name: userId
+      in: path
+      required: true
+      description: ユーザーID
+      schema:
+        type: string
+        format: uuid
+    DrawIdPath:
+      name: drawId
+      in: path
+      required: true
+      description: 抽選ID
+      schema:
+        type: string
+    PostIdPath:
+      name: postId
+      in: path
+      required: true
+      description: 予測投稿ID
+      schema:
+        type: string
+  responses:
+    NotFound:
+      description: リソースが見つかりません
+      content:
+        application/json:
+          schema:
+            $ref: ./components/schemas/Error.yaml
+    BadRequest:
+      description: リクエストが不正です
+      content:
+        application/json:
+          schema:
+            $ref: ./components/schemas/Error.yaml
+    Unauthorized:
+      description: 認証が必要です
+      content:
+        application/json:
+          schema:
+            $ref: ./components/schemas/Error.yaml

@@ -1,0 +1,36 @@
+post:
+  tags:
+    - predictions
+  summary: コメントを投稿する
+  description: 特定の予測投稿にコメントを追加します
+  operationId: createComment
+  parameters:
+    - $ref: ../../openapi.yaml#/components/parameters/PostIdPath
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - userId
+            - content
+          properties:
+            userId:
+              type: string
+              description: ユーザーID（将来は認証トークンから取得）
+            content:
+              type: string
+              description: コメント内容
+              minLength: 1
+              maxLength: 500
+              example: すごい予測ですね！
+  responses:
+    '201':
+      description: コメント投稿成功
+      content:
+        application/json:
+          schema:
+            $ref: ../../components/schemas/Comment.yaml
+    '400':
+      $ref: ../../openapi.yaml#/components/responses/BadRequest

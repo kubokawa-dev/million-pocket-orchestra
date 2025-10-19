@@ -1,0 +1,15 @@
+get:
+  tags:
+    - draws
+  summary: 開催予定の抽選情報取得
+  description: 今後開催予定の抽選情報を取得します
+  operationId: getUpcomingDraws
+  responses:
+    '200':
+      description: 成功
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: ../../components/schemas/Draw.yaml

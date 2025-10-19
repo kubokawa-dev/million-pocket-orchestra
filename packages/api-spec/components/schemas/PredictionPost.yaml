@@ -1,0 +1,35 @@
+type: object
+required:
+  - id
+  - userId
+  - drawId
+  - createdAt
+properties:
+  id:
+    type: string
+    description: 予測投稿ID
+  userId:
+    type: string
+    description: 投稿したユーザーID
+  drawId:
+    type: string
+    description: 対象の抽選ID
+  createdAt:
+    type: string
+    format: date-time
+    description: 投稿日時
+  user:
+    $ref: ./User.yaml
+  draw:
+    $ref: ./Draw.yaml
+  predictions:
+    type: array
+    items:
+      $ref: ./Prediction.yaml
+    description: この投稿に含まれる予測（最大5つ）
+  likesCount:
+    type: integer
+    description: いいね数
+  commentsCount:
+    type: integer
+    description: コメント数

@@ -1,0 +1,40 @@
+post:
+  tags:
+    - auth
+  summary: 新規ユーザー登録
+  description: メールアドレス、パスワード、ユーザー名で新規ユーザーを登録します
+  operationId: signup
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - email
+            - password
+            - username
+          properties:
+            email:
+              type: string
+              format: email
+              description: メールアドレス
+              example: user@example.com
+            password:
+              type: string
+              minLength: 6
+              description: パスワード（6文字以上）
+              example: password123
+            username:
+              type: string
+              description: ユーザー名
+              example: testuser
+  responses:
+    '201':
+      description: 登録成功
+      content:
+        application/json:
+          schema:
+            $ref: ../../components/schemas/AuthResponse.yaml
+    '400':
+      $ref: ../../openapi.yaml#/components/responses/BadRequest

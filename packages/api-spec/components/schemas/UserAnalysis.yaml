@@ -1,0 +1,22 @@
+type: object
+required:
+  - userId
+  - username
+  - analysis
+properties:
+  userId:
+    type: string
+    description: ユーザーID
+  username:
+    type: string
+    description: ユーザー名
+  analysis:
+    type: object
+    description: 宝くじ種類別の予測成績分析
+    properties:
+      loto6:
+        $ref: ./LotteryAnalysis.yaml
+      numbers4:
+        $ref: ./LotteryAnalysis.yaml
+      numbers3:
+        $ref: ./LotteryAnalysis.yaml

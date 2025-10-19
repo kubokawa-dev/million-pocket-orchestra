@@ -1,0 +1,17 @@
+type: object
+properties:
+  session:
+    type: object
+    nullable: true
+    description: Supabaseセッション情報
+    properties:
+      access_token:
+        type: string
+      refresh_token:
+        type: string
+      expires_in:
+        type: integer
+      token_type:
+        type: string
+  user:
+    $ref: ./User.yaml

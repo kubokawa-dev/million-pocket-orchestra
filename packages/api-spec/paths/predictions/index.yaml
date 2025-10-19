@@ -1,0 +1,88 @@
+get:
+  tags:
+    - predictions
+  summary: 予測投稿一覧取得
+  description: 予測投稿の一覧をページネーション付きで取得します
+  operationId: getPredictionPosts
+  parameters:
+    - $ref: ../../openapi.yaml#/components/parameters/PageParam
+    - $ref: ../../openapi.yaml#/components/parameters/LimitParam
+    - name: userId
+      in: query
+      required: false
+      description: ユーザーIDでフィルタ
+      schema:
+        type: string
+    - name: drawId
+      in: query
+      required: false
+      description: 抽選IDでフィルタ
+      schema:
+        type: string
+    - name: lotteryType
+      in: query
+      required: false
+      description: 宝くじの種類でフィルタ
+      schema:
+        $ref: ../../components/schemas/LotteryType.yaml
+  responses:
+    '200':
+      description: 成功
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: ../../components/schemas/Pagination.yaml
+              - type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: ../../components/schemas/PredictionPost.yaml
+post:
+  tags:
+    - predictions
+  summary: 新しい予測を投稿
+  description: 特定の抽選回に対する予測を投稿します
+  operationId: createPredictionPost
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - userId
+            - drawId
+            - predictions
+          properties:
+            userId:
+              type: string
+              description: ユーザーID（将来は認証トークンから取得）
+            drawId:
+              type: string
+              description: 対象の抽選ID
+            predictions:
+              type: array
+              minItems: 1
+              maxItems: 5
+              items:
+                type: object
+                properties:
+                  numbers:
+                    oneOf:
+                      - type: array
+                        items:
+                          type: integer
+                        description: LOTO6形式の予測数字
+                      - type: string
+                        description: NUMBERS3/4形式の予測数字
+  responses:
+    '201':
+      description: 投稿成功
+      content:
+        application/json:
+          schema:
+            $ref: ../../components/schemas/PredictionPost.yaml
+    '400':
+      $ref: ../../openapi.yaml#/components/responses/BadRequest

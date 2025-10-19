@@ -1,0 +1,17 @@
+get:
+  tags:
+    - users
+  summary: ユーザープロフィール取得
+  description: 特定のユーザーの公開プロフィールを取得します
+  operationId: getUserProfile
+  parameters:
+    - $ref: ../../openapi.yaml#/components/parameters/UserIdPath
+  responses:
+    '200':
+      description: 成功
+      content:
+        application/json:
+          schema:
+            $ref: ../../components/schemas/User.yaml
+    '404':
+      $ref: ../../openapi.yaml#/components/responses/NotFound

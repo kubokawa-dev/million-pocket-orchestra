@@ -1,0 +1,17 @@
+get:
+  tags:
+    - predictions
+  summary: 特定の予測投稿取得
+  description: IDで指定した予測投稿を取得します
+  operationId: getPredictionPostById
+  parameters:
+    - $ref: ../../openapi.yaml#/components/parameters/PostIdPath
+  responses:
+    '200':
+      description: 成功
+      content:
+        application/json:
+          schema:
+            $ref: ../../components/schemas/PredictionPost.yaml
+    '404':
+      $ref: ../../openapi.yaml#/components/responses/NotFound

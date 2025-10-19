@@ -1,0 +1,17 @@
+get:
+  tags:
+    - draws
+  summary: 特定の抽選情報取得
+  description: IDで指定した抽選情報を取得します
+  operationId: getDrawById
+  parameters:
+    - $ref: ../../openapi.yaml#/components/parameters/DrawIdPath
+  responses:
+    '200':
+      description: 成功
+      content:
+        application/json:
+          schema:
+            $ref: ../../components/schemas/Draw.yaml
+    '404':
+      $ref: ../../openapi.yaml#/components/responses/NotFound

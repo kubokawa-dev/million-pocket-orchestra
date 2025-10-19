@@ -1,0 +1,29 @@
+type: object
+required:
+  - id
+  - predictionPostId
+  - numbers
+properties:
+  id:
+    type: string
+    description: 予測ID
+  predictionPostId:
+    type: string
+    description: 予測投稿ID
+  numbers:
+    description: 予測した数字（宝くじ種類により形式が異なる）
+    oneOf:
+      - type: object
+        description: LOTO6形式（配列）
+        properties:
+          numbers:
+            type: array
+            items:
+              type: integer
+            example: [1, 10, 22, 33, 40, 41]
+      - type: object
+        description: NUMBERS3/4形式（文字列）
+        properties:
+          numbers:
+            type: string
+            example: "1234"
