@@ -1,16 +1,37 @@
 {
   "name": "million-pocket",
   "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "type-check": "turbo run type-check",
+    "db:generate": "turbo run db:generate",
+    "db:push": "turbo run db:push",
+    "db:studio": "cd packages/database && pnpm db:studio",
+    "api:generate": "turbo run api:generate"
+  },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
   },
   "devDependencies": {
+    "turbo": "^2.3.3",
     "prisma": "^6.17.1",
     "tsx": "^4.7.0",
     "@types/node": "^20.0.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.6.0"
   },
   "dependencies": {
     "@prisma/client": "^6.17.1"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
   }
 }
