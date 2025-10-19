@@ -2,66 +2,39 @@ import dotenv from 'dotenv';
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { logger } from 'hono/logger';
 
-dotenv.config({ path: '.env.development' });
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+// ルーターのインポート (後で作成)
+import { auth } from './routes/auth';
+import { draws } from './routes/draws';
+import { predictions } from './routes/predictions';
+import { users } from './routes/users';
 
-// データベースの型。将来的には 'supabase gen types' で生成したものを使う
-type Database = any;
+dotenv.config({ path: `.env.${process.env.NODE_ENV || 'development'}` });
 
-// 環境変数の型定義
-type Env = {
-  Variables: {
-    supabase: SupabaseClient<Database>;
-  };
-};
+const app = new Hono();
 
-const app = new Hono<Env>();
+// --- ミドルウェア ---
+app.use('*', cors()); // CORSを許可
+app.use('*', logger()); // リクエストロガー
 
-// CORSミドルウェアを適用
-app.use('*', cors());
+// --- ルーティング ---
+app.get('/', (c) => c.text('Million Pocket API'));
 
-// Supabaseクライアントを初期化するミドルウェア
-app.use('*', async (c, next) => {
-  if (c.var.supabase) {
-    return await next();
-  }
-  const supabase = createClient<Database>(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_ANON_KEY!
-  );
-  c.set('supabase', supabase);
-  await next();
-});
+// 各機能のルーターを適用
+app.route('/auth', auth);
+app.route('/draws', draws);
+app.route('/predictions', predictions);
+app.route('/users', users);
 
-// ルート
-app.get('/', (c) => {
-  return c.text('Hello Hono!');
-});
-
-// /sample エンドポイント
-app.get('/sample', async (c) => {
-  const supabase = c.get('supabase');
-
-  // loto6_drawsテーブルから最新の1件を取得するサンプル
-  const { data, error } = await supabase
-    .from('loto6_draws')
-    .select('*')
-    .order('draw_number', { ascending: false })
-    .limit(1);
-
-  if (error) {
-    console.error('Supabase Error:', error);
-    return c.json({ error: 'Failed to fetch data from Supabase' }, 500);
-  }
-
-  return c.json(data);
-});
-
-const port = 8787;
+// --- サーバー起動 ---
+const port = Number(process.env.PORT) || 8787;
 console.log(`Server is running on port ${port}`);
 
 serve({
   fetch: app.fetch,
   port,
 });
+
+export default app;
+
