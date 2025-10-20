@@ -72,9 +72,9 @@ def load_all_loto6_draws() -> pd.DataFrame:
     # 'numbers' 列を6つの数値列に分割
     num_cols = ['num1', 'num2', 'num3', 'num4', 'num5', 'num6']
     
-    # 'numbers' 列が '1 2 3 4 5 6' のようなスペース区切りの文字列であると仮定
+    # 'numbers' 列が '1,2,3,4,5,6' のようなカンマ区切り、または '1 2 3 4 5 6' のようなスペース区切りの文字列に対応
     # 不正な形式のデータに対応するため、列数が6に満たない場合はNaNで埋める
-    split_numbers = df['numbers'].str.split(r'\s+', expand=True)
+    split_numbers = df['numbers'].str.split(r'[,\s]+', expand=True)
     
     # 列名が整数インデックスになるようにリセット
     split_numbers.columns = range(split_numbers.shape[1])

@@ -56,7 +56,8 @@ def save_ensemble_prediction(
     predictions_df: pd.DataFrame,
     ensemble_weights: Dict,
     predictions_by_model: Dict,
-    model_state: Optional[Dict] = None
+    model_state: Optional[Dict] = None,
+    notes: Optional[str] = None
 ):
     """
     アンサンブル予測結果をデータベースに保存
@@ -66,6 +67,10 @@ def save_ensemble_prediction(
         ensemble_weights: アンサンブルの重み設定
         predictions_by_model: モデル別の予測結果
         model_state: モデルの状態情報
+        notes: 予測に関する追加メモ
+        
+    Returns:
+        int: 保存された予測のID
     """
     conn = None
     cur = None
@@ -97,7 +102,7 @@ def save_ensemble_prediction(
             'hit_status': None,
             'hit_count': None,
             'bonus_hit': None,
-            'notes': f'アンサンブル予測（{len(predictions_df)}候補）'
+            'notes': notes or f'アンサンブル予測（{len(predictions_df)}候補）'
         }
         
         # アンサンブル予測を挿入
@@ -173,6 +178,7 @@ def save_ensemble_prediction(
         
         conn.commit()
         print(f"ロト6の予測結果を保存しました。予測ID: {prediction_id}")
+        return prediction_id
         
     except Exception as e:
         print(f"予測結果保存エラー: {e}")

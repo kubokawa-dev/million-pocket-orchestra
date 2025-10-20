@@ -55,7 +55,8 @@ def save_ensemble_prediction(
     predictions_df: pd.DataFrame,
     ensemble_weights: Dict,
     predictions_by_model: Dict,
-    model_state: Optional[Dict] = None
+    model_state: Optional[Dict] = None,
+    notes: Optional[str] = None
 ):
     """
     アンサンブル予測結果をデータベースに保存
@@ -65,6 +66,7 @@ def save_ensemble_prediction(
         ensemble_weights: アンサンブルの重み設定
         predictions_by_model: モデル別の予測結果
         model_state: モデルの状態情報
+        notes: 予測に関する追加メモ
     """
     conn = None
     cur = None
@@ -86,7 +88,7 @@ def save_ensemble_prediction(
             'ensemble_weights': json.dumps(ensemble_weights),
             'predictions_count': len(predictions_df),
             'top_predictions': json.dumps([
-                {'number': row['number'], 'score': float(row['score'])}
+                {'number': row['prediction'], 'score': float(row['score'])}
                 for _, row in predictions_df.head(10).iterrows()
             ]),
             'model_predictions': json.dumps(predictions_by_model),
@@ -94,7 +96,7 @@ def save_ensemble_prediction(
             'actual_numbers': None,
             'hit_status': None,
             'hit_count': None,
-            'notes': f'アンサンブル予測（{len(predictions_df)}候補）'
+            'notes': notes or f'アンサンブル予測（{len(predictions_df)}候補）'
         }
         
         # アンサンブル予測を挿入
@@ -137,13 +139,13 @@ def save_ensemble_prediction(
             # どのモデルがこの番号を予測したかを特定
             contributing_models = []
             for model_name, model_predictions in predictions_by_model.items():
-                if row['number'] in model_predictions:
+                if row['prediction'] in model_predictions:
                     contributing_models.append(model_name)
             
             cur.execute(candidate_query, (
                 prediction_id,
                 rank,
-                row['number'],
+                row['prediction'],
                 float(row['score']),
                 json.dumps(contributing_models),
                 datetime.now(timezone.utc)
@@ -161,7 +163,7 @@ def save_ensemble_prediction(
                 datetime.now(timezone.utc).isoformat(),
                 'ensemble_prediction',
                 f'予測{rank}位',
-                row['number'],
+                row['prediction'],
                 target_draw_number
             ))
         
