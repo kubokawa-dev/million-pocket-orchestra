@@ -22,9 +22,11 @@ from numbers3.prediction_logic import (
     predict_from_permutation_coverage,
     predict_from_ultra_precision_recent_trend,  # 統計分析モデル
     predict_from_pattern_discovery,  # NEW: 法則発見モデル
-    aggregate_predictions
+    aggregate_predictions,
+    apply_diversity_penalty  # NEW: 多様性ペナルティ
 )
 from numbers3.save_prediction_history import save_ensemble_prediction
+from numbers3.online_learning import load_model_weights
 
 # --- 設定（バランス型） ---
 NUM_PREDICTIONS_BASIC = 10
@@ -123,17 +125,26 @@ def generate_ensemble_prediction(progress_callback=None):
     # --- アンサンブル集計 ---
     report_progress(0.95, "全モデルの予測を統合・集計中...")
     
-    ensemble_weights = {
-        'basic_stats': 0.5,               # 基本統計
-        'advanced_heuristics': 0.8,       # 高度な統計
-        'ml_model': 0.6,                  # 機械学習
-        'exploratory': 0.7,               # 探索的分析
-        'extreme_patterns': 0.9,          # 極端パターン
-        'comprehensive_patterns': 1.2,    # 包括的パターン
-        'permutation_coverage': 3.0,      # 順列網羅
-        'ultra_precision_recent_trend': 12.0,  # 統計分析（各桁頻度、合計値分布）
-        'pattern_discovery': 10.0,        # 法則発見（周期性、移動傾向、飛び石パターン）
-    }
+    # 【改良版】オンライン学習で調整された重みを使用
+    try:
+        ensemble_weights = load_model_weights()
+        report_progress(0.96, "✅ オンライン学習済みの重みを読み込みました")
+    except Exception as e:
+        # 読み込み失敗時はデフォルト重みを使用
+        ensemble_weights = {
+            # コアモデル（高重み）
+            'ultra_precision_recent_trend': 15.0,  # 統計分析（各桁頻度、合計値分布）- 最重要
+            'pattern_discovery': 12.0,             # 法則発見（周期性、移動傾向、飛び石パターン）- 重要
+            
+            # 補助モデル（中重み）
+            'comprehensive_patterns': 2.0,         # 包括的パターン
+            'permutation_coverage': 4.0,           # 順列網羅
+            
+            # 多様性確保モデル（低重み）
+            'ml_model': 1.0,                       # 機械学習
+            'exploratory': 1.0,                    # 探索的分析
+        }
+        report_progress(0.96, f"⚠️ デフォルト重みを使用: {e}")
     
     predictions_by_model = {
         'basic_stats': predictions_basic,
@@ -147,8 +158,11 @@ def generate_ensemble_prediction(progress_callback=None):
         'pattern_discovery': predictions_pattern_discovery  # NEW: 法則発見
     }
 
-    # 重み付けして集計（純粋な統計分析のみ、ボーナスなし）
-    final_predictions_df = aggregate_predictions(predictions_by_model, ensemble_weights)
+    # 重み付けして集計（スコア正規化を有効化）
+    final_predictions_df = aggregate_predictions(predictions_by_model, ensemble_weights, normalize_scores=True)
+    
+    # 多様性ペナルティを適用（類似した候補のスコアを下げる）
+    final_predictions_df = apply_diversity_penalty(final_predictions_df, penalty_strength=0.2, similarity_threshold=2)
     
     # ソート（モデルのスコアのみで順位決定）
     final_predictions_df = final_predictions_df.sort_values(by='score', ascending=False).reset_index(drop=True)
@@ -162,7 +176,7 @@ def generate_ensemble_prediction(progress_callback=None):
             ensemble_weights=ensemble_weights,
             predictions_by_model=predictions_by_model,
             model_state=None,
-            notes="Balanced Ensemble v7.0: 9 models combining statistics and pattern discovery. Statistical model (weight=12.0): digit freq by position, sum distribution. Pattern discovery model (weight=10.0): cycles, movement trends, skip patterns, digit correlation, sum trends. No direct bonus for past winning numbers."
+            notes="Optimized Ensemble v8.0: 6 core models with score normalization and diversity penalty. Core models: (1) Statistical Analysis (weight=15.0), (2) Pattern Discovery (weight=12.0), (3) Comprehensive Patterns (weight=2.0), (4) Permutation Coverage (weight=4.0), (5) ML Model (weight=1.0), (6) Exploratory (weight=1.0). Features: rank-based score normalization, diversity penalty (strength=0.2), no past winning bonus."
         )
     except Exception as e:
         print(f"⚠️  予測履歴の保存に失敗しました: {e}")

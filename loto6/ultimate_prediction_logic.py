@@ -431,26 +431,46 @@ def predict_deep_learning_style(df: pd.DataFrame, limit: int = 30):
 # ============================================================================
 # アンサンブル統合関数
 # ============================================================================
-def aggregate_loto6_predictions(predictions_by_model: dict, weights: dict):
+def aggregate_loto6_predictions(predictions_by_model: dict, weights: dict, normalize_scores: bool = True):
     """
     各モデルの予測を重み付けして集計し、スコア付きDataFrameを返す
+    
+    Args:
+        predictions_by_model: モデル名をキー、予測リストを値とする辞書
+        weights: モデル名をキー、重みを値とする辞書
+        normalize_scores: 各モデルのスコアを0-1に正規化するか（デフォルト: True）
     """
     combo_scores = defaultdict(float)
     
     for model_name, predictions in predictions_by_model.items():
         weight = weights.get(model_name, 1.0)
         
-        for pred in predictions:
-            # 予測が文字列の場合とリストの場合に対応
-            if isinstance(pred, str):
-                # スペース区切りの文字列を想定
-                combo_key = pred.replace(' ', '')
-            elif isinstance(pred, list):
-                combo_key = ''.join(f'{n:02d}' for n in sorted(pred))
-            else:
-                continue
-            
-            combo_scores[combo_key] += weight
+        if normalize_scores and predictions:
+            # ランクベーススコア：1位=1.0, 最下位=0.0
+            n = len(predictions)
+            for rank, pred in enumerate(predictions):
+                # 予測が文字列の場合とリストの場合に対応
+                if isinstance(pred, str):
+                    combo_key = pred.replace(' ', '')
+                elif isinstance(pred, list):
+                    combo_key = ''.join(f'{n:02d}' for n in sorted(pred))
+                else:
+                    continue
+                
+                # 線形減衰: 1位=1.0, 2位=0.99, ..., 最下位=0.0
+                normalized_score = (n - rank) / n
+                combo_scores[combo_key] += normalized_score * weight
+        else:
+            # 正規化なし（従来の方法）
+            for pred in predictions:
+                if isinstance(pred, str):
+                    combo_key = pred.replace(' ', '')
+                elif isinstance(pred, list):
+                    combo_key = ''.join(f'{n:02d}' for n in sorted(pred))
+                else:
+                    continue
+                
+                combo_scores[combo_key] += weight
     
     # スコア順にソート
     sorted_combos = sorted(combo_scores.items(), key=lambda x: x[1], reverse=True)
@@ -466,3 +486,48 @@ def aggregate_loto6_predictions(predictions_by_model: dict, weights: dict):
     ])
     
     return df_result
+
+
+def apply_diversity_penalty(df: pd.DataFrame, penalty_strength: float = 0.3, similarity_threshold: int = 4):
+    """
+    多様性ペナルティを適用：類似した候補のスコアを下げる（ロト6用）
+    
+    Args:
+        df: 予測結果のDataFrame（'prediction'と'score'列を持つ）
+        penalty_strength: ペナルティの強さ（0.0-1.0、デフォルト: 0.3）
+        similarity_threshold: 類似と判定する共通数字の数（デフォルト: 4）
+    
+    Returns:
+        多様性ペナルティ適用後のDataFrame
+    """
+    if df.empty or len(df) <= 1:
+        return df
+    
+    df = df.copy()
+    df['adjusted_score'] = df['score'].copy()
+    
+    # 上位から順に処理
+    for i in range(len(df)):
+        current_pred = df.iloc[i]['prediction']
+        # 2桁ずつ分割して数字のセットを作成
+        current_numbers = set([int(current_pred[j:j+2]) for j in range(0, len(current_pred), 2)])
+        
+        # それより下位の候補と比較
+        for j in range(i + 1, len(df)):
+            other_pred = df.iloc[j]['prediction']
+            other_numbers = set([int(other_pred[k:k+2]) for k in range(0, len(other_pred), 2)])
+            
+            # 共通する数字の数を計算
+            common_count = len(current_numbers & other_numbers)
+            
+            # 類似度が閾値以上ならペナルティ
+            if common_count >= similarity_threshold:
+                penalty = penalty_strength * (common_count / 6.0)  # 6個中の共通割合
+                df.loc[j, 'adjusted_score'] *= (1 - penalty)
+    
+    # 調整後のスコアで再ソート
+    df = df.sort_values(by='adjusted_score', ascending=False).reset_index(drop=True)
+    df['score'] = df['adjusted_score']  # スコアを更新
+    df = df.drop(columns=['adjusted_score'])
+    
+    return df

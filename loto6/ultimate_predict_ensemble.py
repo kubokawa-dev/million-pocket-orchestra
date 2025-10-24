@@ -27,9 +27,11 @@ from loto6.ultimate_prediction_logic import (
     predict_even_odd_balance,
     predict_sum_optimization,
     predict_deep_learning_style,
-    aggregate_loto6_predictions
+    aggregate_loto6_predictions,
+    apply_diversity_penalty  # NEW: 多様性ペナルティ
 )
 from loto6.save_prediction_history import save_ensemble_prediction
+from loto6.online_learning import load_model_weights
 
 
 def run_ultimate_loto6_prediction(top_n=50):
@@ -39,9 +41,9 @@ def run_ultimate_loto6_prediction(top_n=50):
     10個の最先端モデルを統合し、200件の予測候補を生成
     """
     print("\n" + "="*80)
-    print("🏆🏆🏆 ロト6 世界最強予測システム v1.0 🏆🏆🏆")
+    print("🏆🏆🏆 ロト6 最適化予測システム v2.0 🏆🏆🏆")
     print("="*80)
-    print("目標: 6億円獲得！")
+    print("改善: スコア正規化 + 多様性ペナルティ + 7モデルに集約")
     print("="*80 + "\n")
     
     # データ読み込み
@@ -126,22 +128,33 @@ def run_ultimate_loto6_prediction(top_n=50):
     print("🔮 全モデルの予測を統合・集計中...")
     print("="*80 + "\n")
     
-    # 各モデルの重み設定（実績に基づいて調整可能）
-    ensemble_weights = {
-        'ultra_stats': 1.5,          # 時系列重み付けは強力
-        'never_appeared': 1.3,       # 未出現パターンは重要
-        'golden_ratio': 1.0,         # 数学的パターン
-        'hot_cold_mix': 1.4,         # ホット&コールドは効果的
-        'zone_balance': 1.2,         # バランスは重要
-        'pair_affinity': 1.3,        # ペア相性は有力
-        'overdue': 1.2,              # オーバーデューも重要
-        'even_odd_balance': 1.1,     # 偶奇バランス
-        'sum_optimization': 1.2,     # 合計値も重要
-        'deep_learning': 1.4,        # AI風は高重み
-    }
+    # 【改良版v2.0】オンライン学習で調整された重みを使用
+    try:
+        ensemble_weights = load_model_weights()
+        print("✅ オンライン学習済みの重みを読み込みました")
+    except Exception as e:
+        # 読み込み失敗時はデフォルト重みを使用
+        ensemble_weights = {
+            # コアモデル（高重み）
+            'ultra_stats': 10.0,         # 時系列重み付け統計 - 最重要
+            'hot_cold_mix': 8.0,         # ホット&コールド混合 - 重要
+            'never_appeared': 6.0,       # 未出現パターン - 重要
+            
+            # 補助モデル（中重み）
+            'pair_affinity': 3.0,        # ペア相性分析
+            'sum_optimization': 2.5,     # 合計値最適化
+            
+            # 多様性確保モデル（低重み）
+            'deep_learning': 2.0,        # AI風モデル
+            'zone_balance': 1.5,         # 区間バランス
+        }
+        print(f"⚠️ デフォルト重みを使用: {e}")
     
-    # 予測を集計
-    final_predictions_df = aggregate_loto6_predictions(predictions_by_model, ensemble_weights)
+    # 予測を集計（スコア正規化を有効化）
+    final_predictions_df = aggregate_loto6_predictions(predictions_by_model, ensemble_weights, normalize_scores=True)
+    
+    # 多様性ペナルティを適用（類似した候補のスコアを下げる）
+    final_predictions_df = apply_diversity_penalty(final_predictions_df, penalty_strength=0.2, similarity_threshold=4)
     
     print(f"✅ 統合完了！")
     print(f"📊 総予測候補数: {len(final_predictions_df)}件\n")
@@ -163,7 +176,7 @@ def run_ultimate_loto6_prediction(top_n=50):
             ensemble_weights=ensemble_weights,
             predictions_by_model=predictions_for_save,
             model_state=None,
-            notes="Ultimate Ensemble v1.0: 10 advanced models, 200+ candidates for 600M JPY jackpot"
+            notes="Optimized Ensemble v2.0: 7 core models with score normalization and diversity penalty. Models: (1) Ultra Stats (weight=10.0), (2) Hot&Cold Mix (weight=8.0), (3) Never Appeared (weight=6.0), (4) Pair Affinity (weight=3.0), (5) Sum Optimization (weight=2.5), (6) Deep Learning (weight=2.0), (7) Zone Balance (weight=1.5). Features: rank-based score normalization, diversity penalty (strength=0.2, threshold=4)."
         )
         print(f"✅ 予測履歴を保存しました (ID: {pred_id})\n")
     except Exception as e:

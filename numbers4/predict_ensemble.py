@@ -19,9 +19,11 @@ from numbers4.prediction_logic import (
     predict_with_new_ml_model,  # 古いpredict_with_modelを新しいものに置き換え
     predict_from_exploratory_heuristics,
     predict_from_extreme_patterns,  # 新しい極端パターンモデル
-    aggregate_predictions
+    aggregate_predictions,
+    apply_diversity_penalty  # NEW: 多様性ペナルティ
 )
 from numbers4.save_prediction_history import save_ensemble_prediction
+from numbers4.online_learning import load_model_weights
 # learn_model_from_data は不要になったので削除
 
 # --- 設定 ---
@@ -121,26 +123,40 @@ def generate_ensemble_prediction(progress_callback=None):
     # --- アンサンブル集計 ---
     report_progress(0.9, "全モデルの予測を統合・集計中...")
     
-    # 動的重み調整：最新データへの適応性を重視
-    # 改善版：探索的モデルと極端パターンモデルの重みを増加
-    ensemble_weights = {
-        'basic_stats': 1.2,  # 時系列重み付けで最新データに適応
-        'advanced_heuristics': 1.5,  # トレンド重視の改善版
-        'ml_model_new': 1.0,  # 学習データが古い場合は控えめに
-        'exploratory': 1.3,  # 改善: 0.9→1.3 極端パターンへの対応強化
-        'extreme_patterns': 1.2,  # 新規: 極端パターン専用モデル
-    }
+    # 【改良版v3.0】オンライン学習で調整された重みを使用
+    try:
+        ensemble_weights = load_model_weights()
+        report_progress(0.92, "✅ オンライン学習済みの重みを読み込みました")
+    except Exception as e:
+        # 読み込み失敗時はデフォルト重みを使用
+        ensemble_weights = {
+            # コアモデル（高重み）
+            'advanced_heuristics': 10.0,  # 統計分析（合計値、偶奇、ペア頻度）- 最重要
+            'exploratory': 8.0,            # 探索的分析（コールドナンバー、未出現ペア）- 重要
+            
+            # 補助モデル（中重み）
+            'extreme_patterns': 3.0,       # 極端パターン（超低/超高合計値）
+            'basic_stats': 2.0,            # 基本統計（頻度分析）
+            
+            # 多様性確保モデル（低重み）
+            'ml_model_new': 1.0,           # 機械学習
+        }
+        report_progress(0.92, f"⚠️ デフォルト重みを使用: {e}")
     
     predictions_by_model = {
         'basic_stats': predictions_basic,
         'advanced_heuristics': predictions_advanced,
         'ml_model_new': predictions_ml_new,
         'exploratory': predictions_exploratory,
-        'extreme_patterns': predictions_extreme  # 新規追加
+        'extreme_patterns': predictions_extreme
     }
 
-    # 重み付けして集計
-    final_predictions_df = aggregate_predictions(predictions_by_model, ensemble_weights)
+    # 重み付けして集計（スコア正規化を有効化）
+    final_predictions_df = aggregate_predictions(predictions_by_model, ensemble_weights, normalize_scores=True)
+    
+    # 多様性ペナルティを適用（類似した候補のスコアを下げる）
+    final_predictions_df = apply_diversity_penalty(final_predictions_df, penalty_strength=0.2, similarity_threshold=3)
+    
     report_progress(1.0, "予測完了！")
     
     # 予測履歴をデータベースに保存
@@ -158,7 +174,7 @@ def generate_ensemble_prediction(progress_callback=None):
             ensemble_weights=ensemble_weights,
             predictions_by_model=predictions_by_model,
             model_state=model_state,
-            notes="Enhanced ensemble: added extreme_patterns model, increased exploratory coverage (v2.0)"
+            notes="Optimized Ensemble v3.0: 5 core models with score normalization and diversity penalty. Models: (1) Advanced Heuristics (weight=10.0), (2) Exploratory (weight=8.0), (3) Extreme Patterns (weight=3.0), (4) Basic Stats (weight=2.0), (5) ML Model (weight=1.0). Features: rank-based score normalization, diversity penalty (strength=0.2, threshold=3)."
         )
     except Exception as e:
         # 履歴保存に失敗しても予測結果は返す

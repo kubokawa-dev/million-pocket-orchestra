@@ -852,7 +852,7 @@ def predict_from_pattern_discovery(df: pd.DataFrame, limit: int = 300):
     return [pred for pred, _ in final_predictions[:limit]]
 
 
-def aggregate_predictions(predictions_by_model: dict, weights: dict):
+def aggregate_predictions(predictions_by_model: dict, weights: dict, normalize_scores: bool = True):
     """
     モデルごとの予測リストと重みを受け取り、重み付け集計してスコア付きのDataFrameを返す。
 
@@ -861,20 +861,85 @@ def aggregate_predictions(predictions_by_model: dict, weights: dict):
                                      例: {'basic_stats': ['111', '222'], ...}
         weights (dict): モデル名をキー、重み（数値）を値とする辞書。
                         例: {'basic_stats': 1.5, ...}
+        normalize_scores (bool): 各モデルのスコアを0-1に正規化するか（デフォルト: True）
 
     Returns:
         pd.DataFrame: 'prediction'と'score'列を持つ、スコア順にソートされたDataFrame。
     """
-    scores = Counter()
+    # 各モデルの予測にランクベースのスコアを付与（正規化）
+    model_scores = {}
+    
     for model_name, predictions in predictions_by_model.items():
         weight = weights.get(model_name, 1)
-        for pred in predictions:
-            scores[pred] += weight
+        
+        if normalize_scores and predictions:
+            # ランクベーススコア：1位=1.0, 最下位=0.0
+            n = len(predictions)
+            for rank, pred in enumerate(predictions):
+                # 線形減衰: 1位=1.0, 2位=0.99, ..., 最下位=0.0
+                normalized_score = (n - rank) / n
+                
+                if pred not in model_scores:
+                    model_scores[pred] = 0
+                model_scores[pred] += normalized_score * weight
+        else:
+            # 正規化なし（従来の方法）
+            for pred in predictions:
+                if pred not in model_scores:
+                    model_scores[pred] = 0
+                model_scores[pred] += weight
 
-    if not scores:
+    if not model_scores:
         return pd.DataFrame({'prediction': [], 'score': []})
 
-    df = pd.DataFrame(scores.items(), columns=['prediction', 'score'])
+    # DataFrameを作成
+    df = pd.DataFrame(model_scores.items(), columns=['prediction', 'score'])
+    
+    # スコアの高い順にソート
     df = df.sort_values(by='score', ascending=False).reset_index(drop=True)
+    
+    return df
+
+
+def apply_diversity_penalty(df: pd.DataFrame, penalty_strength: float = 0.3, similarity_threshold: int = 2):
+    """
+    多様性ペナルティを適用：類似した候補のスコアを下げる
+    
+    Args:
+        df: 予測結果のDataFrame（'prediction'と'score'列を持つ）
+        penalty_strength: ペナルティの強さ（0.0-1.0、デフォルト: 0.3）
+        similarity_threshold: 類似と判定する共通桁数（デフォルト: 2）
+    
+    Returns:
+        多様性ペナルティ適用後のDataFrame
+    """
+    if df.empty or len(df) <= 1:
+        return df
+    
+    df = df.copy()
+    df['adjusted_score'] = df['score'].copy()
+    
+    # 上位から順に処理
+    for i in range(len(df)):
+        current_pred = df.iloc[i]['prediction']
+        current_digits = set(current_pred)
+        
+        # それより下位の候補と比較
+        for j in range(i + 1, len(df)):
+            other_pred = df.iloc[j]['prediction']
+            other_digits = set(other_pred)
+            
+            # 共通する桁数を計算
+            common_digits = len(current_digits & other_digits)
+            
+            # 類似度が閾値以上ならペナルティ
+            if common_digits >= similarity_threshold:
+                penalty = penalty_strength * (common_digits / 3.0)  # 3桁中の共通割合
+                df.loc[j, 'adjusted_score'] *= (1 - penalty)
+    
+    # 調整後のスコアで再ソート
+    df = df.sort_values(by='adjusted_score', ascending=False).reset_index(drop=True)
+    df['score'] = df['adjusted_score']  # スコアを更新
+    df = df.drop(columns=['adjusted_score'])
     
     return df
