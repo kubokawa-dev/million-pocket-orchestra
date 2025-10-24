@@ -128,8 +128,8 @@ def save_ensemble_prediction(
         
         prediction_id = cur.fetchone()[0]
         
-        # 予測候補を挿入
-        for rank, (_, row) in enumerate(predictions_df.head(20).iterrows(), 1):
+        # 予測候補を挿入（最強版: 20→150に増加）
+        for rank, (_, row) in enumerate(predictions_df.head(150).iterrows(), 1):
             candidate_query = """
                 INSERT INTO numbers3_prediction_candidates (
                     ensemble_prediction_id, rank, number, score, contributing_models, created_at

@@ -18,6 +18,7 @@ from numbers4.prediction_logic import (
     predict_from_advanced_heuristics,
     predict_with_new_ml_model,  # 古いpredict_with_modelを新しいものに置き換え
     predict_from_exploratory_heuristics,
+    predict_from_extreme_patterns,  # 新しい極端パターンモデル
     aggregate_predictions
 )
 from numbers4.save_prediction_history import save_ensemble_prediction
@@ -26,8 +27,9 @@ from numbers4.save_prediction_history import save_ensemble_prediction
 # --- 設定 ---
 NUM_PREDICTIONS_BASIC = 5
 NUM_PREDICTIONS_ADVANCED = 5
-NUM_PREDICTIONS_ML_NEW = 15 # 新しいMLモデルの予測数を増やす
-NUM_PREDICTIONS_EXPLORATORY = 5
+NUM_PREDICTIONS_ML_NEW = 15  # 新しいMLモデルの予測数を増やす
+NUM_PREDICTIONS_EXPLORATORY = 20  # 改善: 5→20に増加
+NUM_PREDICTIONS_EXTREME = 15  # 新規: 極端パターンモデル (10→15に増加)
 
 
 def get_db_connection():
@@ -109,25 +111,32 @@ def generate_ensemble_prediction(progress_callback=None):
 
     # 4. 探索的ヒューリスティックモデル
     predictions_exploratory = predict_from_exploratory_heuristics(all_draws_df, NUM_PREDICTIONS_EXPLORATORY)
-    report_progress(0.8, f"- 探索的モデル予測完了: {len(predictions_exploratory)}件")
+    report_progress(0.75, f"- 探索的モデル予測完了: {len(predictions_exploratory)}件")
+
+    # 5. 極端パターンモデル（新規追加）
+    report_progress(0.8, "- 極端パターンモデルで予測中...")
+    predictions_extreme = predict_from_extreme_patterns(all_draws_df, NUM_PREDICTIONS_EXTREME)
+    report_progress(0.85, f"- 極端パターンモデル予測完了: {len(predictions_extreme)}件")
 
     # --- アンサンブル集計 ---
     report_progress(0.9, "全モデルの予測を統合・集計中...")
     
     # 動的重み調整：最新データへの適応性を重視
-    # MLモデルは学習データに依存するため、統計モデルの重みを相対的に上げる
+    # 改善版：探索的モデルと極端パターンモデルの重みを増加
     ensemble_weights = {
         'basic_stats': 1.2,  # 時系列重み付けで最新データに適応
         'advanced_heuristics': 1.5,  # トレンド重視の改善版
         'ml_model_new': 1.0,  # 学習データが古い場合は控えめに
-        'exploratory': 0.9,  # 探索的予測
+        'exploratory': 1.3,  # 改善: 0.9→1.3 極端パターンへの対応強化
+        'extreme_patterns': 1.2,  # 新規: 極端パターン専用モデル
     }
     
     predictions_by_model = {
         'basic_stats': predictions_basic,
         'advanced_heuristics': predictions_advanced,
         'ml_model_new': predictions_ml_new,
-        'exploratory': predictions_exploratory
+        'exploratory': predictions_exploratory,
+        'extreme_patterns': predictions_extreme  # 新規追加
     }
 
     # 重み付けして集計
@@ -149,7 +158,7 @@ def generate_ensemble_prediction(progress_callback=None):
             ensemble_weights=ensemble_weights,
             predictions_by_model=predictions_by_model,
             model_state=model_state,
-            notes="Ensemble prediction with improved time-weighted models"
+            notes="Enhanced ensemble: added extreme_patterns model, increased exploratory coverage (v2.0)"
         )
     except Exception as e:
         # 履歴保存に失敗しても予測結果は返す
