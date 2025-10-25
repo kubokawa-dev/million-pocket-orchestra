@@ -127,7 +127,7 @@ function parseNumbers4CSV(filePath: string): DrawData[] {
 async function seedNumbers3() {
   console.log('ナンバーズ3のデータをシード中...')
   
-  const numbers3Dir = path.join(process.cwd(), 'numbers3')
+  const numbers3Dir = path.join(process.cwd(), '..', '..', 'numbers3')
   const csvFiles = fs.readdirSync(numbers3Dir)
     .filter(file => file.endsWith('.csv'))
     .sort()
@@ -169,7 +169,7 @@ async function seedNumbers3() {
 async function seedNumbers4() {
   console.log('ナンバーズ4のデータをシード中...')
   
-  const numbers4Dir = path.join(process.cwd(), 'numbers4')
+  const numbers4Dir = path.join(process.cwd(), '..', '..', 'numbers4')
   const csvFiles = fs.readdirSync(numbers4Dir)
     .filter(file => file.endsWith('.csv'))
     .sort()
@@ -275,7 +275,7 @@ function parseLoto6CSV(filePath: string): Loto6DrawData[] {
 async function seedLoto6() {
   console.log('ロト6のデータをシード中...')
   
-  const loto6Dir = path.join(process.cwd(), 'loto6')
+  const loto6Dir = path.join(process.cwd(), '..', '..', 'loto6')
   
   if (!fs.existsSync(loto6Dir)) {
     console.log('loto6ディレクトリが見つかりません')

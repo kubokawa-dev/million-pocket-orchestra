@@ -83,13 +83,13 @@ python -m streamlit run streamlit_app.py
 ```bash
 # 1. 次回当選番号を予測
 python numbers3/predict_ensemble.py
-# → 予測ID: 3, 予測番号: 123, 456, 789...
+# → 予測ID: 2, 予測番号: 272, 636, 727...
 
-# 2. 実際の当選番号が判明（例：123）
-python numbers3/manage_prediction_history.py update 3 123
+# 2. 実際の当選番号が判明（例：729）
+python numbers3/manage_prediction_history.py update 2 729
 
-# 3. 予測結果から学習
-python numbers3/learn_from_predictions.py
+# 3. 予測結果から学習（モデルを更新）
+python numbers3/learn_from_predictions.py 729
 
 # 4. 統計確認
 python numbers3/manage_prediction_history.py stats
@@ -123,13 +123,13 @@ python numbers4/predict_ensemble.py
 ```bash
 # 1. 次回当選番号を予測
 python loto6/predict_ensemble.py
-# → 予測ID: 2, 予測番号: 123456, 234567, 345678...
+# → 予測ID: 1, 予測番号: 06 13 17 21 35 36, 06 13 17 20 35 36...
 
-# 2. 実際の当選番号が判明（例：123456、ボーナス数字：7）
-python loto6/manage_prediction_history.py update 2 123456 7
+# 2. 実際の当選番号が判明（例：06,13,17,21,35,36、ボーナス数字：7）
+python loto6/manage_prediction_history.py update 1 06,13,17,21,35,36 7
 
-# 3. 予測結果から学習
-python loto6/learn_from_predictions.py
+# 3. 予測結果から学習（モデルを更新）
+python loto6/learn_from_predictions.py 06,13,17,21,35,36 7
 
 # 4. 統計確認
 python loto6/manage_prediction_history.py stats

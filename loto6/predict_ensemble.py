@@ -18,6 +18,7 @@ from loto6.prediction_logic import (
     score_combination
 )
 from loto6.learning_logic import learn_model_from_data
+from loto6.save_prediction_history import save_ensemble_prediction
 
 def format_predictions(predictions):
     """予測リストを整形して文字列として返す"""
@@ -111,7 +112,40 @@ def run_advanced_ensemble_prediction(num_candidates=20, num_generate=5000, top_n
             "numbers": pred_str
         })
 
-    # --- 4. 結果の表示 (main実行時のみ) ---
+    # --- 4. データベースに保存 ---
+    try:
+        # 予測を適切な形式に変換
+        predictions_df = pd.DataFrame(results)
+        predictions_df['prediction'] = predictions_df['numbers'].str.replace(' ', '')
+        predictions_df['number'] = predictions_df['prediction']  # save_prediction_history.pyは'number'カラムを期待
+        predictions_df['score'] = predictions_df['score'].astype(float)
+        
+        ensemble_weights = {
+            'frequency_weight': 0.25,
+            'position_weight': 0.25,
+            'pattern_weight': 0.25,
+            'recent_weight': 0.25
+        }
+        
+        predictions_by_model = {
+            'frequency_model': [' '.join(f"{n:02d}" for n in pred) for pred in basic_preds],
+            'position_model': [' '.join(f"{n:02d}" for n in pred) for pred in advanced_preds],
+            'pattern_model': [' '.join(f"{n:02d}" for n in pred) for pred in ml_preds[:5]],
+            'recent_model': [' '.join(f"{n:02d}" for n in pred) for pred in ml_preds[5:10]]
+        }
+        
+        pred_id = save_ensemble_prediction(
+            predictions_df=predictions_df,
+            ensemble_weights=ensemble_weights,
+            predictions_by_model=predictions_by_model,
+            model_state=None,
+            notes="Ensemble prediction with advanced combination scoring"
+        )
+        print(f"\n✅ 予測履歴を保存しました (ID: {pred_id})")
+    except Exception as e:
+        print(f"⚠️ 予測履歴の保存に失敗しました: {e}")
+
+    # --- 5. 結果の表示 (main実行時のみ) ---
     if __name__ == '__main__':
         print("\n===========================================")
         print("👑 ロト6 改良版アンサンブル予測結果 👑")

@@ -116,10 +116,10 @@ def predict_from_advanced_heuristics(df: pd.DataFrame, limit: int = 5):
     weights = np.exp(np.linspace(-1.5, 0, n))  # 時系列重み
     
     pair_counts = Counter()
-    for idx, row in df.iterrows():
-        w = weights[idx]
-        for i in range(3):
-            pair_counts[tuple(sorted((row[f'd{i+1}'], row[f'd{i+2}'])))] += w
+    for i, (idx, row) in enumerate(df.iterrows()):
+        w = weights[i]  # インデックスではなく位置を使用
+        for j in range(3):
+            pair_counts[tuple(sorted((row[f'd{j+1}'], row[f'd{j+2}'])))] += w
     
     # 最近100件の統計（トレンド重視）
     recent_df = df.tail(100)
@@ -203,10 +203,109 @@ def predict_with_new_ml_model(df: pd.DataFrame, limit: int = 12):
         return []
 
 # --- 4. Exploratory Prediction (New) ---
-def predict_from_exploratory_heuristics(df: pd.DataFrame, limit: int = 5):
+def predict_from_extreme_patterns(df: pd.DataFrame, limit: int = 10):
+    """
+    極端なパターン（超低合計値、超高合計値、特殊パターン）を体系的に生成する。
+    0100のような極端に低い合計値のパターンをカバーする。
+    改善版：合計値0-2を明示的に列挙し、確実にカバーする。
+    """
+    predictions = set()
+    latest_number = "".join(map(str, df.iloc[-1][['d1', 'd2', 'd3', 'd4']].values))
+    
+    # 1a. 超極端な低合計値パターン（合計0-2）を明示的に列挙
+    # これにより0100のようなパターンを確実にカバー
+    for d1 in range(3):  # 0, 1, 2
+        for d2 in range(3):
+            for d3 in range(3):
+                for d4 in range(3):
+                    if d1 + d2 + d3 + d4 <= 2:
+                        num_str = f"{d1}{d2}{d3}{d4}"
+                        if num_str != latest_number:
+                            predictions.add(num_str)
+    
+    # 1b. 低合計値パターン（合計3-5）をランダムサンプリング
+    for target_sum in range(3, 6):
+        attempts = 0
+        while attempts < 3000:
+            attempts += 1
+            # ランダムに4桁を生成
+            digits = []
+            remaining = target_sum
+            for i in range(3):
+                max_val = min(remaining, 9)
+                d = np.random.randint(0, max_val + 1)
+                digits.append(d)
+                remaining -= d
+            # 最後の桁は残りの値
+            if 0 <= remaining <= 9:
+                digits.append(remaining)
+                num_str = "".join(map(str, digits))
+                if num_str != latest_number:
+                    predictions.add(num_str)
+            if len(predictions) >= limit * 0.6:  # 60%を低合計値に割り当て
+                break
+    
+    # 2. 超高合計値パターン（合計31-36）
+    for target_sum in range(31, 37):
+        attempts = 0
+        while attempts < 3000:
+            attempts += 1
+            digits = []
+            remaining = target_sum
+            for i in range(3):
+                min_val = max(0, remaining - 9 * (3 - i))
+                max_val = min(remaining, 9)
+                if min_val <= max_val:
+                    d = np.random.randint(min_val, max_val + 1)
+                    digits.append(d)
+                    remaining -= d
+                else:
+                    break
+            else:
+                if 0 <= remaining <= 9:
+                    digits.append(remaining)
+                    num_str = "".join(map(str, digits))
+                    if num_str != latest_number:
+                        predictions.add(num_str)
+            if len(predictions) >= limit:
+                break
+    
+    # 3. 特殊パターン: 同一数字の繰り返し
+    special_patterns = set()
+    for digit in range(10):
+        # AAAA パターン
+        num_str = str(digit) * 4
+        if num_str != latest_number:
+            special_patterns.add(num_str)
+        
+        # AAAB, AABA, ABAA, BAAA パターン
+        for other in range(10):
+            if other != digit:
+                for pos in range(4):
+                    num_list = [digit] * 4
+                    num_list[pos] = other
+                    num_str = "".join(map(str, num_list))
+                    if num_str != latest_number:
+                        special_patterns.add(num_str)
+    
+    # 合計0-2のパターンを優先的に返す（さらに合計値でソート）
+    very_low_sum = sorted([p for p in predictions if sum(int(d) for d in p) <= 2], 
+                          key=lambda x: sum(int(d) for d in x))
+    other_predictions = [p for p in predictions if sum(int(d) for d in p) > 2]
+    special_list = list(special_patterns)
+    
+    # 結合: 超低合計値（合計値順） + その他 + 特殊パターン
+    # 確実に合計0,1,2のパターンすべてが含まれるようにする
+    final_predictions = very_low_sum + other_predictions + special_list
+    
+    return final_predictions[:limit]
+
+
+def predict_from_exploratory_heuristics(df: pd.DataFrame, limit: int = 20):
     """
     探索的ヒューリスティックに基づき、統計的な「穴」を狙う予測を生成する。
     合計値が極端に低い/高い組み合わせや、長期間出現していない数字を重視する。
+    改善版：予測数を大幅に増加（5→20）
     """
     df = df.copy()
     df['sum'] = df[['d1', 'd2', 'd3', 'd4']].sum(axis=1)
@@ -272,11 +371,30 @@ def predict_from_exploratory_heuristics(df: pd.DataFrame, limit: int = 5):
     latest_number = "".join(map(str, df.iloc[-1][['d1', 'd2', 'd3', 'd4']].values))
     if latest_number in predictions:
         predictions.remove(latest_number)
+    
+    # 予測数が不足している場合は、低頻度の数字を含むパターンを追加
+    if len(predictions) < limit:
+        all_digits = pd.concat([df[f'd{i+1}'] for i in range(4)])
+        digit_counts = Counter(all_digits)
+        cold_digits = [d for d, _ in digit_counts.most_common()[-5:]]  # 最も出現頻度が低い5つ
+        
+        attempts = 0
+        while len(predictions) < limit and attempts < 10000:
+            attempts += 1
+            # コールドナンバーから2つ以上選ぶ
+            num_cold = np.random.randint(2, 5)
+            cold_selected = np.random.choice(cold_digits, num_cold, replace=True)
+            other_selected = np.random.choice(10, 4 - num_cold, replace=True)
+            all_digits_list = np.concatenate([cold_selected, other_selected])
+            np.random.shuffle(all_digits_list)
+            num_str = "".join(map(str, all_digits_list))
+            if num_str != latest_number:
+                predictions.add(num_str)
 
     return list(predictions)[:limit]
 
 
-def aggregate_predictions(predictions_by_model: dict, weights: dict):
+def aggregate_predictions(predictions_by_model: dict, weights: dict, normalize_scores: bool = True):
     """
     モデルごとの予測リストと重みを受け取り、重み付け集計してスコア付きのDataFrameを返す。
 
@@ -285,24 +403,86 @@ def aggregate_predictions(predictions_by_model: dict, weights: dict):
                                      例: {'basic_stats': ['1111', '2222'], ...}
         weights (dict): モデル名をキー、重み（数値）を値とする辞書。
                         例: {'basic_stats': 1.5, ...}
+        normalize_scores (bool): 各モデルのスコアを0-1に正規化するか（デフォルト: True）
 
     Returns:
         pd.DataFrame: 'prediction'と'score'列を持つ、スコア順にソートされたDataFrame。
     """
-    scores = Counter()
+    # 各モデルの予測にランクベースのスコアを付与（正規化）
+    model_scores = {}
+    
     for model_name, predictions in predictions_by_model.items():
-        weight = weights.get(model_name, 1) # 重みがなければデフォルトで1
-        for pred in predictions:
-            scores[pred] += weight
+        weight = weights.get(model_name, 1)
+        
+        if normalize_scores and predictions:
+            # ランクベーススコア：1位=1.0, 最下位=0.0
+            n = len(predictions)
+            for rank, pred in enumerate(predictions):
+                # 線形減衰: 1位=1.0, 2位=0.99, ..., 最下位=0.0
+                normalized_score = (n - rank) / n
+                
+                if pred not in model_scores:
+                    model_scores[pred] = 0
+                model_scores[pred] += normalized_score * weight
+        else:
+            # 正規化なし（従来の方法）
+            for pred in predictions:
+                if pred not in model_scores:
+                    model_scores[pred] = 0
+                model_scores[pred] += weight
 
-    if not scores:
+    if not model_scores:
         return pd.DataFrame({'prediction': [], 'score': []})
 
     # DataFrameを作成
-    df = pd.DataFrame(scores.items(), columns=['prediction', 'score'])
+    df = pd.DataFrame(model_scores.items(), columns=['prediction', 'score'])
     
     # スコアの高い順にソート
     df = df.sort_values(by='score', ascending=False).reset_index(drop=True)
+    
+    return df
+
+
+def apply_diversity_penalty(df: pd.DataFrame, penalty_strength: float = 0.3, similarity_threshold: int = 3):
+    """
+    多様性ペナルティを適用：類似した候補のスコアを下げる（ナンバーズ4用）
+    
+    Args:
+        df: 予測結果のDataFrame（'prediction'と'score'列を持つ）
+        penalty_strength: ペナルティの強さ（0.0-1.0、デフォルト: 0.3）
+        similarity_threshold: 類似と判定する共通桁数（デフォルト: 3）
+    
+    Returns:
+        多様性ペナルティ適用後のDataFrame
+    """
+    if df.empty or len(df) <= 1:
+        return df
+    
+    df = df.copy()
+    df['adjusted_score'] = df['score'].copy()
+    
+    # 上位から順に処理
+    for i in range(len(df)):
+        current_pred = df.iloc[i]['prediction']
+        current_digits = set(current_pred)
+        
+        # それより下位の候補と比較
+        for j in range(i + 1, len(df)):
+            other_pred = df.iloc[j]['prediction']
+            other_digits = set(other_pred)
+            
+            # 共通する桁数を計算
+            common_digits = len(current_digits & other_digits)
+            
+            # 類似度が閾値以上ならペナルティ
+            if common_digits >= similarity_threshold:
+                penalty = penalty_strength * (common_digits / 4.0)  # 4桁中の共通割合
+                df.loc[j, 'adjusted_score'] *= (1 - penalty)
+    
+    # 調整後のスコアで再ソート
+    df = df.sort_values(by='adjusted_score', ascending=False).reset_index(drop=True)
+    df['score'] = df['adjusted_score']  # スコアを更新
+    df = df.drop(columns=['adjusted_score'])
     
     return df
 
