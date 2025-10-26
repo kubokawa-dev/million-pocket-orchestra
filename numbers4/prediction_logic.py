@@ -3,7 +3,7 @@ import numpy as np
 from collections import Counter
 import json
 import os
-from numbers4.predict_numbers_with_model import predict_top_k as _predict_top_k_model
+# from numbers4.predict_numbers_with_model import predict_top_k as _predict_top_k_model  # 削除されたファイル
 
 # --- 1. predict_numbers.py からのロジック ---
 def predict_from_basic_stats(df: pd.DataFrame, limit: int = 5):
@@ -194,11 +194,11 @@ def predict_with_model(
 def predict_with_new_ml_model(df: pd.DataFrame, limit: int = 12):
     """
     新しいMLモデルの予測を返すための互換ラッパー関数。
-    既存の `numbers4.predict_numbers_with_model.predict_top_k` を委譲して、
-    アンサンブル側の想定シグネチャ(df, limit)を満たす。
+    削除されたファイルの代わりに、基本的な統計予測を返す。
     """
     try:
-        return _predict_top_k_model(limit)
+        # 削除されたファイルの代わりに、基本的な統計予測を使用
+        return predict_from_basic_stats(df, limit)
     except Exception:
         return []
 

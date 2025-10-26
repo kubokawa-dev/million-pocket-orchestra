@@ -10,14 +10,14 @@ ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT_DIR)
 
 from tools.utils import load_all_loto6_draws
-from loto6.prediction_logic import (
+from loto6.ultimate_prediction_logic import (
     predict_from_basic_stats,
     predict_from_advanced_heuristics,
     predict_with_model,
     compute_advanced_stats,  # 組み合わせ評価のためにインポート
     score_combination
 )
-from loto6.learning_logic import learn_model_from_data
+from loto6.ultimate_learning_logic import learn_model_from_data
 from loto6.save_prediction_history import save_ensemble_prediction
 
 def format_predictions(predictions):
@@ -141,19 +141,19 @@ def run_advanced_ensemble_prediction(num_candidates=20, num_generate=5000, top_n
             model_state=None,
             notes="Ensemble prediction with advanced combination scoring"
         )
-        print(f"\n✅ 予測履歴を保存しました (ID: {pred_id})")
+        print(f"\n予測履歴を保存しました (ID: {pred_id})")
     except Exception as e:
-        print(f"⚠️ 予測履歴の保存に失敗しました: {e}")
+        print(f"予測履歴の保存に失敗しました: {e}")
 
     # --- 5. 結果の表示 (main実行時のみ) ---
     if __name__ == '__main__':
         print("\n===========================================")
-        print("👑 ロト6 改良版アンサンブル予測結果 👑")
+        print("ロト6 改良版アンサンブル予測結果")
         print("===========================================")
         print("--- 組み合わせ予測 (推奨度順) ---")
         for res in results:
             print(f"[推奨度: {res['recommendation']} (スコア: {res['score']})] ")
-            print(f"  👉 {res['numbers']}")
+            print(f"  {res['numbers']}")
         print("\n===========================================")
         print("推奨度は、各モデルの予測数字と組み合わせの統計的評価を統合した総合スコアです。")
 

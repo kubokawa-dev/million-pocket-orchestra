@@ -154,7 +154,7 @@ def save_ensemble_prediction(
         
         conn.commit()
         
-        print(f"✅ 予測履歴を保存しました (ID: {ensemble_prediction_id})")
+        print(f"予測履歴を保存しました (ID: {ensemble_prediction_id})")
         print(f"   対象抽選回: 第{target_draw_number}回")
         print(f"   予測候補数: {len(predictions_df)}件")
         print(f"   保存した候補: {min(50, len(predictions_df))}件")
@@ -163,7 +163,7 @@ def save_ensemble_prediction(
         
     except Exception as e:
         conn.rollback()
-        print(f"❌ 予測履歴の保存に失敗: {e}")
+        print(f"予測履歴の保存に失敗: {e}")
         raise
     finally:
         conn.close()
@@ -195,7 +195,7 @@ def update_prediction_result(
         
         row = cur.fetchone()
         if not row:
-            print(f"⚠️  予測ID {ensemble_prediction_id} が見つかりません。")
+            print(f"予測ID {ensemble_prediction_id} が見つかりません。")
             return
         
         top_predictions = json.loads(row[0])
@@ -241,13 +241,13 @@ def update_prediction_result(
         
         conn.commit()
         
-        print(f"✅ 予測結果を更新しました (ID: {ensemble_prediction_id})")
+        print(f"予測結果を更新しました (ID: {ensemble_prediction_id})")
         print(f"   実際の当選番号: {actual_numbers}")
         print(f"   的中状況: {hit_status} ({hit_count}桁一致)")
         
     except Exception as e:
         conn.rollback()
-        print(f"❌ 予測結果の更新に失敗: {e}")
+        print(f"予測結果の更新に失敗: {e}")
         raise
     finally:
         conn.close()

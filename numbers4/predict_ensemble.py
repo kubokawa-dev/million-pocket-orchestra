@@ -92,7 +92,7 @@ def generate_ensemble_prediction(progress_callback=None):
                 updated_dt = datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
                 age_hours = (datetime.now(timezone.utc) - updated_dt).total_seconds() / 3600
                 if age_hours > 24 or events < 10:
-                    report_progress(0.05, f"⚠️ 警告: モデルが{age_hours:.1f}時間前に更新（学習イベント{events}回）。learn_from_predictions.pyの実行を推奨。")
+                    report_progress(0.05, f"警告: モデルが{age_hours:.1f}時間前に更新（学習イベント{events}回）。learn_from_predictions.pyの実行を推奨。")
             except:
                 pass
 
@@ -126,7 +126,7 @@ def generate_ensemble_prediction(progress_callback=None):
     # 【改良版v3.0】オンライン学習で調整された重みを使用
     try:
         ensemble_weights = load_model_weights()
-        report_progress(0.92, "✅ オンライン学習済みの重みを読み込みました")
+        report_progress(0.92, "オンライン学習済みの重みを読み込みました")
     except Exception as e:
         # 読み込み失敗時はデフォルト重みを使用
         ensemble_weights = {
@@ -141,7 +141,7 @@ def generate_ensemble_prediction(progress_callback=None):
             # 多様性確保モデル（低重み）
             'ml_model_new': 1.0,           # 機械学習
         }
-        report_progress(0.92, f"⚠️ デフォルト重みを使用: {e}")
+        report_progress(0.92, f"デフォルト重みを使用: {e}")
     
     predictions_by_model = {
         'basic_stats': predictions_basic,
@@ -178,7 +178,7 @@ def generate_ensemble_prediction(progress_callback=None):
         )
     except Exception as e:
         # 履歴保存に失敗しても予測結果は返す
-        print(f"⚠️  予測履歴の保存に失敗しました: {e}")
+        print(f"予測履歴の保存に失敗しました: {e}")
     
     return final_predictions_df, ensemble_weights
 
@@ -187,7 +187,7 @@ def run_ensemble_prediction_cli():
     """アンサンブル予測を実行し、結果をCLIに表示する"""
     
     print("\n" + "="*60)
-    print("🎯 ナンバーズ4 アンサンブル予測システム")
+    print("ナンバーズ4 アンサンブル予測システム")
     print("="*60)
     
     # 予測の実行（コールバックでコンソールに進捗表示）
@@ -195,7 +195,7 @@ def run_ensemble_prediction_cli():
 
     # --- 結果表示 ---
     print("\n" + "="*40)
-    print("👑 次回ナンバーズ4 最終予測 👑")
+    print("次回ナンバーズ4 最終予測")
     print("="*40)
     print(f"使用した重み: {ensemble_weights}")
 
