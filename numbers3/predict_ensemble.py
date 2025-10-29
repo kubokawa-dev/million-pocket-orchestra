@@ -21,9 +21,15 @@ from numbers3.prediction_logic import (
     predict_from_comprehensive_patterns,
     predict_from_permutation_coverage,
     predict_from_ultra_precision_recent_trend,  # 統計分析モデル
-    predict_from_pattern_discovery,  # NEW: 法則発見モデル
+    predict_from_pattern_discovery,  # 法則発見モデル
+    predict_from_enhanced_recent_analysis,  # 強化版統計モデル
+    predict_from_enhanced_cycle_analysis,  # 強化版周期性モデル
+    predict_from_digit_repetition_model,  # v10: 数字再出現モデル
+    predict_from_digit_continuation_model,  # v10: 桁継続モデル
+    predict_from_large_change_model,  # v10: 大変化モデル
+    predict_from_realistic_frequency_model,  # v10: 現実的頻度モデル
     aggregate_predictions,
-    apply_diversity_penalty  # NEW: 多様性ペナルティ
+    apply_diversity_penalty
 )
 from numbers3.save_prediction_history import save_ensemble_prediction
 from numbers3.online_learning import load_model_weights
@@ -37,7 +43,13 @@ NUM_PREDICTIONS_EXTREME = 25
 NUM_PREDICTIONS_COMPREHENSIVE = 30
 NUM_PREDICTIONS_PERMUTATION = 100
 NUM_PREDICTIONS_ULTRA_PRECISION = 300  # 統計分析モデル
-NUM_PREDICTIONS_PATTERN_DISCOVERY = 300  # NEW: 法則発見モデル
+NUM_PREDICTIONS_PATTERN_DISCOVERY = 300  # 法則発見モデル
+NUM_PREDICTIONS_ENHANCED_RECENT = 400  # 強化版統計モデル
+NUM_PREDICTIONS_ENHANCED_CYCLE = 250  # 強化版周期性モデル
+NUM_PREDICTIONS_DIGIT_REPETITION = 300  # v10: 数字再出現モデル
+NUM_PREDICTIONS_DIGIT_CONTINUATION = 250  # v10: 桁継続モデル
+NUM_PREDICTIONS_LARGE_CHANGE = 200  # v10: 大変化モデル
+NUM_PREDICTIONS_REALISTIC_FREQ = 400  # v10: 現実的頻度モデル
 
 
 def get_db_connection():
@@ -120,7 +132,31 @@ def generate_ensemble_prediction(progress_callback=None):
 
     # 9. 法則発見モデル（NEW）
     predictions_pattern_discovery = predict_from_pattern_discovery(all_draws_df, NUM_PREDICTIONS_PATTERN_DISCOVERY)
-    report_progress(0.94, f"- 法則発見モデル予測完了: {len(predictions_pattern_discovery)}件")
+    report_progress(0.91, f"- 法則発見モデル予測完了: {len(predictions_pattern_discovery)}件")
+
+    # 10. 強化版統計モデル（第6844回向け最適化）
+    predictions_enhanced_recent = predict_from_enhanced_recent_analysis(all_draws_df, NUM_PREDICTIONS_ENHANCED_RECENT)
+    report_progress(0.93, f"- 強化版統計モデル予測完了: {len(predictions_enhanced_recent)}件")
+
+    # 11. 強化版周期性モデル
+    predictions_enhanced_cycle = predict_from_enhanced_cycle_analysis(all_draws_df, NUM_PREDICTIONS_ENHANCED_CYCLE)
+    report_progress(0.88, f"- 強化版周期性モデル予測完了: {len(predictions_enhanced_cycle)}件")
+
+    # 12. 数字再出現モデル（v10）
+    predictions_digit_repetition = predict_from_digit_repetition_model(all_draws_df, NUM_PREDICTIONS_DIGIT_REPETITION)
+    report_progress(0.90, f"- 数字再出現モデル予測完了: {len(predictions_digit_repetition)}件")
+
+    # 13. 桁継続モデル（v10）
+    predictions_digit_continuation = predict_from_digit_continuation_model(all_draws_df, NUM_PREDICTIONS_DIGIT_CONTINUATION)
+    report_progress(0.92, f"- 桁継続モデル予測完了: {len(predictions_digit_continuation)}件")
+
+    # 14. 大変化モデル（v10）
+    predictions_large_change = predict_from_large_change_model(all_draws_df, NUM_PREDICTIONS_LARGE_CHANGE)
+    report_progress(0.93, f"- 大変化モデル予測完了: {len(predictions_large_change)}件")
+
+    # 15. 現実的頻度モデル（v10）
+    predictions_realistic_freq = predict_from_realistic_frequency_model(all_draws_df, NUM_PREDICTIONS_REALISTIC_FREQ)
+    report_progress(0.94, f"- 現実的頻度モデル予測完了: {len(predictions_realistic_freq)}件")
 
     # --- アンサンブル集計 ---
     report_progress(0.95, "全モデルの予測を統合・集計中...")
@@ -132,15 +168,23 @@ def generate_ensemble_prediction(progress_callback=None):
     except Exception as e:
         # 読み込み失敗時はデフォルト重みを使用
         ensemble_weights = {
-            # コアモデル（高重み）
-            'ultra_precision_recent_trend': 15.0,  # 統計分析（各桁頻度、合計値分布）- 最重要
-            'pattern_discovery': 12.0,             # 法則発見（周期性、移動傾向、飛び石パターン）- 重要
+            # v10.0 最優先モデル（根本的改善）
+            'digit_repetition': 30.0,              # 数字再出現（656のような同じ数字が複数回）- 最重要
+            'digit_continuation': 25.0,            # 桁継続（前回の数字が次回も出現）- 超重要
+            'realistic_frequency': 20.0,           # 現実的頻度（過去当選番号も含む）- 重要
             
-            # 補助モデル（中重み）
+            # 変化パターンモデル
+            'large_change': 15.0,                  # 大変化（±3-5の変化）
+            'enhanced_recent_analysis': 12.0,      # 強化版統計（直近重視）
+            
+            # 従来モデル（中重み）
+            'ultra_precision_recent_trend': 8.0,   # 統計分析
+            'pattern_discovery': 6.0,              # 法則発見
+            'enhanced_cycle_analysis': 5.0,        # 強化版周期性
+            
+            # 補助モデル（低重み）
             'comprehensive_patterns': 2.0,         # 包括的パターン
-            'permutation_coverage': 4.0,           # 順列網羅
-            
-            # 多様性確保モデル（低重み）
+            'permutation_coverage': 2.0,           # 順列網羅
             'ml_model': 1.0,                       # 機械学習
             'exploratory': 1.0,                    # 探索的分析
         }
@@ -154,8 +198,14 @@ def generate_ensemble_prediction(progress_callback=None):
         'extreme_patterns': predictions_extreme,
         'comprehensive_patterns': predictions_comprehensive,
         'permutation_coverage': predictions_permutation,
-        'ultra_precision_recent_trend': predictions_ultra_precision,  # 統計分析
-        'pattern_discovery': predictions_pattern_discovery  # NEW: 法則発見
+        'ultra_precision_recent_trend': predictions_ultra_precision,
+        'pattern_discovery': predictions_pattern_discovery,
+        'enhanced_recent_analysis': predictions_enhanced_recent,
+        'enhanced_cycle_analysis': predictions_enhanced_cycle,
+        'digit_repetition': predictions_digit_repetition,  # v10: 数字再出現
+        'digit_continuation': predictions_digit_continuation,  # v10: 桁継続
+        'large_change': predictions_large_change,  # v10: 大変化
+        'realistic_frequency': predictions_realistic_freq  # v10: 現実的頻度
     }
 
     # 重み付けして集計（スコア正規化を有効化）
@@ -176,7 +226,7 @@ def generate_ensemble_prediction(progress_callback=None):
             ensemble_weights=ensemble_weights,
             predictions_by_model=predictions_by_model,
             model_state=None,
-            notes="Optimized Ensemble v8.0: 6 core models with score normalization and diversity penalty. Core models: (1) Statistical Analysis (weight=15.0), (2) Pattern Discovery (weight=12.0), (3) Comprehensive Patterns (weight=2.0), (4) Permutation Coverage (weight=4.0), (5) ML Model (weight=1.0), (6) Exploratory (weight=1.0). Features: rank-based score normalization, diversity penalty (strength=0.2), no past winning bonus."
+            notes="Optimized Ensemble v10.0 (根本的改善版): 15 models with realistic patterns. 【重要な変更】過去当選番号除外を廃止、数字再出現と桁継続を最優先。Core models: (1) Digit Repetition (weight=30.0) - 同じ数字が複数回出現, (2) Digit Continuation (weight=25.0) - 前回の数字が継続, (3) Realistic Frequency (weight=20.0) - 過去当選番号も含む, (4) Large Change (weight=15.0) - 大きな変化, (5) Enhanced Recent (weight=12.0). Features: 第6843回(631)→第6844回(656)のパターン学習済み, 同じ数字の複数出現対応, 桁継続パターン対応, 大変化対応."
         )
     except Exception as e:
         print(f"⚠️  予測履歴の保存に失敗しました: {e}")

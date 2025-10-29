@@ -8,10 +8,9 @@ db_url = os.environ.get('DATABASE_URL').split('?schema')[0]
 conn = psycopg2.connect(db_url)
 cursor = conn.cursor()
 
-# 第6841回と第6842回を追加
+# 第6844回を追加
 new_draws = [
-    (6841, '209', '2025-10-23'),
-    (6842, '472', '2025-10-24'),
+    (6844, '656', '2025-10-26'),
 ]
 
 for draw_number, numbers, draw_date in new_draws:

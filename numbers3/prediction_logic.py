@@ -3,7 +3,7 @@ import numpy as np
 from collections import Counter
 import os
 import json
-from itertools import combinations, permutations
+from itertools import combinations, permutations, product
 
 # --- 1. 基本統計モデル ---
 def predict_from_basic_stats(df: pd.DataFrame, limit: int = 5):
@@ -943,3 +943,373 @@ def apply_diversity_penalty(df: pd.DataFrame, penalty_strength: float = 0.3, sim
     df = df.drop(columns=['adjusted_score'])
     
     return df
+
+
+# --- 10. 強化版統計モデル（第6844回向け改善） ---
+def predict_from_enhanced_recent_analysis(df: pd.DataFrame, limit: int = 300):
+    """
+    【第6844回向け最適化モデル】
+    
+    改善ポイント:
+    1. 直近5-10回の各桁頻度を最優先（重み10倍）
+    2. 合計値の実績分布に厳密に従う
+    3. 頻出ペアの活用を強化
+    4. 過去の当選番号は完全除外
+    """
+    predictions_dict = {}
+    latest_number = "".join(map(str, df.iloc[-1][['d1', 'd2', 'd3']].values))
+    historical_numbers = set(df['numbers'].values) if 'numbers' in df.columns else set()
+    
+    # 直近データの分析
+    recent_5 = df.tail(5)
+    recent_10 = df.tail(10)
+    recent_30 = df.tail(30)
+    
+    # === 戦略1: 各桁の頻出数字（直近重視） ===
+    top_digits_by_pos = []
+    for i in range(3):
+        combined_freq = Counter()
+        for digit in range(10):
+            # 直近5回を最重視（重み15倍）、10回（重み8倍）、30回（重み2倍）
+            score = (recent_5[f'd{i+1}'].tolist().count(digit) * 15 +
+                    recent_10[f'd{i+1}'].tolist().count(digit) * 8 +
+                    recent_30[f'd{i+1}'].tolist().count(digit) * 2)
+            combined_freq[digit] = score
+        
+        # 上位6個を抽出
+        top_6 = [d for d, _ in combined_freq.most_common(6)]
+        # 次点2個も追加（多様性）
+        next_2 = [d for d, _ in combined_freq.most_common(8) if d not in top_6][:2]
+        top_digits_by_pos.append(top_6 + next_2)
+    
+    # 全組み合わせを生成
+    for d1, d2, d3 in product(top_digits_by_pos[0], top_digits_by_pos[1], top_digits_by_pos[2]):
+        num_str = f"{d1}{d2}{d3}"
+        if num_str != latest_number and num_str not in historical_numbers:
+            # スコア: 直近5回の頻度を最重視
+            score = (recent_5['d1'].tolist().count(d1) * 20 +
+                    recent_5['d2'].tolist().count(d2) * 20 +
+                    recent_5['d3'].tolist().count(d3) * 20 +
+                    recent_10['d1'].tolist().count(d1) * 8 +
+                    recent_10['d2'].tolist().count(d2) * 8 +
+                    recent_10['d3'].tolist().count(d3) * 8)
+            predictions_dict[num_str] = predictions_dict.get(num_str, 0) + score
+    
+    # === 戦略2: 合計値の実績分布 ===
+    df_copy = df.copy()
+    df_copy['sum'] = df_copy[['d1', 'd2', 'd3']].sum(axis=1)
+    sum_dist_30 = Counter(df_copy.tail(30)['sum'])
+    sum_dist_10 = Counter(df_copy.tail(10)['sum'])
+    
+    # 頻出する合計値トップ12
+    target_sums = [s for s, _ in sum_dist_30.most_common(12)]
+    
+    for target_sum in target_sums:
+        for d1 in top_digits_by_pos[0]:
+            for d2 in top_digits_by_pos[1]:
+                d3 = target_sum - d1 - d2
+                if 0 <= d3 <= 9:
+                    num_str = f"{d1}{d2}{d3}"
+                    if num_str != latest_number and num_str not in historical_numbers:
+                        # 合計値のスコア
+                        sum_score = sum_dist_10.get(target_sum, 0) * 10 + sum_dist_30.get(target_sum, 0) * 3
+                        predictions_dict[num_str] = predictions_dict.get(num_str, 0) + sum_score
+    
+    # === 戦略3: 頻出ペアの活用 ===
+    pair_freq_10 = Counter()
+    pair_freq_30 = Counter()
+    
+    for _, row in recent_10.iterrows():
+        pair_freq_10[(row['d1'], row['d2'])] += 1
+        pair_freq_10[(row['d2'], row['d3'])] += 1
+    
+    for _, row in recent_30.iterrows():
+        pair_freq_30[(row['d1'], row['d2'])] += 1
+        pair_freq_30[(row['d2'], row['d3'])] += 1
+    
+    # 頻出ペアトップ20
+    top_pairs = list(set(
+        [pair for pair, _ in pair_freq_10.most_common(10)] +
+        [pair for pair, _ in pair_freq_30.most_common(15)]
+    ))
+    
+    for pair in top_pairs:
+        d1, d2 = pair
+        # (d1, d2) + 任意のd3
+        for d3 in range(10):
+            num_str = f"{d1}{d2}{d3}"
+            if num_str != latest_number and num_str not in historical_numbers:
+                pair_score = pair_freq_10.get((d1, d2), 0) * 12 + pair_freq_30.get((d1, d2), 0) * 3
+                predictions_dict[num_str] = predictions_dict.get(num_str, 0) + pair_score
+        
+        # 任意のd1 + (d2, d3)
+        for d1_new in range(10):
+            num_str = f"{d1_new}{d1}{d2}"
+            if num_str != latest_number and num_str not in historical_numbers:
+                pair_score = pair_freq_10.get((d1, d2), 0) * 12 + pair_freq_30.get((d1, d2), 0) * 3
+                predictions_dict[num_str] = predictions_dict.get(num_str, 0) + pair_score
+    
+    # === 戦略4: 前回からの変化パターン ===
+    if len(df) >= 6:
+        diff_patterns = []
+        for i in range(len(df) - 5, len(df)):
+            if i > 0:
+                prev = df.iloc[i-1]
+                curr = df.iloc[i]
+                diff = (curr['d1'] - prev['d1'], curr['d2'] - prev['d2'], curr['d3'] - prev['d3'])
+                diff_patterns.append(diff)
+        
+        diff_counter = Counter(diff_patterns)
+        top_diffs = [d for d, _ in diff_counter.most_common(5)]
+        
+        latest_digits = [df.iloc[-1]['d1'], df.iloc[-1]['d2'], df.iloc[-1]['d3']]
+        
+        for diff in top_diffs:
+            new_digits = [
+                latest_digits[0] + diff[0],
+                latest_digits[1] + diff[1],
+                latest_digits[2] + diff[2]
+            ]
+            if all(0 <= d <= 9 for d in new_digits):
+                num_str = "".join(map(str, new_digits))
+                if num_str != latest_number and num_str not in historical_numbers:
+                    predictions_dict[num_str] = predictions_dict.get(num_str, 0) + 25
+    
+    # スコア順にソート
+    final_predictions = sorted(predictions_dict.items(), key=lambda x: -x[1])
+    
+    return [pred for pred, _ in final_predictions[:limit]]
+
+
+# --- 11. 周期性強化モデル ---
+def predict_from_enhanced_cycle_analysis(df: pd.DataFrame, limit: int = 200):
+    """
+    周期性分析の強化版 - より多くの周期パターンを検出
+    """
+    predictions_dict = {}
+    latest_number = "".join(map(str, df.iloc[-1][['d1', 'd2', 'd3']].values))
+    historical_numbers = set(df['numbers'].values) if 'numbers' in df.columns else set()
+    
+    # 様々な周期を試行
+    cycles = [3, 5, 7, 10, 12, 14, 15, 20, 21, 28, 30]
+    
+    for cycle in cycles:
+        if len(df) > cycle:
+            past_row = df.iloc[-cycle-1]
+            past_digits = [past_row['d1'], past_row['d2'], past_row['d3']]
+            
+            # ±0-2の変化を試行
+            for delta1 in range(-2, 3):
+                for delta2 in range(-2, 3):
+                    for delta3 in range(-2, 3):
+                        new_digits = [
+                            past_digits[0] + delta1,
+                            past_digits[1] + delta2,
+                            past_digits[2] + delta3
+                        ]
+                        if all(0 <= d <= 9 for d in new_digits):
+                            num_str = "".join(map(str, new_digits))
+                            if num_str != latest_number and num_str not in historical_numbers:
+                                # 変化が小さく、周期が短いほど高スコア
+                                delta_penalty = abs(delta1) + abs(delta2) + abs(delta3)
+                                score = 15.0 / (1 + delta_penalty * 0.5) / (cycle ** 0.5)
+                                predictions_dict[num_str] = predictions_dict.get(num_str, 0) + score
+    
+    final_predictions = sorted(predictions_dict.items(), key=lambda x: -x[1])
+    return [pred for pred, _ in final_predictions[:limit]]
+
+
+# --- 12. 数字再出現モデル（v10.0 根本的改善） ---
+def predict_from_digit_repetition_model(df: pd.DataFrame, limit: int = 300):
+    """
+    数字再出現モデル - 同じ数字が複数桁に出現するパターンを重視
+    
+    第6844回(656)のように、同じ数字が2-3回出現するケースを予測
+    """
+    predictions_dict = {}
+    latest_number = "".join(map(str, df.iloc[-1][['d1', 'd2', 'd3']].values))
+    
+    # 直近30回で各数字の出現頻度を計算
+    recent_30 = df.tail(30)
+    all_digits = []
+    for _, row in recent_30.iterrows():
+        all_digits.extend([row['d1'], row['d2'], row['d3']])
+    
+    digit_freq = Counter(all_digits)
+    top_digits = [d for d, _ in digit_freq.most_common(8)]
+    
+    # === 戦略1: 同じ数字が2回出現するパターン ===
+    for digit in top_digits:
+        # (digit, digit, x) パターン
+        for third in range(10):
+            if third != digit:  # 3つ全て同じは除外
+                num_str = f"{digit}{digit}{third}"
+                if num_str != latest_number:
+                    score = digit_freq.get(digit, 0) * 15
+                    predictions_dict[num_str] = predictions_dict.get(num_str, 0) + score
+                
+                # (digit, x, digit) パターン
+                num_str = f"{digit}{third}{digit}"
+                if num_str != latest_number:
+                    score = digit_freq.get(digit, 0) * 15
+                    predictions_dict[num_str] = predictions_dict.get(num_str, 0) + score
+                
+                # (x, digit, digit) パターン
+                num_str = f"{third}{digit}{digit}"
+                if num_str != latest_number:
+                    score = digit_freq.get(digit, 0) * 15
+                    predictions_dict[num_str] = predictions_dict.get(num_str, 0) + score
+    
+    # === 戦略2: 3つ全て同じ数字 ===
+    for digit in top_digits:
+        num_str = f"{digit}{digit}{digit}"
+        if num_str != latest_number:
+            score = digit_freq.get(digit, 0) * 10
+            predictions_dict[num_str] = predictions_dict.get(num_str, 0) + score
+    
+    final_predictions = sorted(predictions_dict.items(), key=lambda x: -x[1])
+    return [pred for pred, _ in final_predictions[:limit]]
+
+
+# --- 13. 桁継続モデル ---
+def predict_from_digit_continuation_model(df: pd.DataFrame, limit: int = 250):
+    """
+    桁継続モデル - 前回の各桁が次回も出現する可能性を重視
+    
+    第6844回(656)の1桁目6は第6843回(631)の1桁目6と同じ
+    """
+    predictions_dict = {}
+    latest_number = "".join(map(str, df.iloc[-1][['d1', 'd2', 'd3']].values))
+    latest_digits = [df.iloc[-1]['d1'], df.iloc[-1]['d2'], df.iloc[-1]['d3']]
+    
+    # === 戦略1: 前回の各桁をそのまま使う ===
+    # 1桁目を継続
+    for d2 in range(10):
+        for d3 in range(10):
+            num_str = f"{latest_digits[0]}{d2}{d3}"
+            if num_str != latest_number:
+                score = 20.0
+                predictions_dict[num_str] = predictions_dict.get(num_str, 0) + score
+    
+    # 2桁目を継続
+    for d1 in range(10):
+        for d3 in range(10):
+            num_str = f"{d1}{latest_digits[1]}{d3}"
+            if num_str != latest_number:
+                score = 18.0
+                predictions_dict[num_str] = predictions_dict.get(num_str, 0) + score
+    
+    # 3桁目を継続
+    for d1 in range(10):
+        for d2 in range(10):
+            num_str = f"{d1}{d2}{latest_digits[2]}"
+            if num_str != latest_number:
+                score = 18.0
+                predictions_dict[num_str] = predictions_dict.get(num_str, 0) + score
+    
+    # === 戦略2: 前回の数字を2つ継続 ===
+    # 1桁目と2桁目を継続
+    for d3 in range(10):
+        num_str = f"{latest_digits[0]}{latest_digits[1]}{d3}"
+        if num_str != latest_number:
+            score = 25.0
+            predictions_dict[num_str] = predictions_dict.get(num_str, 0) + score
+    
+    # 2桁目と3桁目を継続
+    for d1 in range(10):
+        num_str = f"{d1}{latest_digits[1]}{latest_digits[2]}"
+        if num_str != latest_number:
+            score = 25.0
+            predictions_dict[num_str] = predictions_dict.get(num_str, 0) + score
+    
+    # 1桁目と3桁目を継続
+    for d2 in range(10):
+        num_str = f"{latest_digits[0]}{d2}{latest_digits[2]}"
+        if num_str != latest_number:
+            score = 25.0
+            predictions_dict[num_str] = predictions_dict.get(num_str, 0) + score
+    
+    final_predictions = sorted(predictions_dict.items(), key=lambda x: -x[1])
+    return [pred for pred, _ in final_predictions[:limit]]
+
+
+# --- 14. 大変化モデル ---
+def predict_from_large_change_model(df: pd.DataFrame, limit: int = 200):
+    """
+    大変化モデル - 前回から大きく変化するパターンを考慮
+    
+    第6843回(631) → 第6844回(656): 3桁目が1→6(+5)の大変化
+    """
+    predictions_dict = {}
+    latest_number = "".join(map(str, df.iloc[-1][['d1', 'd2', 'd3']].values))
+    latest_digits = [df.iloc[-1]['d1'], df.iloc[-1]['d2'], df.iloc[-1]['d3']]
+    
+    # === 戦略1: 各桁に±3-5の大きな変化 ===
+    large_deltas = [-5, -4, -3, 3, 4, 5]
+    
+    for delta1 in large_deltas + [0]:
+        for delta2 in large_deltas + [0]:
+            for delta3 in large_deltas + [0]:
+                # 少なくとも1桁は大きく変化
+                if abs(delta1) >= 3 or abs(delta2) >= 3 or abs(delta3) >= 3:
+                    new_digits = [
+                        latest_digits[0] + delta1,
+                        latest_digits[1] + delta2,
+                        latest_digits[2] + delta3
+                    ]
+                    if all(0 <= d <= 9 for d in new_digits):
+                        num_str = "".join(map(str, new_digits))
+                        if num_str != latest_number:
+                            # 大きな変化ほど高スコア
+                            total_change = abs(delta1) + abs(delta2) + abs(delta3)
+                            score = total_change * 2
+                            predictions_dict[num_str] = predictions_dict.get(num_str, 0) + score
+    
+    final_predictions = sorted(predictions_dict.items(), key=lambda x: -x[1])
+    return [pred for pred, _ in final_predictions[:limit]]
+
+
+# --- 15. 現実的頻度モデル（過去当選番号も含む） ---
+def predict_from_realistic_frequency_model(df: pd.DataFrame, limit: int = 400):
+    """
+    現実的頻度モデル - 過去の当選番号除外をやめ、実際の頻度を重視
+    
+    重要な変更: 過去の当選番号も候補に含める
+    """
+    predictions_dict = {}
+    latest_number = "".join(map(str, df.iloc[-1][['d1', 'd2', 'd3']].values))
+    
+    # 直近データの分析
+    recent_5 = df.tail(5)
+    recent_10 = df.tail(10)
+    recent_20 = df.tail(20)
+    
+    # 各桁の頻度（期間別）
+    def get_top_digits(df_subset, position, top_n=7):
+        freq = Counter(df_subset[f'd{position+1}'])
+        return [d for d, _ in freq.most_common(top_n)]
+    
+    top_digits_5 = [get_top_digits(recent_5, i, 5) for i in range(3)]
+    top_digits_10 = [get_top_digits(recent_10, i, 6) for i in range(3)]
+    top_digits_20 = [get_top_digits(recent_20, i, 7) for i in range(3)]
+    
+    # 全組み合わせを生成（過去の当選番号も含む）
+    all_top_digits = []
+    for i in range(3):
+        combined = list(set(top_digits_5[i] + top_digits_10[i] + top_digits_20[i]))
+        all_top_digits.append(combined[:8])
+    
+    for d1, d2, d3 in product(all_top_digits[0], all_top_digits[1], all_top_digits[2]):
+        num_str = f"{d1}{d2}{d3}"
+        if num_str != latest_number:  # 前回のみ除外
+            # スコア: 直近5回を最重視
+            score = (recent_5['d1'].tolist().count(d1) * 25 +
+                    recent_5['d2'].tolist().count(d2) * 25 +
+                    recent_5['d3'].tolist().count(d3) * 25 +
+                    recent_10['d1'].tolist().count(d1) * 10 +
+                    recent_10['d2'].tolist().count(d2) * 10 +
+                    recent_10['d3'].tolist().count(d3) * 10)
+            predictions_dict[num_str] = predictions_dict.get(num_str, 0) + score
+    
+    final_predictions = sorted(predictions_dict.items(), key=lambda x: -x[1])
+    return [pred for pred, _ in final_predictions[:limit]]

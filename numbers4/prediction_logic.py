@@ -3,6 +3,7 @@ import numpy as np
 from collections import Counter
 import json
 import os
+from itertools import product
 # from numbers4.predict_numbers_with_model import predict_top_k as _predict_top_k_model  # 削除されたファイル
 
 # --- 1. predict_numbers.py からのロジック ---
@@ -485,4 +486,259 @@ def apply_diversity_penalty(df: pd.DataFrame, penalty_strength: float = 0.3, sim
     df = df.drop(columns=['adjusted_score'])
     
     return df
+
+
+# --- v10.0 改善モデル（ナンバーズ3の成功を適用） ---
+
+def predict_from_digit_repetition_model_n4(df: pd.DataFrame, limit: int = 300):
+    """
+    数字再出現モデル（ナンバーズ4版）
+    同じ数字が複数桁に出現するパターンを重視
+    """
+    predictions_dict = {}
+    latest_number = "".join(map(str, df.iloc[-1][['d1', 'd2', 'd3', 'd4']].values))
+    
+    recent_30 = df.tail(30)
+    all_digits = []
+    for _, row in recent_30.iterrows():
+        all_digits.extend([row['d1'], row['d2'], row['d3'], row['d4']])
+    
+    digit_freq = Counter(all_digits)
+    top_digits = [d for d, _ in digit_freq.most_common(8)]
+    
+    # 同じ数字が2回出現するパターン
+    for digit in top_digits:
+        for third in range(10):
+            for fourth in range(10):
+                if not (third == digit and fourth == digit):
+                    patterns = [
+                        f"{digit}{digit}{third}{fourth}",
+                        f"{digit}{third}{digit}{fourth}",
+                        f"{digit}{third}{fourth}{digit}",
+                        f"{third}{digit}{digit}{fourth}",
+                        f"{third}{digit}{fourth}{digit}",
+                        f"{third}{fourth}{digit}{digit}"
+                    ]
+                    for num_str in patterns:
+                        if num_str != latest_number:
+                            score = digit_freq.get(digit, 0) * 12
+                            predictions_dict[num_str] = predictions_dict.get(num_str, 0) + score
+    
+    final_predictions = sorted(predictions_dict.items(), key=lambda x: -x[1])
+    return [pred for pred, _ in final_predictions[:limit]]
+
+
+def predict_from_digit_continuation_model_n4(df: pd.DataFrame, limit: int = 250):
+    """
+    桁継続モデル（ナンバーズ4版）
+    前回の各桁が次回も出現する可能性を重視
+    """
+    predictions_dict = {}
+    latest_number = "".join(map(str, df.iloc[-1][['d1', 'd2', 'd3', 'd4']].values))
+    latest_digits = [df.iloc[-1]['d1'], df.iloc[-1]['d2'], df.iloc[-1]['d3'], df.iloc[-1]['d4']]
+    
+    # 1-2桁目を継続
+    for d3 in range(10):
+        for d4 in range(10):
+            num_str = f"{latest_digits[0]}{latest_digits[1]}{d3}{d4}"
+            if num_str != latest_number:
+                predictions_dict[num_str] = predictions_dict.get(num_str, 0) + 22.0
+    
+    # 3-4桁目を継続
+    for d1 in range(10):
+        for d2 in range(10):
+            num_str = f"{d1}{d2}{latest_digits[2]}{latest_digits[3]}"
+            if num_str != latest_number:
+                predictions_dict[num_str] = predictions_dict.get(num_str, 0) + 22.0
+    
+    final_predictions = sorted(predictions_dict.items(), key=lambda x: -x[1])
+    return [pred for pred, _ in final_predictions[:limit]]
+
+
+def predict_from_large_change_model_n4(df: pd.DataFrame, limit: int = 200):
+    """
+    大変化モデル（ナンバーズ4版）
+    前回から大きく変化するパターンを考慮
+    """
+    predictions_dict = {}
+    latest_number = "".join(map(str, df.iloc[-1][['d1', 'd2', 'd3', 'd4']].values))
+    latest_digits = [df.iloc[-1]['d1'], df.iloc[-1]['d2'], df.iloc[-1]['d3'], df.iloc[-1]['d4']]
+    
+    large_deltas = [-5, -4, -3, 3, 4, 5]
+    
+    for delta1 in large_deltas + [0]:
+        for delta2 in large_deltas + [0]:
+            for delta3 in large_deltas + [0]:
+                for delta4 in large_deltas + [0]:
+                    if abs(delta1) >= 3 or abs(delta2) >= 3 or abs(delta3) >= 3 or abs(delta4) >= 3:
+                        new_digits = [
+                            latest_digits[0] + delta1,
+                            latest_digits[1] + delta2,
+                            latest_digits[2] + delta3,
+                            latest_digits[3] + delta4
+                        ]
+                        if all(0 <= d <= 9 for d in new_digits):
+                            num_str = "".join(map(str, new_digits))
+                            if num_str != latest_number:
+                                total_change = abs(delta1) + abs(delta2) + abs(delta3) + abs(delta4)
+                                score = total_change * 1.5
+                                predictions_dict[num_str] = predictions_dict.get(num_str, 0) + score
+    
+    final_predictions = sorted(predictions_dict.items(), key=lambda x: -x[1])
+    return [pred for pred, _ in final_predictions[:limit]]
+
+
+def predict_from_realistic_frequency_model_n4(df: pd.DataFrame, limit: int = 400):
+    """
+    現実的頻度モデル（ナンバーズ4版）
+    過去の当選番号除外をやめ、実際の頻度を重視
+    """
+    predictions_dict = {}
+    latest_number = "".join(map(str, df.iloc[-1][['d1', 'd2', 'd3', 'd4']].values))
+    
+    recent_5 = df.tail(5)
+    recent_10 = df.tail(10)
+    recent_20 = df.tail(20)
+    
+    def get_top_digits(df_subset, position, top_n=7):
+        freq = Counter(df_subset[f'd{position+1}'])
+        return [d for d, _ in freq.most_common(top_n)]
+    
+    top_digits_5 = [get_top_digits(recent_5, i, 5) for i in range(4)]
+    top_digits_10 = [get_top_digits(recent_10, i, 6) for i in range(4)]
+    top_digits_20 = [get_top_digits(recent_20, i, 7) for i in range(4)]
+    
+    all_top_digits = []
+    for i in range(4):
+        combined = list(set(top_digits_5[i] + top_digits_10[i] + top_digits_20[i]))
+        all_top_digits.append(combined[:7])
+    
+    for d1, d2, d3, d4 in product(all_top_digits[0], all_top_digits[1], all_top_digits[2], all_top_digits[3]):
+        num_str = f"{d1}{d2}{d3}{d4}"
+        if num_str != latest_number:
+            score = (recent_5['d1'].tolist().count(d1) * 20 +
+                    recent_5['d2'].tolist().count(d2) * 20 +
+                    recent_5['d3'].tolist().count(d3) * 20 +
+                    recent_5['d4'].tolist().count(d4) * 20 +
+                    recent_10['d1'].tolist().count(d1) * 8 +
+                    recent_10['d2'].tolist().count(d2) * 8 +
+                    recent_10['d3'].tolist().count(d3) * 8 +
+                    recent_10['d4'].tolist().count(d4) * 8)
+            predictions_dict[num_str] = predictions_dict.get(num_str, 0) + score
+    
+    final_predictions = sorted(predictions_dict.items(), key=lambda x: -x[1])
+    return [pred for pred, _ in final_predictions[:limit]]
+
+
+# --- 究極モデル（第6844回(0017)のパターンを捉える） ---
+
+def predict_from_zero_heavy_model(df: pd.DataFrame, limit: int = 300):
+    """
+    0重視モデル - 0が複数個出現するパターンを最優先
+    第6844回(0017)のように0が2個以上出現
+    """
+    predictions_dict = {}
+    latest_number = "".join(map(str, df.iloc[-1][['d1', 'd2', 'd3', 'd4']].values))
+    
+    # 連続する00パターン（最優先）
+    for pos in range(3):
+        for other1 in range(1, 10):
+            for other2 in range(1, 10):
+                if pos == 0:
+                    num_str = f"00{other1}{other2}"
+                elif pos == 1:
+                    num_str = f"{other1}00{other2}"
+                else:
+                    num_str = f"{other1}{other2}00"
+                
+                if num_str != latest_number:
+                    predictions_dict[num_str] = predictions_dict.get(num_str, 0) + 50.0
+    
+    # 0が2個（非連続）
+    for d1 in range(10):
+        for d2 in range(10):
+            for d3 in range(10):
+                for d4 in range(10):
+                    digits = [d1, d2, d3, d4]
+                    if digits.count(0) == 2:
+                        num_str = f"{d1}{d2}{d3}{d4}"
+                        if num_str != latest_number and '00' not in num_str:
+                            predictions_dict[num_str] = predictions_dict.get(num_str, 0) + 35.0
+    
+    final_predictions = sorted(predictions_dict.items(), key=lambda x: -x[1])
+    return [pred for pred, _ in final_predictions[:limit]]
+
+
+def predict_from_first_digit_continuation_ultimate(df: pd.DataFrame, limit: int = 250):
+    """
+    1桁目継続モデル（究極版） - 1桁目の数字が連続する可能性を最重視
+    第6843回(0523) → 第6844回(0017): 1桁目の0が連続
+    """
+    predictions_dict = {}
+    latest_number = "".join(map(str, df.iloc[-1][['d1', 'd2', 'd3', 'd4']].values))
+    first_digit = df.iloc[-1]['d1']
+    
+    for d2 in range(10):
+        for d3 in range(10):
+            for d4 in range(10):
+                num_str = f"{first_digit}{d2}{d3}{d4}"
+                if num_str != latest_number:
+                    predictions_dict[num_str] = predictions_dict.get(num_str, 0) + 40.0
+    
+    final_predictions = sorted(predictions_dict.items(), key=lambda x: -x[1])
+    return [pred for pred, _ in final_predictions[:limit]]
+
+
+def predict_from_low_sum_model(df: pd.DataFrame, limit: int = 300):
+    """
+    低合計値モデル - 極端に小さい合計値（5-12）を重視
+    第6844回(0017): 合計8
+    """
+    predictions_dict = {}
+    latest_number = "".join(map(str, df.iloc[-1][['d1', 'd2', 'd3', 'd4']].values))
+    
+    target_sums = list(range(5, 13))
+    
+    for target_sum in target_sums:
+        for d1 in range(10):
+            for d2 in range(10):
+                for d3 in range(10):
+                    d4 = target_sum - d1 - d2 - d3
+                    if 0 <= d4 <= 9:
+                        num_str = f"{d1}{d2}{d3}{d4}"
+                        if num_str != latest_number:
+                            score = (13 - target_sum) * 5
+                            predictions_dict[num_str] = predictions_dict.get(num_str, 0) + score
+    
+    final_predictions = sorted(predictions_dict.items(), key=lambda x: -x[1])
+    return [pred for pred, _ in final_predictions[:limit]]
+
+
+def predict_from_small_digits_model(df: pd.DataFrame, limit: int = 300):
+    """
+    小数字重視モデル - 0,1,2,3の小さい数字を多く含むパターン
+    第6844回(0017): 0,0,1,7 → 小さい数字が3個
+    """
+    predictions_dict = {}
+    latest_number = "".join(map(str, df.iloc[-1][['d1', 'd2', 'd3', 'd4']].values))
+    
+    small_digits = [0, 1, 2, 3]
+    
+    # 4桁全て小さい数字
+    for d1, d2, d3, d4 in product(small_digits, repeat=4):
+        num_str = f"{d1}{d2}{d3}{d4}"
+        if num_str != latest_number:
+            predictions_dict[num_str] = predictions_dict.get(num_str, 0) + 30.0
+    
+    # 3桁が小さい数字
+    for d1 in small_digits:
+        for d2 in small_digits:
+            for d3 in small_digits:
+                for d4 in range(4, 10):
+                    num_str = f"{d1}{d2}{d3}{d4}"
+                    if num_str != latest_number:
+                        predictions_dict[num_str] = predictions_dict.get(num_str, 0) + 20.0
+    
+    final_predictions = sorted(predictions_dict.items(), key=lambda x: -x[1])
+    return [pred for pred, _ in final_predictions[:limit]]
 
