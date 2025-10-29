@@ -234,12 +234,153 @@ def generate_ensemble_prediction(progress_callback=None):
     return final_predictions_df, ensemble_weights
 
 
+def generate_similar_patterns(number: str, count: int = 3, all_draws_df=None):
+    """
+    統計分析に基づいて、指定された3桁の番号に対して類似パターンを生成
+    
+    過去の当選データを分析し、実際に起こりやすいパターンを提案
+    
+    Args:
+        number: 3桁の番号（例: "123"）
+        count: 生成する類似パターンの数
+        all_draws_df: 全抽選データのDataFrame（統計分析用）
+    
+    Returns:
+        [(番号, 説明, スコア), ...] のリスト
+    """
+    d1, d2, d3 = int(number[0]), int(number[1]), int(number[2])
+    similar_patterns = []
+    
+    # 統計分析用のデータがある場合
+    if all_draws_df is not None and not all_draws_df.empty:
+        # 直近30回のデータで分析
+        recent_30 = all_draws_df.tail(30)
+        
+        # === 分析1: 各桁の変化傾向を分析 ===
+        # 前回からの変化量を計算
+        changes_d1 = []
+        changes_d2 = []
+        changes_d3 = []
+        
+        for i in range(1, len(recent_30)):
+            prev = recent_30.iloc[i-1]
+            curr = recent_30.iloc[i]
+            changes_d1.append(curr['d1'] - prev['d1'])
+            changes_d2.append(curr['d2'] - prev['d2'])
+            changes_d3.append(curr['d3'] - prev['d3'])
+        
+        # 最も頻出する変化量（モード）
+        from collections import Counter
+        common_change_d1 = Counter(changes_d1).most_common(3)
+        common_change_d2 = Counter(changes_d2).most_common(3)
+        common_change_d3 = Counter(changes_d3).most_common(3)
+        
+        # === 戦略1: 統計的に頻出する変化パターン ===
+        for change, freq in common_change_d1:
+            if change != 0:
+                new_d1 = d1 + change
+                if 0 <= new_d1 <= 9:
+                    num_str = f"{new_d1}{d2}{d3}"
+                    score = freq * 10
+                    similar_patterns.append((num_str, f"1桁目に頻出変化{change:+d} (出現{freq}回)", score))
+        
+        for change, freq in common_change_d2:
+            if change != 0:
+                new_d2 = d2 + change
+                if 0 <= new_d2 <= 9:
+                    num_str = f"{d1}{new_d2}{d3}"
+                    score = freq * 10
+                    similar_patterns.append((num_str, f"2桁目に頻出変化{change:+d} (出現{freq}回)", score))
+        
+        for change, freq in common_change_d3:
+            if change != 0:
+                new_d3 = d3 + change
+                if 0 <= new_d3 <= 9:
+                    num_str = f"{d1}{d2}{new_d3}"
+                    score = freq * 10
+                    similar_patterns.append((num_str, f"3桁目に頻出変化{change:+d} (出現{freq}回)", score))
+        
+        # === 分析2: 数字の再出現パターン ===
+        # 直近で頻出している数字
+        all_digits = []
+        for _, row in recent_30.iterrows():
+            all_digits.extend([row['d1'], row['d2'], row['d3']])
+        
+        digit_freq = Counter(all_digits)
+        hot_digits = [d for d, _ in digit_freq.most_common(5)]
+        
+        # 頻出数字への置き換え
+        for hot_digit in hot_digits[:3]:
+            if hot_digit != d1:
+                num_str = f"{hot_digit}{d2}{d3}"
+                score = digit_freq[hot_digit] * 2
+                similar_patterns.append((num_str, f"1桁目→頻出数字{hot_digit} (出現{digit_freq[hot_digit]}回)", score))
+            
+            if hot_digit != d3:
+                num_str = f"{d1}{d2}{hot_digit}"
+                score = digit_freq[hot_digit] * 2
+                similar_patterns.append((num_str, f"3桁目→頻出数字{hot_digit} (出現{digit_freq[hot_digit]}回)", score))
+        
+        # === 分析3: 同じ数字の繰り返しパターン ===
+        # 過去30回で同じ数字が複数回出現したパターンを分析
+        repeat_count = 0
+        for _, row in recent_30.iterrows():
+            digits = [row['d1'], row['d2'], row['d3']]
+            if len(digits) != len(set(digits)):  # 重複あり
+                repeat_count += 1
+        
+        if repeat_count > 5:  # 繰り返しが多い傾向
+            # メイン予測の数字を繰り返す
+            if d1 != d2:
+                num_str = f"{d1}{d1}{d3}"
+                score = repeat_count * 3
+                similar_patterns.append((num_str, f"数字繰返パターン (最近{repeat_count}回出現)", score))
+            
+            if d2 != d3:
+                num_str = f"{d1}{d3}{d3}"
+                score = repeat_count * 3
+                similar_patterns.append((num_str, f"数字繰返パターン (最近{repeat_count}回出現)", score))
+    
+    # データがない場合や追加パターンとして基本的な変化も含める
+    # === 基本パターン: 小さな変化（±1, ±2） ===
+    basic_patterns = [
+        (d1+1, d2, d3, "1桁目+1", 5),
+        (d1-1, d2, d3, "1桁目-1", 5),
+        (d1, d2+1, d3, "2桁目+1", 5),
+        (d1, d2-1, d3, "2桁目-1", 5),
+        (d1, d2, d3+1, "3桁目+1", 5),
+        (d1, d2, d3-1, "3桁目-1", 5),
+    ]
+    
+    for new_d1, new_d2, new_d3, desc, score in basic_patterns:
+        if 0 <= new_d1 <= 9 and 0 <= new_d2 <= 9 and 0 <= new_d3 <= 9:
+            num_str = f"{new_d1}{new_d2}{new_d3}"
+            similar_patterns.append((num_str, desc, score))
+    
+    # スコアでソートして重複除去
+    seen = set()
+    unique_patterns = []
+    similar_patterns.sort(key=lambda x: -x[2])  # スコア降順
+    
+    for num, desc, score in similar_patterns:
+        if num not in seen and num != number:
+            seen.add(num)
+            unique_patterns.append((num, desc))
+            if len(unique_patterns) >= count:
+                break
+    
+    return unique_patterns
+
+
 def run_ensemble_prediction_cli():
     """アンサンブル予測を実行し、結果をCLIに表示する"""
     
     print("\n" + "="*60)
     print("🎯 ナンバーズ3 アンサンブル予測システム")
     print("="*60)
+    
+    # データを読み込む（類似パターン生成用）
+    all_draws_df = load_all_draws()
     
     # 予測の実行（コールバックでコンソールに進捗表示）
     final_predictions_df, ensemble_weights = generate_ensemble_prediction(progress_callback=print)
@@ -262,6 +403,36 @@ def run_ensemble_prediction_cli():
 
     print("\n" + "="*40)
     print("スコアが高いほど、複数のモデルが共通して予測した、あるいは実績のあるモデルが強く推奨した有望な番号です。")
+    
+    # === 新機能: 上位5件に対して類似パターンを提案 ===
+    print("\n" + "="*80)
+    print("💡 予測番号 + 類似パターン提案（もしかしたらこれも？）")
+    print("="*80)
+    
+    top_5_predictions = final_predictions_df.head(5)
+    
+    for index, row in top_5_predictions.iterrows():
+        print(f"\n【第{index+1}位】")
+        print(f"  🎯 メイン予測: {row['prediction']}  (スコア: {row['score']:.2f})")
+        
+        # 統計分析に基づいて類似パターンを生成
+        similar_patterns = generate_similar_patterns(row['prediction'], count=3, all_draws_df=all_draws_df)
+        
+        if similar_patterns:
+            for i, (similar_num, desc) in enumerate(similar_patterns, 1):
+                print(f"    ↳ 類似{i}: {similar_num}  - {desc}")
+        else:
+            print(f"    ↳ (類似パターンなし)")
+    
+    print("\n" + "="*80)
+    print("💡 使い方:")
+    print("  - メイン予測: アンサンブルモデルが最も推奨する番号")
+    print("  - 類似1-3: 統計分析に基づく類似パターン（実際に起こりやすい変化）")
+    print("    * 頻出する変化パターン（直近30回の傾向）")
+    print("    * 頻出数字への置き換え（ホットナンバー）")
+    print("    * 数字繰り返しパターン（最近の傾向）")
+    print("  - 各順位のメイン予測 + 類似3つ = 計20通りの候補")
+    print("="*80)
 
 
 if __name__ == "__main__":
