@@ -16,11 +16,15 @@ if project_root not in sys.path:
 from numbers4.prediction_logic import (
     predict_from_basic_stats,
     predict_from_advanced_heuristics,
-    predict_with_new_ml_model,  # 古いpredict_with_modelを新しいものに置き換え
+    predict_with_new_ml_model,
     predict_from_exploratory_heuristics,
-    predict_from_extreme_patterns,  # 新しい極端パターンモデル
+    predict_from_extreme_patterns,
+    predict_from_digit_repetition_model_n4,  # v10.0
+    predict_from_digit_continuation_model_n4, # v10.0
+    predict_from_large_change_model_n4,       # v10.0
+    predict_from_realistic_frequency_model_n4,# v10.0
     aggregate_predictions,
-    apply_diversity_penalty  # NEW: 多様性ペナルティ
+    apply_diversity_penalty
 )
 from numbers4.save_prediction_history import save_ensemble_prediction
 from numbers4.online_learning import load_model_weights
@@ -29,9 +33,15 @@ from numbers4.online_learning import load_model_weights
 # --- 設定 ---
 NUM_PREDICTIONS_BASIC = 5
 NUM_PREDICTIONS_ADVANCED = 5
-NUM_PREDICTIONS_ML_NEW = 15  # 新しいMLモデルの予測数を増やす
-NUM_PREDICTIONS_EXPLORATORY = 20  # 改善: 5→20に増加
-NUM_PREDICTIONS_EXTREME = 15  # 新規: 極端パターンモデル (10→15に増加)
+NUM_PREDICTIONS_ML_NEW = 15
+NUM_PREDICTIONS_EXPLORATORY = 20
+NUM_PREDICTIONS_EXTREME = 15
+
+# v10.0 モデル設定
+NUM_PREDICTIONS_DIGIT_REPETITION = 300
+NUM_PREDICTIONS_DIGIT_CONTINUATION = 250
+NUM_PREDICTIONS_LARGE_CHANGE = 200
+NUM_PREDICTIONS_REALISTIC_FREQUENCY = 400
 
 
 def get_db_connection():
@@ -100,55 +110,79 @@ def generate_ensemble_prediction(progress_callback=None):
     
     # 1. 基本統計モデル
     predictions_basic = predict_from_basic_stats(all_draws_df, NUM_PREDICTIONS_BASIC)
-    report_progress(0.3, f"- 基本統計モデル予測完了: {len(predictions_basic)}件")
+    report_progress(0.15, f"- 基本統計モデル予測完了: {len(predictions_basic)}件")
 
     # 2. 高度なヒューリスティックモデル
     predictions_advanced = predict_from_advanced_heuristics(all_draws_df, NUM_PREDICTIONS_ADVANCED)
-    report_progress(0.45, f"- 高度ヒューリスティックモデル予測完了: {len(predictions_advanced)}件")
+    report_progress(0.2, f"- 高度ヒューリスティックモデル予測完了: {len(predictions_advanced)}件")
 
-    # 3. 新しい機械学習モデル (学習済みモデルを使用)
-    report_progress(0.5, "- 新しいMLモデルで予測中...")
+    # 3. 新しい機械学習モデル
     predictions_ml_new = predict_with_new_ml_model(all_draws_df, limit=NUM_PREDICTIONS_ML_NEW)
-    report_progress(0.65, f"- 新MLモデル予測完了: {len(predictions_ml_new)}件")
+    report_progress(0.25, f"- 新MLモデル予測完了: {len(predictions_ml_new)}件")
 
     # 4. 探索的ヒューリスティックモデル
     predictions_exploratory = predict_from_exploratory_heuristics(all_draws_df, NUM_PREDICTIONS_EXPLORATORY)
-    report_progress(0.75, f"- 探索的モデル予測完了: {len(predictions_exploratory)}件")
+    report_progress(0.3, f"- 探索的モデル予測完了: {len(predictions_exploratory)}件")
 
-    # 5. 極端パターンモデル（新規追加）
-    report_progress(0.8, "- 極端パターンモデルで予測中...")
+    # 5. 極端パターンモデル
     predictions_extreme = predict_from_extreme_patterns(all_draws_df, NUM_PREDICTIONS_EXTREME)
-    report_progress(0.85, f"- 極端パターンモデル予測完了: {len(predictions_extreme)}件")
+    report_progress(0.35, f"- 極端パターンモデル予測完了: {len(predictions_extreme)}件")
+
+    # --- v10.0 新モデル ---
+    
+    # 6. 数字再出現モデル
+    report_progress(0.4, "- [v10] 数字再出現モデルで予測中...")
+    predictions_repetition = predict_from_digit_repetition_model_n4(all_draws_df, NUM_PREDICTIONS_DIGIT_REPETITION)
+    report_progress(0.5, f"- [v10] 数字再出現モデル完了: {len(predictions_repetition)}件")
+
+    # 7. 桁継続モデル
+    report_progress(0.55, "- [v10] 桁継続モデルで予測中...")
+    predictions_continuation = predict_from_digit_continuation_model_n4(all_draws_df, NUM_PREDICTIONS_DIGIT_CONTINUATION)
+    report_progress(0.65, f"- [v10] 桁継続モデル完了: {len(predictions_continuation)}件")
+
+    # 8. 大変化モデル
+    report_progress(0.7, "- [v10] 大変化モデルで予測中...")
+    predictions_large_change = predict_from_large_change_model_n4(all_draws_df, NUM_PREDICTIONS_LARGE_CHANGE)
+    report_progress(0.75, f"- [v10] 大変化モデル完了: {len(predictions_large_change)}件")
+
+    # 9. 現実的頻度モデル
+    report_progress(0.8, "- [v10] 現実的頻度モデルで予測中...")
+    predictions_realistic = predict_from_realistic_frequency_model_n4(all_draws_df, NUM_PREDICTIONS_REALISTIC_FREQUENCY)
+    report_progress(0.85, f"- [v10] 現実的頻度モデル完了: {len(predictions_realistic)}件")
 
     # --- アンサンブル集計 ---
     report_progress(0.9, "全モデルの予測を統合・集計中...")
     
-    # 【改良版v3.0】オンライン学習で調整された重みを使用
-    try:
-        ensemble_weights = load_model_weights()
-        report_progress(0.92, "オンライン学習済みの重みを読み込みました")
-    except Exception as e:
-        # 読み込み失敗時はデフォルト重みを使用
-        ensemble_weights = {
-            # コアモデル（高重み）
-            'advanced_heuristics': 10.0,  # 統計分析（合計値、偶奇、ペア頻度）- 最重要
-            'exploratory': 8.0,            # 探索的分析（コールドナンバー、未出現ペア）- 重要
-            
-            # 補助モデル（中重み）
-            'extreme_patterns': 3.0,       # 極端パターン（超低/超高合計値）
-            'basic_stats': 2.0,            # 基本統計（頻度分析）
-            
-            # 多様性確保モデル（低重み）
-            'ml_model_new': 1.0,           # 機械学習
-        }
-        report_progress(0.92, f"デフォルト重みを使用: {e}")
+    ensemble_weights = {
+        # v10.0 最優先モデル（根本的改善）
+        'digit_repetition': 30.0,        # 数字再出現 - 最重要
+        'digit_continuation': 25.0,      # 桁継続 - 超重要
+        'realistic_frequency': 20.0,     # 現実的頻度 - 重要
+        
+        # 変化パターンモデル
+        'large_change': 15.0,            # 大変化
+        
+        # 従来モデル（中重み）
+        'advanced_heuristics': 10.0,     # 統計分析（合計値、偶奇、ペア頻度）- 最重要
+        'exploratory': 8.0,              # 探索的分析（コールドナンバー、未出現ペア）- 重要
+        'extreme_patterns': 3.0,         # 極端パターン（超低/超高合計値）
+        
+        # 補助モデル（低重み）
+        'basic_stats': 2.0,              # 基本統計（頻度分析）
+        'ml_model_new': 1.0,             # 機械学習
+    }
     
     predictions_by_model = {
         'basic_stats': predictions_basic,
         'advanced_heuristics': predictions_advanced,
         'ml_model_new': predictions_ml_new,
         'exploratory': predictions_exploratory,
-        'extreme_patterns': predictions_extreme
+        'extreme_patterns': predictions_extreme,
+        # v10 models
+        'digit_repetition': predictions_repetition,
+        'digit_continuation': predictions_continuation,
+        'large_change': predictions_large_change,
+        'realistic_frequency': predictions_realistic
     }
 
     # 重み付けして集計（スコア正規化を有効化）
@@ -174,7 +208,7 @@ def generate_ensemble_prediction(progress_callback=None):
             ensemble_weights=ensemble_weights,
             predictions_by_model=predictions_by_model,
             model_state=model_state,
-            notes="Optimized Ensemble v3.0: 5 core models with score normalization and diversity penalty. Models: (1) Advanced Heuristics (weight=10.0), (2) Exploratory (weight=8.0), (3) Extreme Patterns (weight=3.0), (4) Basic Stats (weight=2.0), (5) ML Model (weight=1.0). Features: rank-based score normalization, diversity penalty (strength=0.2, threshold=3)."
+            notes="v10.0 Update: Integration of Digit Repetition, Continuation, Large Change, and Realistic Frequency models."
         )
     except Exception as e:
         # 履歴保存に失敗しても予測結果は返す

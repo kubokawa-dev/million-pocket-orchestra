@@ -11,8 +11,13 @@ from tools.utils import load_all_numbers4_draws
 from numbers4.prediction_logic import (
     predict_from_basic_stats,
     predict_from_advanced_heuristics,
-    predict_with_model,
+    predict_with_new_ml_model,
     predict_from_exploratory_heuristics,
+    predict_from_extreme_patterns,
+    predict_from_digit_repetition_model_n4,
+    predict_from_digit_continuation_model_n4,
+    predict_from_large_change_model_n4,
+    predict_from_realistic_frequency_model_n4,
     aggregate_predictions
 )
 from numbers4.learning_logic import learn_model_from_data
@@ -44,12 +49,17 @@ def run_backtest(start_date, end_date, prediction_limit=50, final_prediction_cou
     print(f"{start_date.date()} から {end_date.date()} までの {len(target_draws)} 回の抽選でバックテストを実行します。")
 
     # --- アンサンブルの重み設定 ---
-    # バックテスト結果に基づき、貢献度の高かったモデルの重みを上げる
+    # v10.0 モデル構成に更新
     ensemble_weights = {
-        'basic_stats': 1.5,
-        'advanced_heuristics': 1.0,
-        'ml_model': 1.0,
-        'exploratory': 1.5, 
+        'digit_repetition': 30.0,
+        'digit_continuation': 25.0,
+        'realistic_frequency': 20.0,
+        'large_change': 15.0,
+        'advanced_heuristics': 10.0,
+        'exploratory': 8.0,
+        'extreme_patterns': 3.0,
+        'basic_stats': 2.0,
+        'ml_model_new': 1.0,
     }
     print(f"アンサンブル重み: {ensemble_weights}")
 
@@ -63,8 +73,13 @@ def run_backtest(start_date, end_date, prediction_limit=50, final_prediction_cou
         'model_performance': {
             'basic_stats': {'straight': 0, 'box': 0},
             'advanced_heuristics': {'straight': 0, 'box': 0},
-            'ml_model': {'straight': 0, 'box': 0},
+            'ml_model_new': {'straight': 0, 'box': 0},
             'exploratory': {'straight': 0, 'box': 0},
+            'extreme_patterns': {'straight': 0, 'box': 0},
+            'digit_repetition': {'straight': 0, 'box': 0},
+            'digit_continuation': {'straight': 0, 'box': 0},
+            'large_change': {'straight': 0, 'box': 0},
+            'realistic_frequency': {'straight': 0, 'box': 0},
         },
         'start_date': start_date,
         'end_date': end_date,
@@ -82,24 +97,34 @@ def run_backtest(start_date, end_date, prediction_limit=50, final_prediction_cou
         actual_number = actual_draw['winning_numbers']
         actual_number_sorted = "".join(sorted(actual_number))
 
-        # 1. モデルの学習
-        ml_model_weights = learn_model_from_data(training_data)
-
         # 2. 各モデルで予測
+        # 従来のモデル
         basic_preds = predict_from_basic_stats(training_data, limit=prediction_limit)
         advanced_preds = predict_from_advanced_heuristics(training_data, limit=prediction_limit)
-        ml_preds = predict_with_model(ml_model_weights, limit=prediction_limit)
+        ml_preds = predict_with_new_ml_model(training_data, limit=prediction_limit)
         exploratory_preds = predict_from_exploratory_heuristics(training_data, limit=prediction_limit)
+        extreme_preds = predict_from_extreme_patterns(training_data, limit=prediction_limit)
+        
+        # v10.0 新モデル
+        repetition_preds = predict_from_digit_repetition_model_n4(training_data, limit=300) # Backtest limit adjustment
+        continuation_preds = predict_from_digit_continuation_model_n4(training_data, limit=250)
+        large_change_preds = predict_from_large_change_model_n4(training_data, limit=200)
+        realistic_preds = predict_from_realistic_frequency_model_n4(training_data, limit=400)
 
         # 3. アンサンブル予測
         predictions_by_model = {
             'basic_stats': basic_preds,
             'advanced_heuristics': advanced_preds,
-            'ml_model': ml_preds,
-            'exploratory': exploratory_preds
+            'ml_model_new': ml_preds,
+            'exploratory': exploratory_preds,
+            'extreme_patterns': extreme_preds,
+            'digit_repetition': repetition_preds,
+            'digit_continuation': continuation_preds,
+            'large_change': large_change_preds,
+            'realistic_frequency': realistic_preds
         }
         final_predictions_df = aggregate_predictions(
-            predictions_by_model, ensemble_weights
+            predictions_by_model, ensemble_weights, normalize_scores=True
         )
         
         # 上位N件の予測を取得
@@ -140,14 +165,23 @@ def run_backtest(start_date, end_date, prediction_limit=50, final_prediction_cou
         model_predictions = {
             'basic_stats': basic_preds,
             'advanced_heuristics': advanced_preds,
-            'ml_model': ml_preds,
+            'ml_model_new': ml_preds,
             'exploratory': exploratory_preds,
+            'extreme_patterns': extreme_preds,
+            'digit_repetition': repetition_preds,
+            'digit_continuation': continuation_preds,
+            'large_change': large_change_preds,
+            'realistic_frequency': realistic_preds
         }
 
         for model_name, preds in model_predictions.items():
-            if actual_number in preds:
+            # 個別モデル評価では、バックテストのprediction_limit（デフォルト50）ではなく、各モデルのデフォルト出力数で評価する（あるいはlimitで切る）
+            # ここでは単純化のため、予測リスト全体を使用する
+            preds_to_eval = preds[:prediction_limit] # 比較のためlimitで切る
+            
+            if actual_number in preds_to_eval:
                 results['model_performance'][model_name]['straight'] += 1
-            if actual_number_sorted in ["".join(sorted(p)) for p in preds]:
+            if actual_number_sorted in ["".join(sorted(p)) for p in preds_to_eval]:
                 results['model_performance'][model_name]['box'] += 1
 
 
