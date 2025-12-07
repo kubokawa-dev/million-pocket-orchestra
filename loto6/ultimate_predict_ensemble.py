@@ -30,6 +30,7 @@ from loto6.ultimate_prediction_logic import (
     aggregate_loto6_predictions,
     apply_diversity_penalty  # NEW: 多様性ペナルティ
 )
+from loto6.prediction_logic_lgbm import predict_from_lightgbm  # LightGBM
 from loto6.save_prediction_history import save_ensemble_prediction
 from loto6.online_learning import load_model_weights
 
@@ -121,6 +122,11 @@ def run_ultimate_loto6_prediction(top_n=50):
     predictions_by_model['deep_learning'] = predict_deep_learning_style(df, limit=30)
     print(f"   ✅ {len(predictions_by_model['deep_learning'])}件生成\n")
     
+    # Model 11: LightGBM (New!)
+    print("🤖 LightGBM (本格的AIモデル)...")
+    predictions_by_model['lightgbm'] = predict_from_lightgbm(df, limit=30)
+    print(f"   ✅ {len(predictions_by_model['lightgbm'])}件生成\n")
+
     # ========================================================================
     # アンサンブル統合
     # ========================================================================
@@ -147,8 +153,15 @@ def run_ultimate_loto6_prediction(top_n=50):
             # 多様性確保モデル（低重み）
             'deep_learning': 2.0,        # AI風モデル
             'zone_balance': 1.5,         # 区間バランス
+            
+            # New Models
+            'lightgbm': 15.0,            # LightGBM (最強AIモデル) - 超重要
         }
         print(f"⚠️ デフォルト重みを使用: {e}")
+    
+    # 重み辞書に lightgbm がない場合は追加 (既存の重みファイルを読み込んだ場合など)
+    if 'lightgbm' not in ensemble_weights:
+        ensemble_weights['lightgbm'] = 15.0
     
     # 予測を集計（スコア正規化を有効化）
     final_predictions_df = aggregate_loto6_predictions(predictions_by_model, ensemble_weights, normalize_scores=True)

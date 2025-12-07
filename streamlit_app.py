@@ -1,18 +1,22 @@
 import os
 import psycopg2
+import pandas as pd
+import streamlit as st
+import subprocess
+import sys
 from typing import Tuple
 from dotenv import load_dotenv
 
-import pandas as pd
-import streamlit as st
-
-from numbers4.predict_ensemble import generate_ensemble_prediction
+# Import prediction logic
+from numbers4.predict_ensemble import generate_ensemble_prediction, generate_similar_patterns_n4
+from loto6.ultimate_predict_ensemble import run_ultimate_loto6_prediction
 
 load_dotenv()
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+PY = sys.executable or 'python'
 
-st.set_page_config(page_title="Numbers4 予測可視化", layout="wide")
+st.set_page_config(page_title="Million Pocket - AI Prediction System", layout="wide")
 
 def get_db_connection():
     db_url = os.environ.get('DATABASE_URL')
@@ -20,519 +24,304 @@ def get_db_connection():
         db_url = db_url.split('?schema')[0]
     return psycopg2.connect(db_url)
 
-# --- Loto6 テーブル自動作成（なければ作成） ---
-def ensure_loto6_tables():
-    con = get_db_connection()
-    cur = con.cursor()
-    # 抽選データテーブル
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS loto6_draws (
-            draw_number INTEGER PRIMARY KEY,
-            draw_date TEXT,
-            numbers TEXT
-        )
-    """)
-    # 予測ログテーブル
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS loto6_predictions_log (
-            id SERIAL PRIMARY KEY,
-            created_at TEXT,
-            source TEXT,
-            label TEXT,
-            number TEXT
-        )
-    """)
-    con.commit()
-    con.close()
-
-# 起動時にテーブル存在確認・作成（ファイルの先頭で必ず実行）
-ensure_loto6_tables()
-
+# --- Database Helper Functions ---
 @st.cache_data(show_spinner=False)
-def load_draws(limit: int = 500) -> pd.DataFrame:
-    con = get_db_connection()
+def load_n4_draws(limit: int = 100) -> pd.DataFrame:
+    conn = get_db_connection()
     try:
         df = pd.read_sql_query(
-            f"""
-            SELECT draw_number, draw_date, numbers
-            FROM numbers4_draws
-            ORDER BY draw_number DESC
-            LIMIT {int(limit)}
-            """,
-            con,
+            f"SELECT draw_number, draw_date, numbers FROM numbers4_draws ORDER BY draw_number DESC LIMIT {limit}",
+            conn
         )
     finally:
-        con.close()
-    if df.empty:
-        return df
-    df = df.sort_values("draw_number").reset_index(drop=True)
-    df["draw_date_dt"] = pd.to_datetime(df["draw_date"], errors="coerce", format='mixed')
-    try:
-        df["draw_date_dt"] = df["draw_date_dt"].dt.tz_localize(None)
-    except Exception:
-        pass
-    df["numbers_str"] = df["numbers"].astype(str).str.zfill(4)
+        conn.close()
+    if not df.empty:
+        df["draw_date_dt"] = pd.to_datetime(df["draw_date"], errors="coerce")
+        df["numbers_str"] = df["numbers"].astype(str).str.zfill(4)
+        
+        # Split numbers into d1, d2, d3, d4 for pattern analysis
+        # Assuming numbers column is like "1234"
+        df['d1'] = df['numbers'].astype(str).str[0].astype(int)
+        df['d2'] = df['numbers'].astype(str).str[1].astype(int)
+        df['d3'] = df['numbers'].astype(str).str[2].astype(int)
+        df['d4'] = df['numbers'].astype(str).str[3].astype(int)
+        
+        # Sort ascending for pattern analysis (which often uses .tail())
+        df = df.sort_values("draw_number", ascending=True).reset_index(drop=True)
+        
     return df
 
 @st.cache_data(show_spinner=False)
-def load_predictions() -> pd.DataFrame:
-    con = get_db_connection()
+def load_loto6_draws(limit: int = 100) -> pd.DataFrame:
+    conn = get_db_connection()
     try:
         df = pd.read_sql_query(
-            """
-            SELECT id, created_at, source, label, number
-            FROM numbers4_predictions_log
-            ORDER BY created_at ASC, id ASC
-            """,
-            con,
+            f"SELECT draw_number, draw_date, numbers, bonus_number FROM loto6_draws ORDER BY draw_number DESC LIMIT {limit}",
+            conn
         )
     finally:
-        con.close()
-    if df.empty:
-        return df
-    df["created_at_dt"] = pd.to_datetime(df["created_at"], utc=True, errors="coerce").dt.tz_localize(None)
-    df["predicted_number_str"] = df["number"].astype(str).str.zfill(4)
+        conn.close()
+    if not df.empty:
+        df["draw_date_dt"] = pd.to_datetime(df["draw_date"], errors="coerce")
+        df["numbers_str"] = df["numbers"].astype(str)
     return df
 
 @st.cache_data(show_spinner=False)
-def load_loto6_draws(limit: int = 500) -> pd.DataFrame:
-    con = get_db_connection()
+def load_n4_predictions(limit: int = 500) -> pd.DataFrame:
+    conn = get_db_connection()
     try:
         df = pd.read_sql_query(
-            f"""
-            SELECT draw_number, draw_date, numbers
-            FROM loto6_draws
-            ORDER BY draw_number DESC
-            LIMIT {int(limit)}
-            """,
-            con,
+            f"SELECT id, created_at, source, label, number FROM numbers4_predictions_log ORDER BY id DESC LIMIT {limit}",
+            conn
         )
     finally:
-        con.close()
-    if df.empty:
-        return df
-    df = df.sort_values("draw_number").reset_index(drop=True)
-    df["draw_date_dt"] = pd.to_datetime(df["draw_date"], errors="coerce", format='mixed')
-    try:
-        df["draw_date_dt"] = df["draw_date_dt"].dt.tz_localize(None)
-    except Exception:
-        pass
-    df["numbers_str"] = df["numbers"].astype(str)
+        conn.close()
+    if not df.empty:
+        df["created_at_dt"] = pd.to_datetime(df["created_at"], errors="coerce").dt.tz_localize(None)
+        df["predicted_number_str"] = df["number"].astype(str).str.zfill(4)
     return df
 
 @st.cache_data(show_spinner=False)
-def load_loto6_predictions() -> pd.DataFrame:
-    con = get_db_connection()
+def load_loto6_predictions(limit: int = 500) -> pd.DataFrame:
+    conn = get_db_connection()
     try:
         df = pd.read_sql_query(
-            """
-            SELECT id, created_at, source, label, number
-            FROM loto6_predictions_log
-            ORDER BY created_at ASC, id ASC
-            """,
-            con,
+            f"SELECT id, created_at, source, label, number FROM loto6_predictions_log ORDER BY id DESC LIMIT {limit}",
+            conn
         )
     finally:
-        con.close()
-    if df.empty:
-        return df
-    df["created_at_dt"] = pd.to_datetime(df["created_at"], utc=True, errors="coerce").dt.tz_localize(None)
-    df["predicted_number_str"] = df["number"].astype(str)
+        conn.close()
+    if not df.empty:
+        df["created_at_dt"] = pd.to_datetime(df["created_at"], errors="coerce").dt.tz_localize(None)
+        df["predicted_number_str"] = df["number"].astype(str)
     return df
 
-def map_predictions_to_draws(draws_df: pd.DataFrame, preds_df: pd.DataFrame) -> pd.DataFrame:
-    if draws_df.empty or preds_df.empty:
-        return pd.DataFrame()
-    # asof-map each prediction to the next draw at/after created_at
-    mapped = pd.merge_asof(
-        preds_df.sort_values("created_at_dt"),
-        draws_df[["draw_number", "draw_date_dt", "numbers_str"]].sort_values("draw_date_dt"),
-        left_on="created_at_dt",
-        right_on="draw_date_dt",
-        direction="forward",
-    )
-    mapped = mapped.dropna(subset=["draw_number"]).copy()
-    if mapped.empty:
-        return mapped
-    mapped["draw_number"] = mapped["draw_number"].astype(int)
-    return mapped
+# --- UI Components ---
 
-def compute_hits(mapped: pd.DataFrame) -> pd.DataFrame:
-    if mapped.empty:
-        return mapped
-    # rank within draw by created_at (oldest first)
-    mapped = mapped.sort_values(["draw_number", "created_at_dt", "id"]).copy()
-    mapped["rank"] = mapped.groupby("draw_number").cumcount() + 1
-    # hit types
-    def hit_type_row(row) -> str:
-        p = row["predicted_number_str"]
-        a = row["numbers_str"]
-        if p == a:
-            return "straight"
-        # box: same multiset
-        from collections import Counter
-        return "box" if Counter(p) == Counter(a) else "miss"
+st.title("💰 Million Pocket: AI Lottery Prediction")
+st.markdown("### ナンバーズ4 & ロト6 最強予測システム (v10.0 / Ultimate)")
 
-    mapped["hit_type"] = mapped.apply(hit_type_row, axis=1)
-    # display-friendly model string
-    mapped["model"] = mapped.apply(
-        lambda r: (r["source"] or "unknown") + (f" / {r['label']}" if isinstance(r["label"], str) and r["label"] else ""),
-        axis=1,
-    )
-    return mapped
+tabs = st.tabs(["🔢 Numbers 4", "🎱 Loto 6", "📊 History & Stats"])
 
-def map_loto6_predictions_to_draws(draws_df: pd.DataFrame, preds_df: pd.DataFrame) -> pd.DataFrame:
-    if draws_df.empty or preds_df.empty:
-        return pd.DataFrame()
-    mapped = pd.merge_asof(
-        preds_df.sort_values("created_at_dt"),
-        draws_df[["draw_number", "draw_date_dt", "numbers_str"]].sort_values("draw_date_dt"),
-        left_on="created_at_dt",
-        right_on="draw_date_dt",
-        direction="forward",
-    )
-    mapped = mapped.dropna(subset=["draw_number"]).copy()
-    if mapped.empty:
-        return mapped
-    mapped["draw_number"] = mapped["draw_number"].astype(int)
-    return mapped
-
-def compute_loto6_hits(mapped: pd.DataFrame) -> pd.DataFrame:
-    if mapped.empty:
-        return mapped
-    mapped = mapped.sort_values(["draw_number", "created_at_dt", "id"]).copy()
-    mapped["rank"] = mapped.groupby("draw_number").cumcount() + 1
-    def hit_type_row(row) -> str:
-        p = row["predicted_number_str"]
-        a = row["numbers_str"]
-        return "hit" if p == a else "miss"
-    mapped["hit_type"] = mapped.apply(hit_type_row, axis=1)
-    mapped["model"] = mapped.apply(
-        lambda r: (r["source"] or "unknown") + (f" / {r['label']}" if isinstance(r["label"], str) and r["label"] else ""),
-        axis=1,
-    )
-    return mapped
-
-# Sidebar controls
-st.sidebar.header("フィルター")
-last_n = st.sidebar.slider("表示する直近回数", min_value=10, max_value=500, value=100, step=10)
-sources_filter = st.sidebar.multiselect("ソース(source)", [])
-label_query = st.sidebar.text_input("ラベルに含む文字列 (部分一致)", "")
-
-# Load data
-with st.spinner("データ読込中..."):
-    draws_df = load_draws(limit=last_n)
-    preds_df = load_predictions()
-    mapped = map_predictions_to_draws(draws_df, preds_df)
-    mapped = compute_hits(mapped)
-
-# --- 回号フィルター追加 ---
-draw_numbers_available = mapped["draw_number"].unique() if not mapped.empty else []
-draw_number_filter = st.sidebar.selectbox(
-    "回号で絞り込み (空欄は全件)",
-    options=["(全件)"] + [str(n) for n in sorted(draw_numbers_available, reverse=True)],
-    index=0
-)
-
-# Initialize dynamic filter options after data load
-if not mapped.empty:
-    all_sources = sorted(mapped["source"].dropna().unique().tolist())
-    if not sources_filter:
-        sources_filter = []  # default none -> treat as all
-
-# Apply filters
-filtered = mapped.copy()
-if sources_filter:
-    filtered = filtered[filtered["source"].isin(sources_filter)]
-if label_query:
-    filtered = filtered[filtered["label"].fillna("").str.contains(label_query, case=False, na=False)]
-if draw_number_filter != "(全件)":
-    filtered = filtered[filtered["draw_number"] == int(draw_number_filter)]
-
-st.title("Numbers4 & Loto6 予測可視化 (Streamlit)")
-
-# --- Tab UI ---
-tabs = st.tabs(["ナンバーズ4", "ロト6"])
-
+# === NUMBERS 4 TAB ===
 with tabs[0]:
-    # --- ナンバーズ4タブ ---
-    st.header("🔮 最新の当選番号を予測する (ナンバーズ4)")
+    st.header("Numbers 4 Prediction")
+    
+    col1, col2 = st.columns([1, 1])
+    
+    with col1:
+        st.subheader("1. データの更新")
+        if st.button("最新データを取得＆学習 (Scrape & Learn)"):
+            with st.status("データ更新プロセスを実行中...", expanded=True) as status:
+                st.write("Fetching latest data from Rakuten...")
+                # Run scraper
+                scrape_script = os.path.join(ROOT_DIR, 'tools', 'scrape_numbers4_rakuten.py')
+                try:
+                    res = subprocess.run([PY, scrape_script], capture_output=True, text=True)
+                    st.code(res.stdout)
+                    if res.returncode == 0:
+                        st.write("✅ Scraping completed.")
+                    else:
+                        st.error("Scraping failed.")
+                except Exception as e:
+                    st.error(f"Error running scraper: {e}")
 
-        # --- モデル学習ボタン (ナンバーズ4) ---
-    st.subheader("🤖 MLモデルの学習")
-    if st.button("ナンバーズ4のMLモデルを学習する"):
-        from numbers4.train_ml_model import load_all_draws, create_features, train_and_save_models
-        try:
-            with st.spinner("データ読込と特徴量生成..."):
-                df_train = load_all_draws()
-                features, labels = create_features(df_train)
-                st.write(f"学習データ: {len(features)}件")
+                st.write("Running internal model learning...")
+                # Run learning (via update_learning_models logic essentially)
+                # We can call the pipeline script's learning function or just call learn_from_predictions.py
+                # For simplicity, let's call the learn script directly if we can fetch the latest number
+                # Actually, the pipeline script is safer.
+                pipeline_script = os.path.join(ROOT_DIR, 'tools', 'run_numbers4_pipeline.py')
+                # But pipeline runs prediction too. Let's just rely on the user clicking "Predict" separately for better UI control.
+                # Just run scrape is enough? No, online learning needs to run.
+                # Let's run the full pipeline script in background? No, users want immediate feedback.
+                
+                # Let's manually trigger learning
+                try:
+                    # Get latest number from DB
+                    conn = get_db_connection()
+                    cur = conn.cursor()
+                    cur.execute("SELECT numbers FROM numbers4_draws ORDER BY draw_date DESC LIMIT 1")
+                    row = cur.fetchone()
+                    conn.close()
+                    
+                    if row:
+                        latest_num = row[0]
+                        st.write(f"Latest Number: {latest_num}")
+                        learn_script = os.path.join(ROOT_DIR, 'numbers4', 'learn_from_predictions.py')
+                        res_learn = subprocess.run([PY, learn_script, latest_num], capture_output=True, text=True)
+                        st.code(res_learn.stdout)
+                        st.write("✅ Learning completed.")
+                    else:
+                        st.warning("No data found to learn from.")
+                        
+                except Exception as e:
+                    st.error(f"Error during learning: {e}")
+                
+                status.update(label="データ更新完了！", state="complete", expanded=False)
+
+    with col2:
+        st.subheader("2. AI予測の実行")
+        if st.button("アンサンブル予測を実行 (Predict)"):
+            status_text = st.empty()
+            progress_bar = st.progress(0)
             
-            with st.spinner("モデル学習中... (数分かかることがあります)"):
-                train_and_save_models(features, labels)
-                st.success("ナンバーズ4のMLモデル学習が完了しました！")
+            def update_progress(p, msg):
+                progress_bar.progress(int(p * 100))
+                status_text.text(f"{int(p*100)}% - {msg}")
+            
+            try:
+                # Run prediction in-process
+                pred_df, weights = generate_ensemble_prediction(progress_callback=update_progress)
+                
+                status_text.text("予測完了！")
+                progress_bar.progress(100)
+                st.balloons()
+                
+                st.success(f"予測が完了しました！ (Top {len(pred_df)} candidates)")
+                
+                # Show Top 10 with details
+                st.subheader("🏆 Top 10 Predictions")
+                
+                # Prepare data for display
+                top_10 = pred_df.head(10).copy()
+                top_10.index = range(1, 11)
+                st.dataframe(top_10, use_container_width=True)
+                
+                st.write("---")
+                st.subheader("💡 類似パターン提案 (Top 3)")
+                
+                # Load draws for pattern analysis
+                all_draws = load_n4_draws(limit=1000)
+                
+                for i, row in top_10.head(3).iterrows():
+                    pred_num = row['prediction']
+                    score = row['score']
+                    st.markdown(f"**第{i}位: `{pred_num}` (Score: {score:.1f})**")
+                    
+                    patterns = generate_similar_patterns_n4(pred_num, count=3, all_draws_df=all_draws)
+                    if patterns:
+                        for p_num, p_desc in patterns:
+                            st.text(f"  ↳ {p_num} : {p_desc}")
+                    else:
+                        st.text("  (No similar patterns found)")
+                    st.write("")
+                    
+                st.expander("モデルの重み (Weights)").json(weights)
+                
+            except Exception as e:
+                st.error(f"Prediction failed: {e}")
+                import traceback
+                st.text(traceback.format_exc())
 
-        except Exception as e:
-            st.error(f"処理中にエラーが発生しました: {e}")
-            st.exception(e)
+# === LOTO 6 TAB ===
+with tabs[1]:
+    st.header("Loto 6 Prediction")
+    
+    col1, col2 = st.columns([1, 1])
+    
+    with col1:
+        st.subheader("1. データの更新")
+        if st.button("最新データを取得＆学習 (Loto6)"):
+            with st.status("データ更新プロセスを実行中...", expanded=True) as status:
+                st.write("Fetching latest data from Rakuten...")
+                scrape_script = os.path.join(ROOT_DIR, 'tools', 'scrape_loto6_rakuten.py')
+                try:
+                    res = subprocess.run([PY, scrape_script], capture_output=True, text=True)
+                    st.code(res.stdout)
+                    st.write("✅ Scraping completed.")
+                except Exception as e:
+                    st.error(f"Error running scraper: {e}")
+
+                st.write("Running internal model learning...")
+                try:
+                    # Get latest number from DB
+                    conn = get_db_connection()
+                    cur = conn.cursor()
+                    cur.execute("SELECT numbers, bonus_number, draw_number FROM loto6_draws ORDER BY draw_date DESC LIMIT 1")
+                    row = cur.fetchone()
+                    conn.close()
+                    
+                    if row:
+                        nums_str = row[0] # "01,02,..."
+                        bonus = str(row[1])
+                        draw_n = str(row[2])
+                        nums_clean = nums_str.replace(',', '').replace(' ', '')
+                        
+                        st.write(f"Latest: {nums_str} (Bonus: {bonus})")
+                        
+                        learn_script = os.path.join(ROOT_DIR, 'loto6', 'learn_from_predictions.py')
+                        cmd = [PY, learn_script, nums_clean, bonus, draw_n]
+                        res_learn = subprocess.run(cmd, capture_output=True, text=True)
+                        st.code(res_learn.stdout)
+                        st.write("✅ Learning completed.")
+                    else:
+                        st.warning("No data found.")
+                        
+                except Exception as e:
+                    st.error(f"Error during learning: {e}")
+                
+                status.update(label="データ更新完了！", state="complete", expanded=False)
+
+    with col2:
+        st.subheader("2. AI予測の実行")
+        if st.button("アンサンブル予測を実行 (Loto6 Predict)"):
+            with st.spinner("10+個のモデルで計算中... (LightGBM含む)"):
+                try:
+                    # Capture stdout to show logs?
+                    # run_ultimate_loto6_prediction prints a lot.
+                    # We can't easily capture print output in Streamlit unless we redirect stdout.
+                    # For now just run it.
+                    
+                    df_res = run_ultimate_loto6_prediction(top_n=50)
+                    
+                    if df_res is not None and not df_res.empty:
+                        st.balloons()
+                        st.success(f"予測完了！ (Candidates: {len(df_res)})")
+                        
+                        st.subheader("🏆 Top Predictions")
+                        
+                        # Add stars column for display
+                        def get_stars(score):
+                            if score >= 5.0: return "★★★★★"
+                            if score >= 4.0: return "★★★★☆"
+                            if score >= 3.0: return "★★★☆☆"
+                            if score >= 2.0: return "★★☆☆☆"
+                            return "★☆☆☆☆"
+                        
+                        df_display = df_res.copy()
+                        df_display['Recommends'] = df_display['score'].apply(get_stars)
+                        # Reorder
+                        cols = ['Recommends', 'score', 'numbers']
+                        df_display = df_display[cols]
+                        
+                        st.dataframe(df_display.head(20), use_container_width=True)
+                        
+                        st.caption("※ 上位の組み合わせほど、複数のモデル（統計＋AI）が強く推奨しています。")
+                        
+                    else:
+                        st.error("予測結果が空でした。")
+                        
+                except Exception as e:
+                    st.error(f"Loto6 Prediction Error: {e}")
+                    import traceback
+                    st.text(traceback.format_exc())
+
+# === HISTORY TAB ===
+with tabs[2]:
+    st.header("予測履歴と当選確認")
+    
+    st.subheader("Numbers 4 最新データ")
+    df_n4 = load_n4_draws()
+    st.dataframe(df_n4, use_container_width=True)
     
     st.divider()
+    
+    st.subheader("Loto 6 最新データ")
+    df_l6 = load_loto6_draws()
+    st.dataframe(df_l6, use_container_width=True)
+    
+    # Simple Hit Check Logic could be added here similar to previous app
+    # For now, just showing raw data is a good start.
 
-    # Prediction Section
-    if st.button("予測を実行"):
-        st.info("アンサンブル予測を開始します。これには数分かかることがあります...")
-
-        progress_bar = st.progress(0)
-        status_text = st.empty()
-
-        def update_progress(p: float, msg: str):
-            """Callback to update Streamlit progress bar."""
-            progress_bar.progress(int(p * 100))
-            status_text.text(msg)
-
-        try:
-            # Initialize status
-            update_progress(0, "予測プロセスを開始しています...")
-            
-            prediction_df, _ = generate_ensemble_prediction(progress_callback=update_progress)
-            
-            update_progress(1.0, "予測が完了しました！")
-            # Keep success message for a bit before clearing
-            st.success("予測が完了しました！")
-            progress_bar.empty()
-            status_text.empty()
-
-            st.subheader("予測結果")
-            st.write(f"予測実行日時: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}")
-
-            st.write("予測結果のカラム一覧:", list(prediction_df.columns))
-
-            if prediction_df is not None and not prediction_df.empty:
-                # Display results in a modern way
-                num_predictions = len(prediction_df)
-                cols = st.columns(num_predictions)
-                # for i, row in prediction_df.iterrows():
-                #     with cols[i]:
-                #         st.metric(
-                #             label=f"予測 {i+1}",
-                #             value="(カラム名調査中)",
-                #             help="(カラム名調査中)"
-                #         )
-                
-                st.caption("詳細な予測の内訳:")
-                st.dataframe(prediction_df, use_container_width=True)
-            else:
-                st.warning("予測結果を生成できませんでした。")
-
-        except Exception as e:
-            st.error(f"予測中にエラーが発生しました: {e}")
-            st.exception(e) # show traceback
-
-    st.divider()
-
-    # KPIs
-    st.header("📈 過去の予測パフォーマンス")
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.metric("対象回数", draws_df["draw_number"].nunique() if not draws_df.empty else 0)
-    with col2:
-        st.metric("予測件数", int(filtered.shape[0]))
-    with col3:
-        straight_hits = int((filtered["hit_type"] == "straight").sum()) if not filtered.empty else 0
-        st.metric("ストレート的中", straight_hits)
-    with col4:
-        box_hits = int((filtered["hit_type"] == "box").sum()) if not filtered.empty else 0
-        st.metric("ボックス的中", box_hits)
-
-    # Per-draw table
-    st.subheader("回ごとの予測一覧")
-    if filtered.empty:
-        st.info("表示できるデータがありません。フィルターを見直してください。")
-    else:
-        # Show most recent first
-        to_show = filtered.sort_values(["draw_number", "rank"], ascending=[False, True])[
-            [
-                "draw_number",
-                "numbers_str",
-                "rank",
-                "predicted_number_str",
-                "hit_type",
-                "model",
-                "created_at",
-            ]
-        ]
-        to_show = to_show.rename(
-            columns={
-                "numbers_str": "当選番号",
-                "draw_number": "回",
-                "predicted_number_str": "予測番号",
-                "hit_type": "ヒット",
-                "model": "モデル",
-                "created_at": "作成時刻",
-                "rank": "順位",
-            }
-        )
-        st.dataframe(to_show, use_container_width=True, hide_index=True)
-
-    # Aggregated hits per draw (chart)
-    st.subheader("回ごとの的中数")
-    if not filtered.empty:
-        agg = (
-            filtered.assign(hit=lambda d: d["hit_type"].isin(["straight", "box"]).astype(int))
-            .groupby("draw_number")["hit"]
-            .sum()
-            .reset_index()
-            .sort_values("draw_number")
-        )
-        agg = agg.rename(columns={"draw_number": "回", "hit": "的中数"})
-        st.bar_chart(agg.set_index("回"))
-
-    st.caption("データは PostgreSQL の numbers4_draws / numbers4_predictions_log を利用しています。created_at 以降で最初の抽選回に予測を割り当てて比較しています。")
-
-with tabs[1]:
-    # --- ロト6タブ ---
-    st.header("🔮 最新の当選番号を予測する (ロト6)")
-
-    # --- サイドバー ---
-    st.sidebar.header("ロト6フィルター")
-    last_n_loto6 = st.sidebar.slider("表示する直近回数 (ロト6)", min_value=10, max_value=500, value=100, step=10)
-    # sources_filter_loto6 = st.sidebar.multiselect("ソース(source) (ロト6)", [])
-    # label_query_loto6 = st.sidebar.text_input("ラベルに含む文字列 (ロト6)", "")
-
-    # データロード
-    with st.spinner("ロト6データ読込中..."):
-        draws_df_loto6 = load_loto6_draws(limit=last_n_loto6)
-        preds_df_loto6 = load_loto6_predictions()
-        mapped_loto6 = map_loto6_predictions_to_draws(draws_df_loto6, preds_df_loto6)
-        filtered_loto6 = compute_loto6_hits(mapped_loto6)
-
-    def compute_loto6_hits(mapped: pd.DataFrame) -> pd.DataFrame:
-        if mapped.empty:
-            return mapped
-        mapped = mapped.sort_values(["draw_number", "created_at_dt", "id"]).copy()
-        mapped["rank"] = mapped.groupby("draw_number").cumcount() + 1
-        def hit_type_row(row) -> str:
-            p = row["predicted_number_str"]
-            a = row["numbers_str"]
-            return "hit" if p == a else "miss"
-        mapped["hit_type"] = mapped.apply(hit_type_row, axis=1)
-        mapped["model"] = mapped.apply(
-            lambda r: (r["source"] or "unknown") + (f" / {r['label']}" if isinstance(r["label"], str) and r["label"] else ""),
-            axis=1,
-        )
-        return mapped
-
-    # --- サイドバー ---
-    st.sidebar.header("ロト6フィルター")
-    last_n_loto6 = st.sidebar.slider("表示する直近回数 (ロト6)", min_value=10, max_value=500, value=100, step=10)
-    sources_filter_loto6 = st.sidebar.multiselect("ソース(source) (ロト6)", [])
-    label_query_loto6 = st.sidebar.text_input("ラベルに含む文字列 (ロト6)", "")
-
-    # データロード
-    with st.spinner("ロト6データ読込中..."):
-        draws_df_loto6 = load_loto6_draws(limit=last_n_loto6)
-        preds_df_loto6 = load_loto6_predictions()
-        mapped_loto6 = map_loto6_predictions_to_draws(draws_df_loto6, preds_df_loto6)
-        mapped_loto6 = compute_loto6_hits(mapped_loto6)
-
-    draw_numbers_available_loto6 = mapped_loto6["draw_number"].unique() if not mapped_loto6.empty else []
-    draw_number_filter_loto6 = st.sidebar.selectbox(
-        "回号で絞り込み (ロト6)",
-        options=["(全件)"] + [str(n) for n in sorted(draw_numbers_available_loto6, reverse=True)],
-        index=0
-    )
-
-    # フィルター適用
-    filtered_loto6 = mapped_loto6.copy()
-    if sources_filter_loto6:
-        filtered_loto6 = filtered_loto6[filtered_loto6["source"].isin(sources_filter_loto6)]
-    if label_query_loto6:
-        filtered_loto6 = filtered_loto6[filtered_loto6["label"].fillna("").str.contains(label_query_loto6, case=False, na=False)]
-    if draw_number_filter_loto6 != "(全件)":
-        filtered_loto6 = filtered_loto6[filtered_loto6["draw_number"] == int(draw_number_filter_loto6)]
-
-    # --- 予測ボタン ---
-    st.subheader("ロト6予測ボタン")
-    if st.button("ロト6予測を実行"):
-        from loto6.advanced_predict_loto6 import predict
-        with st.spinner("ロト6予測を計算中..."):
-            try:
-                result = predict()
-                st.write(result)  # デバッグ用: 予測結果の中身を表示
-                if not result or not all(k in result for k in ["hot", "balanced", "overdue", "pair"]):
-                    st.warning("予測結果がありませんでした。CSVファイルやロジックをご確認ください。")
-                else:
-                    st.success("予測が完了しました！")
-                    st.subheader("予測結果一覧")
-                    labels = ["頻出/ホット", "バランス", "未出現/オーバーデュ", "ペア相性"]
-                    keys = ["hot", "balanced", "overdue", "pair"]
-                    df_result = pd.DataFrame({
-                        "視点": labels,
-                        "予測番号": [' '.join(f"{n:02d}" for n in result[k]) for k in keys],
-                        "補足": [f"{labels[i]}視点の予測セット" for i in range(4)]
-                    })
-                    st.dataframe(df_result, use_container_width=True, hide_index=True)
-                    st.caption(f"偶奇バランスTop: {result.get('eo_summary','-')}")
-                    if 'sum_range' in result:
-                        smin, smax, mu = result['sum_range']
-                        st.caption(f"合計値レンジ: {smin}〜{smax} (平均≈{mu:.1f})")
-            except Exception as e:
-                st.error(f"ロト6予測中にエラーが発生しました: {e}")
-                st.exception(e)
-
-    st.divider()
-
-    # --- KPIs ---
-    st.header("📈 過去の予測パフォーマンス (ロト6)")
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("対象回数", draws_df_loto6["draw_number"].nunique() if not draws_df_loto6.empty else 0)
-    with col2:
-        st.metric("予測件数", int(filtered_loto6.shape[0]))
-    with col3:
-        hits = int((filtered_loto6["hit_type"] == "hit").sum()) if not filtered_loto6.empty else 0
-        st.metric("的中数", hits)
-
-    # --- テーブル ---
-    st.subheader("回ごとの予測一覧 (ロト6)")
-    if filtered_loto6.empty:
-        st.info("表示できるデータがありません。フィルターを見直してください。")
-    else:
-        to_show_loto6 = filtered_loto6.sort_values(["draw_number", "rank"], ascending=[False, True])[
-            [
-                "draw_number",
-                "numbers_str",
-                "rank",
-                "predicted_number_str",
-                "hit_type",
-                "model",
-                "created_at",
-            ]
-        ]
-        to_show_loto6 = to_show_loto6.rename(
-            columns={
-                "numbers_str": "当選番号",
-                "draw_number": "回",
-                "predicted_number_str": "予測番号",
-                "hit_type": "ヒット",
-                "model": "モデル",
-                "created_at": "作成時刻",
-                "rank": "順位",
-            }
-        )
-        st.dataframe(to_show_loto6, use_container_width=True, hide_index=True)
-
-    # --- グラフ ---
-    st.subheader("回ごとの的中数 (ロト6)")
-    if not filtered_loto6.empty:
-        agg_loto6 = (
-            filtered_loto6.assign(hit=lambda d: d["hit_type"] == "hit")
-            .groupby("draw_number")["hit"]
-            .sum()
-            .reset_index()
-            .sort_values("draw_number")
-        )
-        agg_loto6 = agg_loto6.rename(columns={"draw_number": "回", "hit": "的中数"})
-        st.bar_chart(agg_loto6.set_index("回"))
-
-    st.caption("データは PostgreSQL の loto6_draws / loto6_predictions_log を利用しています。created_at 以降で最初の抽選回に予測を割り当てて比較しています。")
+st.sidebar.info("Developed by Kubocchi Million Pocket Project")

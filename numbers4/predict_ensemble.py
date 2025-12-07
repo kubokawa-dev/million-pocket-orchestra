@@ -23,6 +23,7 @@ from numbers4.prediction_logic import (
     predict_from_digit_continuation_model_n4, # v10.0
     predict_from_large_change_model_n4,       # v10.0
     predict_from_realistic_frequency_model_n4,# v10.0
+    predict_from_lightgbm,                    # LightGBM
     aggregate_predictions,
     apply_diversity_penalty
 )
@@ -150,8 +151,13 @@ def generate_ensemble_prediction(progress_callback=None):
     predictions_realistic = predict_from_realistic_frequency_model_n4(all_draws_df, NUM_PREDICTIONS_REALISTIC_FREQUENCY)
     report_progress(0.85, f"- [v10] 現実的頻度モデル完了: {len(predictions_realistic)}件")
 
+    # 10. LightGBMモデル
+    report_progress(0.88, "- [ML] LightGBMモデルで予測中...")
+    predictions_lgbm = predict_from_lightgbm(all_draws_df, limit=20)
+    report_progress(0.9, f"- [ML] LightGBMモデル完了: {len(predictions_lgbm)}件")
+
     # --- アンサンブル集計 ---
-    report_progress(0.9, "全モデルの予測を統合・集計中...")
+    report_progress(0.92, "全モデルの予測を統合・集計中...")
     
     ensemble_weights = {
         # v10.0 最優先モデル（根本的改善）
@@ -170,6 +176,7 @@ def generate_ensemble_prediction(progress_callback=None):
         # 補助モデル（低重み）
         'basic_stats': 2.0,              # 基本統計（頻度分析）
         'ml_model_new': 1.0,             # 機械学習
+        'lightgbm': 30.0,                # LightGBM (新主力モデル)
     }
     
     predictions_by_model = {
@@ -182,7 +189,9 @@ def generate_ensemble_prediction(progress_callback=None):
         'digit_repetition': predictions_repetition,
         'digit_continuation': predictions_continuation,
         'large_change': predictions_large_change,
-        'realistic_frequency': predictions_realistic
+        'realistic_frequency': predictions_realistic,
+        # ML
+        'lightgbm': predictions_lgbm
     }
 
     # 重み付けして集計（スコア正規化を有効化）

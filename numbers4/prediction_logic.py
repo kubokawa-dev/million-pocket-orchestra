@@ -4,6 +4,7 @@ from collections import Counter
 import json
 import os
 from itertools import product
+from numbers4.prediction_logic_lgbm import predict_from_lightgbm # LightGBM
 # from numbers4.predict_numbers_with_model import predict_top_k as _predict_top_k_model  # 削除されたファイル
 
 # --- 1. predict_numbers.py からのロジック ---
@@ -63,25 +64,6 @@ def predict_from_basic_stats(df: pd.DataFrame, limit: int = 5):
     
     return list(predictions)[:limit]
 
-# --- 2. advanced_predict_numbers4.py からのロジック ---
-def predict_from_advanced_heuristics(df: pd.DataFrame, limit: int = 5):
-    """
-    高度なヒューリスティック（合計値、偶数奇数、ペアの頻度）に基づいて予測を生成する。
-    元々の advanced_predict_numbers4.py のロジック。
-    """
-    # コピーして安全に列を追加（SettingWithCopyWarning 回避）
-    df = df.copy()
-    df['sum'] = df[['d1', 'd2', 'd3', 'd4']].sum(axis=1)
-    df['even_count'] = df[['d1', 'd2', 'd3', 'd4']].apply(lambda row: sum(x % 2 == 0 for x in row), axis=1)
-    
-    # ペアの頻度を計算
-    pairs = []
-    for _, row in df.iterrows():
-        for i in range(3):
-            pairs.append(tuple(sorted((row[f'd{i+1}'], row[f'd{i+2}']))) )
-
-    pair_counts = Counter(pairs)
-    
 def calculate_heuristic_score(num_str: str, sum_mode: float, even_count_mode: float, pair_counts: Counter):
     """指定された番号文字列のヒューリスティックスコアを計算する"""
     n1, n2, n3, n4 = [int(d) for d in num_str]
@@ -628,117 +610,3 @@ def predict_from_realistic_frequency_model_n4(df: pd.DataFrame, limit: int = 400
     
     final_predictions = sorted(predictions_dict.items(), key=lambda x: -x[1])
     return [pred for pred, _ in final_predictions[:limit]]
-
-
-# --- 究極モデル（第6844回(0017)のパターンを捉える） ---
-
-def predict_from_zero_heavy_model(df: pd.DataFrame, limit: int = 300):
-    """
-    0重視モデル - 0が複数個出現するパターンを最優先
-    第6844回(0017)のように0が2個以上出現
-    """
-    predictions_dict = {}
-    latest_number = "".join(map(str, df.iloc[-1][['d1', 'd2', 'd3', 'd4']].values))
-    
-    # 連続する00パターン（最優先）
-    for pos in range(3):
-        for other1 in range(1, 10):
-            for other2 in range(1, 10):
-                if pos == 0:
-                    num_str = f"00{other1}{other2}"
-                elif pos == 1:
-                    num_str = f"{other1}00{other2}"
-                else:
-                    num_str = f"{other1}{other2}00"
-                
-                if num_str != latest_number:
-                    predictions_dict[num_str] = predictions_dict.get(num_str, 0) + 50.0
-    
-    # 0が2個（非連続）
-    for d1 in range(10):
-        for d2 in range(10):
-            for d3 in range(10):
-                for d4 in range(10):
-                    digits = [d1, d2, d3, d4]
-                    if digits.count(0) == 2:
-                        num_str = f"{d1}{d2}{d3}{d4}"
-                        if num_str != latest_number and '00' not in num_str:
-                            predictions_dict[num_str] = predictions_dict.get(num_str, 0) + 35.0
-    
-    final_predictions = sorted(predictions_dict.items(), key=lambda x: -x[1])
-    return [pred for pred, _ in final_predictions[:limit]]
-
-
-def predict_from_first_digit_continuation_ultimate(df: pd.DataFrame, limit: int = 250):
-    """
-    1桁目継続モデル（究極版） - 1桁目の数字が連続する可能性を最重視
-    第6843回(0523) → 第6844回(0017): 1桁目の0が連続
-    """
-    predictions_dict = {}
-    latest_number = "".join(map(str, df.iloc[-1][['d1', 'd2', 'd3', 'd4']].values))
-    first_digit = df.iloc[-1]['d1']
-    
-    for d2 in range(10):
-        for d3 in range(10):
-            for d4 in range(10):
-                num_str = f"{first_digit}{d2}{d3}{d4}"
-                if num_str != latest_number:
-                    predictions_dict[num_str] = predictions_dict.get(num_str, 0) + 40.0
-    
-    final_predictions = sorted(predictions_dict.items(), key=lambda x: -x[1])
-    return [pred for pred, _ in final_predictions[:limit]]
-
-
-def predict_from_low_sum_model(df: pd.DataFrame, limit: int = 300):
-    """
-    低合計値モデル - 極端に小さい合計値（5-12）を重視
-    第6844回(0017): 合計8
-    """
-    predictions_dict = {}
-    latest_number = "".join(map(str, df.iloc[-1][['d1', 'd2', 'd3', 'd4']].values))
-    
-    target_sums = list(range(5, 13))
-    
-    for target_sum in target_sums:
-        for d1 in range(10):
-            for d2 in range(10):
-                for d3 in range(10):
-                    d4 = target_sum - d1 - d2 - d3
-                    if 0 <= d4 <= 9:
-                        num_str = f"{d1}{d2}{d3}{d4}"
-                        if num_str != latest_number:
-                            score = (13 - target_sum) * 5
-                            predictions_dict[num_str] = predictions_dict.get(num_str, 0) + score
-    
-    final_predictions = sorted(predictions_dict.items(), key=lambda x: -x[1])
-    return [pred for pred, _ in final_predictions[:limit]]
-
-
-def predict_from_small_digits_model(df: pd.DataFrame, limit: int = 300):
-    """
-    小数字重視モデル - 0,1,2,3の小さい数字を多く含むパターン
-    第6844回(0017): 0,0,1,7 → 小さい数字が3個
-    """
-    predictions_dict = {}
-    latest_number = "".join(map(str, df.iloc[-1][['d1', 'd2', 'd3', 'd4']].values))
-    
-    small_digits = [0, 1, 2, 3]
-    
-    # 4桁全て小さい数字
-    for d1, d2, d3, d4 in product(small_digits, repeat=4):
-        num_str = f"{d1}{d2}{d3}{d4}"
-        if num_str != latest_number:
-            predictions_dict[num_str] = predictions_dict.get(num_str, 0) + 30.0
-    
-    # 3桁が小さい数字
-    for d1 in small_digits:
-        for d2 in small_digits:
-            for d3 in small_digits:
-                for d4 in range(4, 10):
-                    num_str = f"{d1}{d2}{d3}{d4}"
-                    if num_str != latest_number:
-                        predictions_dict[num_str] = predictions_dict.get(num_str, 0) + 20.0
-    
-    final_predictions = sorted(predictions_dict.items(), key=lambda x: -x[1])
-    return [pred for pred, _ in final_predictions[:limit]]
-
