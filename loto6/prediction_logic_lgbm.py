@@ -282,3 +282,11 @@ def predict_from_lightgbm(df: pd.DataFrame, limit: int = 20):
         traceback.print_exc()
         return []
 
+
+
+
+
+
+
+
+

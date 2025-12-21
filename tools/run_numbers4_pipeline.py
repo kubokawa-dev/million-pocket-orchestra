@@ -79,6 +79,38 @@ def main():
     else:
         print('[error] ensemble predictor not found')
 
+    # 3) 保存された予測結果の確認
+    print("\n[Step 3] 保存された予測結果を確認中...")
+    try:
+        db_url = os.environ.get('DATABASE_URL')
+        if db_url and '?schema' in db_url:
+            db_url = db_url.split('?schema')[0]
+        
+        conn = psycopg2.connect(db_url)
+        cur = conn.cursor()
+        
+        # 最新の予測結果を取得
+        cur.execute("""
+            SELECT id, target_draw_number, created_at, predictions_count
+            FROM numbers4_ensemble_predictions 
+            ORDER BY created_at DESC 
+            LIMIT 1
+        """)
+        row = cur.fetchone()
+        conn.close()
+        
+        if row:
+            pred_id, target_draw, created_at, pred_count = row
+            print(f"✅ 予測結果をDBに保存しました:")
+            print(f"   - 予測ID: {pred_id}")
+            print(f"   - 対象抽選回: 第{target_draw}回" if target_draw else "   - 対象抽選回: 未設定")
+            print(f"   - 保存日時: {created_at}")
+            print(f"   - 予測候補数: {pred_count}件")
+        else:
+            print("⚠️  予測結果が見つかりませんでした。保存に失敗した可能性があります。")
+    except Exception as e:
+        print(f"⚠️  予測結果の確認中にエラーが発生しました: {e}")
+
     print("\n✅ パイプライン完了")
 
 
