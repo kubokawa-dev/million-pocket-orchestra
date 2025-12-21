@@ -203,6 +203,7 @@ def generate_ensemble_prediction(progress_callback=None):
     report_progress(1.0, "予測完了！")
     
     # 予測履歴をデータベースに保存
+    print("\n💾 予測結果をデータベースに保存中...")
     try:
         # モデル状態を読み込み
         model_state = None
@@ -212,16 +213,19 @@ def generate_ensemble_prediction(progress_callback=None):
                 model_state = json.load(f)
         
         # 履歴を保存
-        save_ensemble_prediction(
+        prediction_id = save_ensemble_prediction(
             predictions_df=final_predictions_df,
             ensemble_weights=ensemble_weights,
             predictions_by_model=predictions_by_model,
             model_state=model_state,
             notes="v10.0 Update: Integration of Digit Repetition, Continuation, Large Change, and Realistic Frequency models."
         )
+        print(f"✅ 予測履歴の保存が完了しました (ID: {prediction_id})")
     except Exception as e:
         # 履歴保存に失敗しても予測結果は返す
-        print(f"予測履歴の保存に失敗しました: {e}")
+        import traceback
+        print(f"❌ 予測履歴の保存に失敗しました: {e}")
+        print(f"   詳細: {traceback.format_exc()}")
     
     return final_predictions_df, ensemble_weights
 
@@ -341,6 +345,34 @@ def run_ensemble_prediction_cli():
     
     # 予測の実行（コールバックでコンソールに進捗表示）
     final_predictions_df, ensemble_weights = generate_ensemble_prediction(progress_callback=print)
+
+    # --- DB保存結果の確認 ---
+    print("\n" + "="*60)
+    print("💾 データベース保存状況")
+    print("="*60)
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT id, target_draw_number, created_at, predictions_count
+            FROM numbers4_ensemble_predictions 
+            ORDER BY created_at DESC 
+            LIMIT 1
+        """)
+        row = cur.fetchone()
+        conn.close()
+        
+        if row:
+            pred_id, target_draw, created_at, pred_count = row
+            print(f"✅ 予測結果をDBに保存しました:")
+            print(f"   - 予測ID: {pred_id}")
+            print(f"   - 対象抽選回: 第{target_draw}回" if target_draw else "   - 対象抽選回: 未設定")
+            print(f"   - 保存日時: {created_at}")
+            print(f"   - 予測候補数: {pred_count}件")
+        else:
+            print("⚠️  予測結果が見つかりませんでした。")
+    except Exception as e:
+        print(f"⚠️  保存結果の確認中にエラーが発生しました: {e}")
 
     # --- 結果表示 ---
     print("\n" + "="*40)

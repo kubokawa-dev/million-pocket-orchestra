@@ -48,6 +48,26 @@ def save_model_weights(weights: Dict[str, float], metadata: dict = None):
         json.dump(data, f, indent=2, ensure_ascii=False)
 
 
+def is_box_match(pred: str, actual: str) -> bool:
+    """ボックス一致（順不同で数字が全て一致）をチェック"""
+    return sorted(list(pred)) == sorted(list(actual))
+
+
+def count_digit_matches(pred: str, actual: str) -> int:
+    """何桁の数字が一致しているか（順不同）をカウント"""
+    pred_counter = {}
+    actual_counter = {}
+    for d in pred:
+        pred_counter[d] = pred_counter.get(d, 0) + 1
+    for d in actual:
+        actual_counter[d] = actual_counter.get(d, 0) + 1
+    
+    matches = 0
+    for digit, count in actual_counter.items():
+        matches += min(count, pred_counter.get(digit, 0))
+    return matches
+
+
 def update_weights_online(
     current_weights: Dict[str, float],
     predictions_by_model: Dict[str, List[str]],
@@ -57,6 +77,12 @@ def update_weights_online(
 ) -> Dict[str, float]:
     """
     オンライン学習で重みを更新
+    
+    改善版v2.0: ボックス一致と部分一致も評価に追加！
+    - ストレート一致: 最大報酬
+    - ボックス一致: 70%の報酬
+    - 3桁一致: 40%の報酬
+    - 2桁一致: 10%の報酬
     
     Args:
         current_weights: 現在の重み
@@ -74,16 +100,40 @@ def update_weights_online(
         if model_name not in new_weights:
             continue
         
-        # 正解が予測リストの何位にあるか
-        if actual_number in predictions[:top_k]:
-            rank = predictions.index(actual_number) + 1
-            # 順位が高いほど報酬が大きい（1位=1.0, 50位=0.02）
-            reward = (top_k - rank + 1) / top_k
-            # 重みを増加
-            new_weights[model_name] += learning_rate * reward
+        best_reward = 0.0
+        
+        for i, pred in enumerate(predictions[:top_k]):
+            rank = i + 1
+            base_reward = (top_k - rank + 1) / top_k
+            
+            # 1. ストレート一致（完全一致）
+            if pred == actual_number:
+                reward = base_reward * 1.0  # 100%報酬
+                best_reward = max(best_reward, reward)
+                break  # 完全一致が見つかったらループ終了
+            
+            # 2. ボックス一致（順不同で4桁全て一致）
+            elif is_box_match(pred, actual_number):
+                reward = base_reward * 0.7  # 70%報酬
+                best_reward = max(best_reward, reward)
+                # 続けて探索（もっと良い一致があるかも）
+            
+            # 3. 部分一致（3桁または2桁が一致）
+            else:
+                digit_matches = count_digit_matches(pred, actual_number)
+                if digit_matches >= 3:
+                    reward = base_reward * 0.4  # 3桁一致: 40%報酬
+                    best_reward = max(best_reward, reward)
+                elif digit_matches >= 2:
+                    reward = base_reward * 0.1  # 2桁一致: 10%報酬
+                    best_reward = max(best_reward, reward)
+        
+        # 報酬に基づいて重みを更新
+        if best_reward > 0:
+            new_weights[model_name] += learning_rate * best_reward
         else:
-            # 予測できなかった場合、重みを減少
-            penalty = learning_rate * 0.5
+            # 全く当たらなかった場合、ペナルティ
+            penalty = learning_rate * 0.3  # ペナルティを少し軽減
             new_weights[model_name] = max(0.1, new_weights[model_name] - penalty)
     
     # 正規化（合計を元の合計に保つ）
@@ -121,22 +171,45 @@ def evaluate_and_update(
         print(f"{'='*60}")
         print(f"正解: {actual_number}")
     
-    # 各モデルの順位を評価
-    model_ranks = {}
+    # 各モデルの順位を評価（ストレート/ボックス/部分一致）
+    model_results = {}
     for model_name, predictions in predictions_by_model.items():
-        if actual_number in predictions:
-            rank = predictions.index(actual_number) + 1
-            model_ranks[model_name] = rank
-        else:
-            model_ranks[model_name] = None
+        result = {'straight_rank': None, 'box_rank': None, 'partial_rank': None, 'partial_count': 0}
+        
+        for i, pred in enumerate(predictions):
+            rank = i + 1
+            
+            # ストレート一致
+            if pred == actual_number and result['straight_rank'] is None:
+                result['straight_rank'] = rank
+            
+            # ボックス一致
+            elif is_box_match(pred, actual_number) and result['box_rank'] is None:
+                result['box_rank'] = rank
+            
+            # 部分一致（3桁以上）
+            elif result['partial_rank'] is None:
+                matches = count_digit_matches(pred, actual_number)
+                if matches >= 3:
+                    result['partial_rank'] = rank
+                    result['partial_count'] = matches
+        
+        model_results[model_name] = result
     
     if verbose:
         print(f"\n【各モデルの予測順位】")
-        for model_name, rank in sorted(model_ranks.items(), key=lambda x: (x[1] is None, x[1] or 999)):
-            if rank:
-                print(f"  {model_name:30s}: {rank:3d}位")
+        for model_name, result in sorted(model_results.items(), 
+                                          key=lambda x: (x[1]['straight_rank'] or 999, 
+                                                        x[1]['box_rank'] or 999, 
+                                                        x[1]['partial_rank'] or 999)):
+            if result['straight_rank']:
+                print(f"  {model_name:30s}: 🎯 {result['straight_rank']:3d}位 (ストレート!)")
+            elif result['box_rank']:
+                print(f"  {model_name:30s}: 📦 {result['box_rank']:3d}位 (ボックス!)")
+            elif result['partial_rank']:
+                print(f"  {model_name:30s}: 🎲 {result['partial_rank']:3d}位 ({result['partial_count']}桁一致)")
             else:
-                print(f"  {model_name:30s}: 予測外")
+                print(f"  {model_name:30s}: ❌ 予測外")
     
     # 重みを更新
     new_weights = update_weights_online(current_weights, predictions_by_model, actual_number)
@@ -153,7 +226,7 @@ def evaluate_and_update(
     # 保存
     metadata = {
         'actual_number': actual_number,
-        'model_ranks': model_ranks
+        'model_results': model_results
     }
     save_model_weights(new_weights, metadata)
     

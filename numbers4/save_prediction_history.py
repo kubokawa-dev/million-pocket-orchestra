@@ -154,16 +154,20 @@ def save_ensemble_prediction(
         
         conn.commit()
         
-        print(f"予測履歴を保存しました (ID: {ensemble_prediction_id})")
-        print(f"   対象抽選回: 第{target_draw_number}回")
-        print(f"   予測候補数: {len(predictions_df)}件")
-        print(f"   保存した候補: {min(50, len(predictions_df))}件")
+        print(f"\n✅ 予測履歴をデータベースに保存しました")
+        print(f"   📝 予測ID: {ensemble_prediction_id}")
+        print(f"   🎯 対象抽選回: 第{target_draw_number}回" if target_draw_number else "   🎯 対象抽選回: 未設定")
+        print(f"   📊 予測候補数: {len(predictions_df)}件")
+        print(f"   💾 保存した候補: {min(50, len(predictions_df))}件")
         
         return ensemble_prediction_id
         
     except Exception as e:
         conn.rollback()
-        print(f"予測履歴の保存に失敗: {e}")
+        import traceback
+        print(f"\n❌ 予測履歴の保存に失敗しました")
+        print(f"   エラー: {e}")
+        print(f"   詳細: {traceback.format_exc()}")
         raise
     finally:
         conn.close()
@@ -203,15 +207,29 @@ def update_prediction_result(
         # 的中判定
         hit_status = 'miss'
         hit_count = 0
+        is_box = False
         
-        # 完全一致チェック
+        # 実際の当選番号のソート（ボックス判定用）
+        actual_sorted = sorted(list(actual_numbers))
+        
+        # 完全一致（ストレート）チェック
         for pred in top_predictions:
-            if pred['number'] == actual_numbers:
+            pred_num = pred['number']
+            if pred_num == actual_numbers:
                 hit_status = 'exact'
                 hit_count = 4
+                is_box = True
                 break
         
-        # 部分一致チェック（完全一致でない場合）
+        # ボックスチェック（ストレートでない場合）
+        if hit_status == 'miss':
+            for pred in top_predictions:
+                pred_num = pred['number']
+                if sorted(list(pred_num)) == actual_sorted:
+                    is_box = True
+                    break
+        
+        # 部分一致チェック
         if hit_status == 'miss':
             for pred in top_predictions:
                 pred_num = pred['number']
@@ -220,7 +238,11 @@ def update_prediction_result(
                 if matches > hit_count:
                     hit_count = matches
             
-            if hit_count > 0:
+            # ボックスまたは部分一致の判定
+            if is_box:
+                hit_status = 'box'
+                hit_count = 4
+            elif hit_count > 0:
                 hit_status = 'partial'
         
         # 結果を更新

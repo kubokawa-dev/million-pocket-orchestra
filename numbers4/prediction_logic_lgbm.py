@@ -7,6 +7,14 @@ from datetime import datetime
 def create_features(df: pd.DataFrame):
     """
     Numbers4の履歴データから特徴量を作成する
+    
+    v2.0 強化版：ボックス的中率向上のため、以下の特徴量を追加
+    - ペア出現頻度
+    - 数字の偏り（ユニーク数、最大繰り返し数）
+    - 連続性（前回との差分）
+    - 合計値のカテゴリ
+    - 偶数・奇数パターン
+    - 数字ごとの出現サイクル
     """
     df = df.copy()
     df['date'] = pd.to_datetime(df['draw_date'])
@@ -18,15 +26,18 @@ def create_features(df: pd.DataFrame):
     df['d3'] = df['numbers'].str[2].astype(int)
     df['d4'] = df['numbers'].str[3].astype(int)
     
+    # ========== 基本特徴量 ==========
     # Date features
     df['year'] = df['date'].dt.year
     df['month'] = df['date'].dt.month
     df['day'] = df['date'].dt.day
     df['dayofweek'] = df['date'].dt.dayofweek
     df['dayofyear'] = df['date'].dt.dayofyear
+    df['is_monday'] = (df['dayofweek'] == 0).astype(int)
+    df['is_friday'] = (df['dayofweek'] == 4).astype(int)
     
     # Lag features (past N draws)
-    lags = [1, 2, 3, 5, 10]
+    lags = [1, 2, 3, 5, 10, 20]
     cols_to_lag = ['d1', 'd2', 'd3', 'd4']
     
     for lag in lags:
@@ -34,18 +45,88 @@ def create_features(df: pd.DataFrame):
             df[f'{col}_lag_{lag}'] = df[col].shift(lag)
     
     # Rolling statistics (past N draws)
-    windows = [5, 10, 20]
+    windows = [5, 10, 20, 50]
     for window in windows:
         for col in cols_to_lag:
             df[f'{col}_mean_{window}'] = df[col].rolling(window=window).mean()
             df[f'{col}_std_{window}'] = df[col].rolling(window=window).std()
+            df[f'{col}_min_{window}'] = df[col].rolling(window=window).min()
+            df[f'{col}_max_{window}'] = df[col].rolling(window=window).max()
             # Count of odd/even in window
-            df[f'{col}_odd_count_{window}'] = df[col].rolling(window=window).apply(lambda x: (x % 2 != 0).sum())
+            df[f'{col}_odd_count_{window}'] = df[col].rolling(window=window).apply(lambda x: (x % 2 != 0).sum(), raw=True)
     
-    # Sum of digits
+    # ========== 合計値関連 ==========
     df['sum'] = df['d1'] + df['d2'] + df['d3'] + df['d4']
     df['sum_lag_1'] = df['sum'].shift(1)
+    df['sum_lag_2'] = df['sum'].shift(2)
+    df['sum_lag_3'] = df['sum'].shift(3)
     df['sum_mean_5'] = df['sum'].rolling(5).mean()
+    df['sum_mean_10'] = df['sum'].rolling(10).mean()
+    df['sum_std_5'] = df['sum'].rolling(5).std()
+    df['sum_diff'] = df['sum'].diff()  # 前回との差分
+    
+    # 合計値のカテゴリ（低/中低/中高/高）
+    df['sum_category'] = pd.cut(df['sum'], bins=[-1, 9, 18, 27, 37], labels=[0, 1, 2, 3]).astype(float)
+    
+    # ========== NEW: ペア特徴量 ==========
+    # 隣接桁のペアID
+    df['pair_12'] = df['d1'] * 10 + df['d2']
+    df['pair_23'] = df['d2'] * 10 + df['d3']
+    df['pair_34'] = df['d3'] * 10 + df['d4']
+    df['pair_12_lag_1'] = df['pair_12'].shift(1)
+    df['pair_23_lag_1'] = df['pair_23'].shift(1)
+    df['pair_34_lag_1'] = df['pair_34'].shift(1)
+    
+    # ========== NEW: 数字の偏り特徴量 ==========
+    # ユニークな数字の数（1-4）
+    df['unique_count'] = df[['d1', 'd2', 'd3', 'd4']].apply(lambda x: len(set(x)), axis=1)
+    df['unique_count_lag_1'] = df['unique_count'].shift(1)
+    
+    # 最も多く出現する数字の回数（1-4）
+    df['max_repeat'] = df[['d1', 'd2', 'd3', 'd4']].apply(lambda x: max(Counter(x).values()), axis=1)
+    df['max_repeat_lag_1'] = df['max_repeat'].shift(1)
+    
+    # ゾロ目フラグ（4つ全部同じ）
+    df['is_quads'] = (df['unique_count'] == 1).astype(int)
+    
+    # トリプルフラグ（3つ同じ）
+    df['has_triple'] = (df['max_repeat'] >= 3).astype(int)
+    
+    # ダブルダブルフラグ（2つ×2組）
+    df['is_double_double'] = df[['d1', 'd2', 'd3', 'd4']].apply(
+        lambda x: len([c for c in Counter(x).values() if c == 2]) == 2, axis=1
+    ).astype(int)
+    
+    # ========== NEW: 連続性・差分特徴量 ==========
+    for col in cols_to_lag:
+        df[f'{col}_diff_1'] = df[col].diff(1)  # 前回との差
+        df[f'{col}_diff_2'] = df[col].diff(2)  # 2回前との差
+        df[f'{col}_abs_diff_1'] = df[col].diff(1).abs()  # 絶対差
+    
+    # 全桁の変化量合計
+    df['total_change'] = (df['d1_abs_diff_1'].fillna(0) + df['d2_abs_diff_1'].fillna(0) + 
+                          df['d3_abs_diff_1'].fillna(0) + df['d4_abs_diff_1'].fillna(0))
+    
+    # ========== NEW: 偶数・奇数パターン ==========
+    df['even_count'] = df[['d1', 'd2', 'd3', 'd4']].apply(lambda x: sum(v % 2 == 0 for v in x), axis=1)
+    df['odd_count'] = 4 - df['even_count']
+    df['even_count_lag_1'] = df['even_count'].shift(1)
+    
+    # 偶奇パターン（EEEO=3, EEOO=2, EOOO=1, OOOO=0など）
+    df['even_odd_pattern'] = df['even_count']  # シンプルに偶数の数
+    
+    # ========== NEW: 数字ごとの出現サイクル ==========
+    # 各数字(0-9)が何回前に出たか
+    for digit in range(10):
+        digit_appeared = ((df['d1'] == digit) | (df['d2'] == digit) | 
+                          (df['d3'] == digit) | (df['d4'] == digit)).astype(int)
+        # 最後に出現してからの経過回数
+        df[f'digit_{digit}_since_last'] = digit_appeared.groupby((~digit_appeared.astype(bool)).cumsum()).cumcount()
+    
+    # ========== NEW: 高低バランス ==========
+    df['high_count'] = df[['d1', 'd2', 'd3', 'd4']].apply(lambda x: sum(v >= 5 for v in x), axis=1)
+    df['low_count'] = 4 - df['high_count']
+    df['high_count_lag_1'] = df['high_count'].shift(1)
     
     # Drop rows with NaN (due to shifting/rolling)
     df_clean = df.dropna().reset_index(drop=True)
