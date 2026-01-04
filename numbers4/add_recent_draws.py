@@ -1,17 +1,22 @@
-import psycopg2
+"""
+最近の抽選結果を追加するスクリプト（SQLite版）
+"""
 import os
-from dotenv import load_dotenv
-from datetime import datetime
+import sys
 
-load_dotenv()
-db_url = os.environ.get('DATABASE_URL').split('?schema')[0]
-conn = psycopg2.connect(db_url)
-cursor = conn.cursor()
+# プロジェクトルートをパスに追加
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, project_root)
+
+from tools.utils import get_db_connection
 
 # 第6844回を追加
 new_draws = [
     (6844, '0017', '2025-10-26'),
 ]
+
+conn = get_db_connection()
+cursor = conn.cursor()
 
 if not new_draws:
     print('⚠️ new_draws が空です。実際の当選番号を追加してください。')
@@ -25,12 +30,12 @@ if not new_draws:
 else:
     for draw_number, numbers, draw_date in new_draws:
         # 既に存在するか確認
-        cursor.execute("SELECT draw_number FROM numbers4_draws WHERE draw_number = %s", (draw_number,))
+        cursor.execute("SELECT draw_number FROM numbers4_draws WHERE draw_number = ?", (draw_number,))
         if cursor.fetchone():
             print(f'第{draw_number}回は既に登録されています')
         else:
             cursor.execute(
-                "INSERT INTO numbers4_draws (draw_number, numbers, draw_date) VALUES (%s, %s, %s)",
+                "INSERT INTO numbers4_draws (draw_number, numbers, draw_date) VALUES (?, ?, ?)",
                 (draw_number, numbers, draw_date)
             )
             print(f'第{draw_number}回: {numbers} ({draw_date}) を追加しました')
@@ -53,17 +58,11 @@ if new_draws:
     print('='*60)
     
     try:
-        import sys
-        import os
-        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        if project_root not in sys.path:
-            sys.path.append(project_root)
-        
         from numbers4.online_learning import evaluate_and_update
         import pandas as pd
         
         # 最新の予測を取得（簡易版：直前のデータで予測）
-        conn = psycopg2.connect(db_url)
+        conn = get_db_connection()
         df = pd.read_sql_query("SELECT draw_date, numbers FROM numbers4_draws ORDER BY draw_date ASC", conn)
         conn.close()
         

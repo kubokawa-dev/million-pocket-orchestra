@@ -1,15 +1,20 @@
+"""
+楽天銀行ロト6スクレイパー（SQLite版）
+"""
 import os
 import re
 import csv
-import psycopg2
+import sqlite3
 import sys
 from datetime import datetime, date
 from urllib.request import urlopen, Request
-from dotenv import load_dotenv
 
-load_dotenv()
-
+# プロジェクトルートをパスに追加
 ROOT = os.path.dirname(os.path.dirname(__file__))
+sys.path.insert(0, ROOT)
+
+from tools.utils import get_db_connection, DB_PATH
+
 CSV_DIR = os.path.join(ROOT, 'loto6')
 
 HEADERS = {
@@ -20,9 +25,16 @@ HEADERS = {
 
 
 def fetch_text(url: str) -> str:
+    from urllib.error import HTTPError
     req = Request(url, headers=HEADERS)
-    with urlopen(req) as resp:
-        html = resp.read()
+    try:
+        with urlopen(req) as resp:
+            html = resp.read()
+    except HTTPError as e:
+        if e.code == 404:
+            print(f'[scrape-loto6] Page not found (404): {url}')
+            return ''
+        raise
     for enc in ('utf-8', 'cp932'):
         try:
             return html.decode(enc)
@@ -188,11 +200,8 @@ def ensure_db(conn):
     conn.commit()
 
 
-def upsert_postgres(rows):
-    db_url = os.environ.get('DATABASE_URL')
-    if db_url and '?schema' in db_url:
-        db_url = db_url.split('?schema')[0]
-    conn = psycopg2.connect(db_url)
+def upsert_sqlite(rows):
+    conn = get_db_connection()
     ensure_db(conn)
     cur = conn.cursor()
     inserted = 0
@@ -200,13 +209,13 @@ def upsert_postgres(rows):
         kai = r['kai']
         if kai is None:
             continue
-        cur.execute('SELECT 1 FROM loto6_draws WHERE draw_number = %s', (kai,))
+        cur.execute('SELECT 1 FROM loto6_draws WHERE draw_number = ?', (kai,))
         if cur.fetchone():
             continue
         numbers_str = ','.join(str(x) for x in r['nums'])
         bonus = int(r['bonus']) if r['bonus'] is not None else None
         cur.execute(
-            'INSERT INTO loto6_draws(draw_number, draw_date, numbers, bonus_number) VALUES (%s,%s,%s,%s)',
+            'INSERT INTO loto6_draws(draw_number, draw_date, numbers, bonus_number) VALUES (?,?,?,?)',
             (kai, r['date'], numbers_str, bonus)
         )
         inserted += 1
@@ -233,11 +242,11 @@ def run(url: str):
         return
 
     appended, csv_path = upsert_csv(mstr, rows)
-    inserted = upsert_postgres(rows)
+    inserted = upsert_sqlite(rows)
 
     print(f"[scrape-loto6] Parsed range: 第{start}回～第{end}回 | Rows: {len(rows)}")
     print(f"[scrape-loto6] CSV updated: +{appended} rows -> {csv_path}")
-    print(f"[scrape-loto6] PostgreSQL updated: +{inserted} rows")
+    print(f"[scrape-loto6] SQLite updated: +{inserted} rows")
 
 
 if __name__ == '__main__':

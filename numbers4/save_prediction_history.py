@@ -1,5 +1,5 @@
 """
-予測履歴をデータベースに保存するユーティリティ
+予測履歴をデータベースに保存するユーティリティ（SQLite版）
 
 使い方:
   from numbers4.save_prediction_history import save_ensemble_prediction
@@ -14,22 +14,17 @@
 """
 
 import os
+import sys
 import json
-import psycopg2
 from datetime import datetime, timezone
 from typing import Dict, List, Optional
 import pandas as pd
-from dotenv import load_dotenv
 
-load_dotenv()
+# プロジェクトルートをパスに追加
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, project_root)
 
-
-def get_db_connection():
-    """データベース接続を取得"""
-    db_url = os.environ.get('DATABASE_URL')
-    if db_url and '?schema' in db_url:
-        db_url = db_url.split('?schema')[0]
-    return psycopg2.connect(db_url)
+from tools.utils import get_db_connection
 
 
 def get_latest_draw_info(conn):
@@ -107,15 +102,16 @@ def save_ensemble_prediction(
             }
         
         # アンサンブル予測レコードを挿入
+        created_at = datetime.now(timezone.utc).isoformat()
         cur.execute("""
             INSERT INTO numbers4_ensemble_predictions (
                 created_at, target_draw_number, model_updated_at, model_events_count,
                 ensemble_weights, predictions_count, top_predictions, model_predictions, notes
             ) VALUES (
-                %s, %s, %s, %s, %s, %s, %s, %s, %s
-            ) RETURNING id
+                ?, ?, ?, ?, ?, ?, ?, ?, ?
+            )
         """, (
-            datetime.now(timezone.utc),
+            created_at,
             target_draw_number,
             model_updated_at,
             model_events_count,
@@ -126,7 +122,7 @@ def save_ensemble_prediction(
             notes
         ))
         
-        ensemble_prediction_id = cur.fetchone()[0]
+        ensemble_prediction_id = cur.lastrowid
         
         # 個別の予測候補を保存（上位50件）
         for idx, row in predictions_df.head(50).iterrows():
@@ -141,7 +137,7 @@ def save_ensemble_prediction(
                 INSERT INTO numbers4_prediction_candidates (
                     ensemble_prediction_id, rank, number, score, contributing_models, created_at
                 ) VALUES (
-                    %s, %s, %s, %s, %s, %s
+                    ?, ?, ?, ?, ?, ?
                 )
             """, (
                 ensemble_prediction_id,
@@ -149,7 +145,7 @@ def save_ensemble_prediction(
                 number,
                 float(row['score']),
                 json.dumps(contributing_models, ensure_ascii=False),
-                datetime.now(timezone.utc)
+                created_at
             ))
         
         conn.commit()
@@ -194,7 +190,7 @@ def update_prediction_result(
         cur.execute("""
             SELECT top_predictions 
             FROM numbers4_ensemble_predictions 
-            WHERE id = %s
+            WHERE id = ?
         """, (ensemble_prediction_id,))
         
         row = cur.fetchone()
@@ -248,11 +244,11 @@ def update_prediction_result(
         # 結果を更新
         cur.execute("""
             UPDATE numbers4_ensemble_predictions 
-            SET actual_draw_number = %s,
-                actual_numbers = %s,
-                hit_status = %s,
-                hit_count = %s
-            WHERE id = %s
+            SET actual_draw_number = ?,
+                actual_numbers = ?,
+                hit_status = ?,
+                hit_count = ?
+            WHERE id = ?
         """, (
             actual_draw_number,
             actual_numbers,
@@ -295,7 +291,7 @@ def get_prediction_history(limit: int = 10) -> List[Dict]:
                 top_predictions, actual_numbers, hit_status, hit_count
             FROM numbers4_ensemble_predictions 
             ORDER BY created_at DESC 
-            LIMIT %s
+            LIMIT ?
         """, (limit,))
         
         history = []

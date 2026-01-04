@@ -1,5 +1,5 @@
 """
-ロト6の予測履歴を管理するCLIツール
+ロト6の予測履歴を管理するCLIツール（SQLite版）
 
 使い方:
   # 予測履歴を表示
@@ -26,10 +26,10 @@ from typing import List, Dict
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
 
+from tools.utils import get_db_connection
 from loto6.save_prediction_history import (
     get_prediction_history,
-    update_prediction_result,
-    get_db_connection
+    update_prediction_result
 )
 
 
@@ -75,6 +75,8 @@ def show_prediction_detail(prediction_id: int):
     print(f"\n予測ID {prediction_id} の詳細")
     print("="*80)
     
+    conn = None
+    cur = None
     try:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -86,7 +88,7 @@ def show_prediction_detail(prediction_id: int):
                    actual_draw_number, actual_numbers, actual_bonus_number,
                    hit_status, hit_count, bonus_hit, notes
             FROM loto6_ensemble_predictions
-            WHERE id = %s
+            WHERE id = ?
         """, (prediction_id,))
         
         row = cur.fetchone()
@@ -130,13 +132,16 @@ def show_prediction_detail(prediction_id: int):
             model_preds = json.loads(model_predictions)
             print(f"\nモデル別予測:")
             for model, preds in model_preds.items():
-                print(f"   {model}: {', '.join(preds[:5])}")
+                if isinstance(preds, list):
+                    print(f"   {model}: {', '.join(preds[:5])}")
+                else:
+                    print(f"   {model}: {preds}")
         
         # 予測候補の詳細を取得
         cur.execute("""
             SELECT rank, number, score, contributing_models
             FROM loto6_prediction_candidates
-            WHERE ensemble_prediction_id = %s
+            WHERE ensemble_prediction_id = ?
             ORDER BY rank
             LIMIT 20
         """, (prediction_id,))
@@ -175,6 +180,8 @@ def show_statistics():
     print("\nロト6 予測統計")
     print("="*80)
     
+    conn = None
+    cur = None
     try:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -192,7 +199,7 @@ def show_statistics():
         cur.execute("SELECT COUNT(*) FROM loto6_ensemble_predictions WHERE hit_status = 'partial'")
         partial_hits = cur.fetchone()[0]
         
-        cur.execute("SELECT COUNT(*) FROM loto6_ensemble_predictions WHERE bonus_hit = true")
+        cur.execute("SELECT COUNT(*) FROM loto6_ensemble_predictions WHERE bonus_hit = 1")
         bonus_hits = cur.fetchone()[0]
         
         print(f"総予測数: {total_predictions}件")

@@ -1,14 +1,19 @@
+"""
+Loto6 予測結果から学習するスクリプト（SQLite版）
+"""
 import json
 import os
 import re
-import psycopg2
+import sys
 from datetime import datetime, timezone
-from typing import List, Tuple, Dict
-from dotenv import load_dotenv
+from typing import List, Dict
 
-load_dotenv()
-
+# プロジェクトルートをパスに追加
 ROOT_DIR = os.path.dirname(os.path.dirname(__file__))
+sys.path.insert(0, ROOT_DIR)
+
+from tools.utils import get_db_connection
+
 MODEL_PATH = os.path.join(ROOT_DIR, 'loto6', 'model_state.json')
 
 # -----------------------------
@@ -24,22 +29,15 @@ def ensure_dirs(path: str):
 
 
 # -----------------------------
-# PostgreSQL Setup
+# SQLite Setup
 # -----------------------------
 
-def get_conn():
-    db_url = os.environ.get('DATABASE_URL')
-    if db_url and '?schema' in db_url:
-        db_url = db_url.split('?schema')[0]
-    return psycopg2.connect(db_url)
-
-
-def ensure_tables(conn: psycopg2.extensions.connection):
+def ensure_tables(conn):
     cur = conn.cursor()
     cur.execute(
         '''
         CREATE TABLE IF NOT EXISTS loto6_model_events (
-            id SERIAL PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             event_ts TEXT NOT NULL,
             actual_number TEXT NOT NULL,
             predictions TEXT NOT NULL,
@@ -53,7 +51,7 @@ def ensure_tables(conn: psycopg2.extensions.connection):
     cur.execute(
         '''
         CREATE TABLE IF NOT EXISTS loto6_predictions_log (
-            id SERIAL PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             created_at TEXT NOT NULL,
             source TEXT NOT NULL,
             label TEXT,
@@ -63,27 +61,6 @@ def ensure_tables(conn: psycopg2.extensions.connection):
         '''
     )
     conn.commit()
-
-
-def sync_identity_sequence(conn: psycopg2.extensions.connection, table: str, id_col: str = 'id'):
-    """Ensure the table's identity/sequence is set to at least MAX(id)."""
-    cur = conn.cursor()
-    try:
-        cur.execute(
-            f"""
-            SELECT pg_get_serial_sequence(%s, %s)
-            """,
-            (table, id_col)
-        )
-        row = cur.fetchone()
-        seq = row[0] if row else None
-        if seq:
-            cur.execute(f"SELECT COALESCE(MAX({id_col}), 0) FROM {table}")
-            max_id = cur.fetchone()[0] or 0
-            cur.execute("SELECT setval(%s, %s, true)", (seq, int(max_id)))
-            conn.commit()
-    except Exception:
-        conn.rollback()
 
 
 # -----------------------------
@@ -158,7 +135,7 @@ def get_latest_predictions(conn, actual_number_normalized: str, actual_number_wi
     cur.execute("""
         SELECT id, top_predictions, target_draw_number
         FROM loto6_ensemble_predictions 
-        WHERE actual_numbers IN (%s, %s)
+        WHERE actual_numbers IN (?, ?)
         ORDER BY created_at DESC 
         LIMIT 1
     """, (actual_number_with_comma, actual_number_normalized))
@@ -211,7 +188,7 @@ def learn(actual_numbers: str, actual_bonus_number: int = None, actual_draw_numb
     if not re.fullmatch(r"\d{12}", actual_numbers_normalized):
         raise ValueError("actual_numbers must be 12 digits like '061317213536' or '06,13,17,21,35,36'")
 
-    conn = get_conn()
+    conn = get_db_connection()
     
     # Get predictions from database
     pred_id, predictions = get_latest_predictions(conn, actual_numbers_normalized, actual_numbers_with_comma)
@@ -235,10 +212,8 @@ def learn(actual_numbers: str, actual_bonus_number: int = None, actual_draw_numb
             max_hit = h
             top_match = num
 
-    # Log into PostgreSQL
+    # Log into SQLite
     ensure_tables(conn)
-    sync_identity_sequence(conn, 'loto6_model_events')
-    sync_identity_sequence(conn, 'loto6_predictions_log')
     cur = conn.cursor()
     
     # Get actual draw number if not provided
@@ -253,7 +228,7 @@ def learn(actual_numbers: str, actual_bonus_number: int = None, actual_draw_numb
         '''
         INSERT INTO loto6_model_events(
             event_ts, actual_number, predictions, hit_exact, top_match, max_position_hits, notes
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
         ''',
         (
             now_iso(),
@@ -270,7 +245,7 @@ def learn(actual_numbers: str, actual_bonus_number: int = None, actual_draw_numb
     ts = now_iso()
     for n in predictions[:10]:  # Top 10 predictions
         cur.execute(
-            'INSERT INTO loto6_predictions_log(created_at, source, label, number, target_draw_number) VALUES (%s, %s, %s, %s, %s)',
+            'INSERT INTO loto6_predictions_log(created_at, source, label, number, target_draw_number) VALUES (?, ?, ?, ?, ?)',
             (ts, 'ensemble', 'prediction', n, actual_draw_number)
         )
 
@@ -285,7 +260,6 @@ def learn(actual_numbers: str, actual_bonus_number: int = None, actual_draw_numb
 
 
 if __name__ == '__main__':
-    import sys
     if len(sys.argv) > 1:
         actual = sys.argv[1]
         bonus = int(sys.argv[2]) if len(sys.argv) > 2 else None

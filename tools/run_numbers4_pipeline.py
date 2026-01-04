@@ -1,12 +1,16 @@
+"""
+Numbers4 自動予測パイプライン（SQLite版）
+"""
 import os
 import subprocess
 import sys
-import psycopg2
-from dotenv import load_dotenv
 
-load_dotenv()
-
+# プロジェクトルートをパスに追加
 ROOT = os.path.dirname(os.path.dirname(__file__))
+sys.path.insert(0, ROOT)
+
+from tools.utils import get_db_connection
+
 PY = sys.executable or 'python'
 
 
@@ -23,11 +27,7 @@ def update_learning_models():
     numbers4/learn_from_predictions.py を呼び出します。
     """
     try:
-        db_url = os.environ.get('DATABASE_URL')
-        if db_url and '?schema' in db_url:
-            db_url = db_url.split('?schema')[0]
-        
-        conn = psycopg2.connect(db_url)
+        conn = get_db_connection()
         cur = conn.cursor()
         # 最新の当選番号を取得
         cur.execute("SELECT numbers FROM numbers4_draws ORDER BY draw_date DESC LIMIT 1")
@@ -82,11 +82,7 @@ def main():
     # 3) 保存された予測結果の確認
     print("\n[Step 3] 保存された予測結果を確認中...")
     try:
-        db_url = os.environ.get('DATABASE_URL')
-        if db_url and '?schema' in db_url:
-            db_url = db_url.split('?schema')[0]
-        
-        conn = psycopg2.connect(db_url)
+        conn = get_db_connection()
         cur = conn.cursor()
         
         # 最新の予測結果を取得

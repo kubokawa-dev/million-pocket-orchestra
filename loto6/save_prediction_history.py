@@ -1,5 +1,5 @@
 """
-ロト6の予測履歴をデータベースに保存するユーティリティ
+ロト6の予測履歴をデータベースに保存するユーティリティ（SQLite版）
 
 使い方:
   from loto6.save_prediction_history import save_ensemble_prediction
@@ -14,22 +14,17 @@
 """
 
 import os
+import sys
 import json
-import psycopg2
 from datetime import datetime, timezone
 from typing import Dict, List, Optional
 import pandas as pd
-from dotenv import load_dotenv
 
-load_dotenv()
+# プロジェクトルートをパスに追加
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, project_root)
 
-
-def get_db_connection():
-    """データベース接続を取得"""
-    db_url = os.environ.get('DATABASE_URL')
-    if db_url and '?schema' in db_url:
-        db_url = db_url.split('?schema')[0]
-    return psycopg2.connect(db_url)
+from tools.utils import get_db_connection
 
 
 def get_latest_draw_info(conn):
@@ -83,27 +78,16 @@ def save_ensemble_prediction(
         latest_draw = get_latest_draw_info(conn)
         target_draw_number = latest_draw['draw_number'] + 1 if latest_draw else None
         
-        # アンサンブル予測を保存
-        ensemble_data = {
-            'created_at': datetime.now(timezone.utc),
-            'target_draw_number': target_draw_number,
-            'model_updated_at': model_state.get('updated_at') if model_state else None,
-            'model_events_count': model_state.get('events') if model_state else None,
-            'ensemble_weights': json.dumps(ensemble_weights),
-            'predictions_count': len(predictions_df),
-            'top_predictions': json.dumps([
-                {'number': row.get('number', row.get('prediction', row.get('numbers', ''))), 'score': float(row['score'])}
-                for _, row in predictions_df.head(10).iterrows()
-            ]),
-            'model_predictions': json.dumps(predictions_by_model),
-            'actual_draw_number': None,
-            'actual_numbers': None,
-            'actual_bonus_number': None,
-            'hit_status': None,
-            'hit_count': None,
-            'bonus_hit': None,
-            'notes': notes or f'アンサンブル予測（{len(predictions_df)}候補）'
-        }
+        # アンサンブル予測データを準備
+        created_at = datetime.now(timezone.utc).isoformat()
+        
+        top_predictions_data = []
+        for _, row in predictions_df.head(10).iterrows():
+            number_val = row.get('number', row.get('prediction', row.get('numbers', '')))
+            top_predictions_data.append({
+                'number': number_val,
+                'score': float(row['score'])
+            })
         
         # アンサンブル予測を挿入
         insert_query = """
@@ -113,36 +97,36 @@ def save_ensemble_prediction(
                 actual_draw_number, actual_numbers, actual_bonus_number,
                 hit_status, hit_count, bonus_hit, notes
             ) VALUES (
-                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
-            ) RETURNING id;
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+            );
         """
         
         cur.execute(insert_query, (
-            ensemble_data['created_at'],
-            ensemble_data['target_draw_number'],
-            ensemble_data['model_updated_at'],
-            ensemble_data['model_events_count'],
-            ensemble_data['ensemble_weights'],
-            ensemble_data['predictions_count'],
-            ensemble_data['top_predictions'],
-            ensemble_data['model_predictions'],
-            ensemble_data['actual_draw_number'],
-            ensemble_data['actual_numbers'],
-            ensemble_data['actual_bonus_number'],
-            ensemble_data['hit_status'],
-            ensemble_data['hit_count'],
-            ensemble_data['bonus_hit'],
-            ensemble_data['notes']
+            created_at,
+            target_draw_number,
+            model_state.get('updated_at') if model_state else None,
+            model_state.get('events') if model_state else None,
+            json.dumps(ensemble_weights),
+            len(predictions_df),
+            json.dumps(top_predictions_data),
+            json.dumps(predictions_by_model),
+            None,  # actual_draw_number
+            None,  # actual_numbers
+            None,  # actual_bonus_number
+            None,  # hit_status
+            None,  # hit_count
+            None,  # bonus_hit
+            notes or f'アンサンブル予測（{len(predictions_df)}候補）'
         ))
         
-        prediction_id = cur.fetchone()[0]
+        prediction_id = cur.lastrowid
         
         # 予測候補を挿入
         for rank, (_, row) in enumerate(predictions_df.head(20).iterrows(), 1):
             candidate_query = """
                 INSERT INTO loto6_prediction_candidates (
                     ensemble_prediction_id, rank, number, score, contributing_models, created_at
-                ) VALUES (%s, %s, %s, %s, %s, %s);
+                ) VALUES (?, ?, ?, ?, ?, ?);
             """
             
             # どのモデルがこの番号を予測したかを特定
@@ -158,7 +142,7 @@ def save_ensemble_prediction(
                 number_val,
                 float(row['score']),
                 json.dumps(contributing_models),
-                datetime.now(timezone.utc)
+                created_at
             ))
         
         # 予測ログも保存
@@ -166,12 +150,12 @@ def save_ensemble_prediction(
             log_query = """
                 INSERT INTO loto6_predictions_log (
                     created_at, source, label, number, target_draw_number
-                ) VALUES (%s, %s, %s, %s, %s);
+                ) VALUES (?, ?, ?, ?, ?);
             """
             
             log_number_val = row.get('number', row.get('prediction', row.get('numbers', '')))
             cur.execute(log_query, (
-                datetime.now(timezone.utc).isoformat(),
+                created_at,
                 'ensemble_prediction',
                 f'予測{rank}位',
                 log_number_val,
@@ -214,7 +198,7 @@ def update_prediction_result(prediction_id: int, actual_numbers: str, actual_bon
         cur.execute("""
             SELECT target_draw_number, top_predictions
             FROM loto6_ensemble_predictions
-            WHERE id = %s
+            WHERE id = ?
         """, (prediction_id,))
         
         row = cur.fetchone()
@@ -240,7 +224,9 @@ def update_prediction_result(prediction_id: int, actual_numbers: str, actual_bon
                 break
             else:
                 # 部分一致をチェック
-                matches = sum(1 for i in range(6) if predicted_number[i] == actual_numbers[i])
+                matches = sum(1 for i in range(min(6, len(predicted_number), len(actual_numbers))) 
+                             if i < len(predicted_number) and i < len(actual_numbers) 
+                             and predicted_number[i] == actual_numbers[i])
                 if matches > hit_count:
                     hit_count = matches
                     top_match = predicted_number
@@ -256,14 +242,14 @@ def update_prediction_result(prediction_id: int, actual_numbers: str, actual_bon
         # 予測結果を更新
         update_query = """
             UPDATE loto6_ensemble_predictions
-            SET actual_draw_number = %s,
-                actual_numbers = %s,
-                actual_bonus_number = %s,
-                hit_status = %s,
-                hit_count = %s,
-                bonus_hit = %s,
-                notes = %s
-            WHERE id = %s
+            SET actual_draw_number = ?,
+                actual_numbers = ?,
+                actual_bonus_number = ?,
+                hit_status = ?,
+                hit_count = ?,
+                bonus_hit = ?,
+                notes = ?
+            WHERE id = ?
         """
         
         notes = f"結果更新: {actual_numbers} (的中: {hit_count}/6桁)"
@@ -278,7 +264,7 @@ def update_prediction_result(prediction_id: int, actual_numbers: str, actual_bon
             actual_bonus_number,
             hit_status,
             hit_count,
-            bonus_hit,
+            1 if bonus_hit else 0,
             notes,
             prediction_id
         ))
@@ -312,11 +298,12 @@ def get_prediction_history(limit: int = 20):
                    hit_status, hit_count, bonus_hit, actual_numbers, actual_bonus_number, notes
             FROM loto6_ensemble_predictions
             ORDER BY created_at DESC
-            LIMIT %s
+            LIMIT ?
         """
         
         cur.execute(query, (limit,))
-        columns = [desc[0] for desc in cur.description]
+        columns = ['id', 'created_at', 'target_draw_number', 'predictions_count',
+                   'hit_status', 'hit_count', 'bonus_hit', 'actual_numbers', 'actual_bonus_number', 'notes']
         rows = cur.fetchall()
         
         return [dict(zip(columns, row)) for row in rows]
@@ -350,7 +337,7 @@ def save_model_event(
         insert_query = """
             INSERT INTO loto6_model_events (
                 event_ts, actual_number, predictions, hit_exact, top_match, max_position_hits, notes
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
         """
         
         cur.execute(insert_query, (
@@ -376,4 +363,3 @@ def save_model_event(
             cur.close()
         if conn:
             conn.close()
-
