@@ -1,19 +1,46 @@
-import psycopg2
+"""
+データベースユーティリティ（SQLite版）
+"""
+import sqlite3
 import pandas as pd
 import os
-from dotenv import load_dotenv
-
-load_dotenv()
 
 # このファイルの親ディレクトリの親ディレクトリをROOTとする
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+# SQLiteデータベースファイルのパス
+DB_PATH = os.path.join(ROOT_DIR, 'lottery.db')
+
+
 def get_db_connection():
-    """データベース接続を取得します。"""
-    db_url = os.environ.get('DATABASE_URL')
-    if db_url and '?schema' in db_url:
-        db_url = db_url.split('?schema')[0]
-    return psycopg2.connect(db_url)
+    """
+    データベース接続を取得します。
+    SQLite用にRow Factoryを設定して辞書形式でアクセスできるようにします。
+    """
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def init_database():
+    """
+    データベースを初期化します（スキーマを適用）。
+    """
+    schema_path = os.path.join(ROOT_DIR, 'schema.sql')
+    if not os.path.exists(schema_path):
+        print(f"[warn] schema.sql not found at {schema_path}")
+        return
+    
+    conn = get_db_connection()
+    try:
+        with open(schema_path, 'r', encoding='utf-8') as f:
+            schema_sql = f.read()
+        conn.executescript(schema_sql)
+        conn.commit()
+        print(f"✅ Database initialized: {DB_PATH}")
+    finally:
+        conn.close()
+
 
 def load_all_numbers4_draws() -> pd.DataFrame:
     """
@@ -52,6 +79,7 @@ def load_all_numbers4_draws() -> pd.DataFrame:
         df[col] = df[col].astype(int)
 
     return df
+
 
 def load_all_loto6_draws() -> pd.DataFrame:
     """
@@ -101,3 +129,9 @@ def load_all_loto6_draws() -> pd.DataFrame:
         df[col] = df[col].astype(int)
 
     return df
+
+
+if __name__ == '__main__':
+    # テスト: データベースを初期化
+    init_database()
+    print(f"Database path: {DB_PATH}")

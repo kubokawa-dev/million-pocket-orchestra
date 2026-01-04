@@ -1,5 +1,5 @@
 """
-ナンバーズ4のオンライン学習を手動実行
+ナンバーズ4のオンライン学習を手動実行（SQLite版）
 """
 import sys
 import os
@@ -7,9 +7,8 @@ project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if project_root not in sys.path:
     sys.path.append(project_root)
 
-import psycopg2
 import pandas as pd
-from dotenv import load_dotenv
+from tools.utils import get_db_connection
 from numbers4.online_learning import evaluate_and_update
 from numbers4.prediction_logic import (
     predict_from_basic_stats,
@@ -19,11 +18,8 @@ from numbers4.prediction_logic import (
     predict_from_extreme_patterns
 )
 
-load_dotenv()
-
 # データベースから読み込み
-db_url = os.environ.get('DATABASE_URL').split('?schema')[0]
-conn = psycopg2.connect(db_url)
+conn = get_db_connection()
 df = pd.read_sql_query("SELECT draw_date, numbers FROM numbers4_draws ORDER BY draw_date ASC", conn)
 conn.close()
 

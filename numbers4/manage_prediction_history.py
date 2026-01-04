@@ -1,5 +1,5 @@
 """
-予測履歴を管理するCLIツール
+予測履歴を管理するCLIツール（SQLite版）
 
 使い方:
   # 予測履歴を表示
@@ -26,10 +26,10 @@ from typing import List, Dict
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
 
+from tools.utils import get_db_connection
 from numbers4.save_prediction_history import (
     get_prediction_history,
-    update_prediction_result,
-    get_db_connection
+    update_prediction_result
 )
 
 
@@ -81,7 +81,7 @@ def show_prediction_detail(prediction_id: int):
                 ensemble_weights, predictions_count, top_predictions, model_predictions,
                 actual_draw_number, actual_numbers, hit_status, hit_count, notes
             FROM numbers4_ensemble_predictions 
-            WHERE id = %s
+            WHERE id = ?
         """, (prediction_id,))
         
         row = cur.fetchone()
@@ -134,7 +134,7 @@ def show_prediction_detail(prediction_id: int):
         cur.execute("""
             SELECT rank, number, score, contributing_models
             FROM numbers4_prediction_candidates
-            WHERE ensemble_prediction_id = %s
+            WHERE ensemble_prediction_id = ?
             ORDER BY rank
             LIMIT 20
         """, (prediction_id,))
@@ -177,7 +177,8 @@ def show_statistics():
         if results:
             print(f"\n【的中統計】")
             for count, status, avg_hits in results:
-                print(f"  {status}: {count}回 (平均{avg_hits:.2f}桁一致)")
+                avg_hits_val = avg_hits if avg_hits else 0
+                print(f"  {status}: {count}回 (平均{avg_hits_val:.2f}桁一致)")
         
         # 最近の予測精度
         cur.execute("""
@@ -234,7 +235,7 @@ def update_result(prediction_id: int, actual_numbers: str):
         cur.execute("""
             SELECT target_draw_number 
             FROM numbers4_ensemble_predictions 
-            WHERE id = %s
+            WHERE id = ?
         """, (prediction_id,))
         
         row = cur.fetchone()

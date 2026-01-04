@@ -1,190 +1,170 @@
-# Numbers3, Numbers4 & Loto6 Prediction Project
+# Numbers3, Numbers4 & Loto6 予測プロジェクト 🎰
 
-このプロジェクトは、ナンバーズ3・ナンバーズ4・ロト6の過去データをもとに、複数モデルによる予測・可視化・分析を行うPythonベースのアプリケーションです。
+ナンバーズ3・ナンバーズ4・ロト6の過去データをもとに、複数モデルによる予測・可視化・分析を行うPythonベースのアプリケーションです。
 
-## 主な機能
+## ✨ 主な機能
 
-- 過去の抽選データ・予測データの管理（PostgreSQLデータベース）
-- アンサンブル学習による最新予測の生成
-- 予測履歴の管理・統計分析
-- StreamlitによるリッチなWeb可視化
-    - 予測ボタンで最新の当選番号予測を即時表示
-    - 過去の予測と実際の当選番号の比較・分析
-    - 的中数やモデルごとのパフォーマンス指標
+- 📊 過去の抽選データ・予測データの管理（SQLiteデータベース）
+- 🤖 アンサンブル学習による最新予測の生成
+- 📈 予測履歴の管理・統計分析
+- 🔄 GitHub Actionsによる毎日自動予測
+- 📱 LINE通知（オプション）
 
-## ディレクトリ構成
+## 📁 ディレクトリ構成
 
 ```
-numbers3/
-    predict_ensemble.py      # ナンバーズ3予測ロジック本体
-    manage_prediction_history.py  # 予測履歴管理
-    save_prediction_history.py    # 予測結果保存
-    ...
-numbers4/
-    predict_ensemble.py      # ナンバーズ4予測ロジック本体
-    manage_prediction_history.py  # 予測履歴管理
-    save_prediction_history.py    # 予測結果保存
-    ...
-loto6/
-    predict_ensemble.py      # ロト6予測ロジック本体
-    manage_prediction_history.py  # 予測履歴管理
-    save_prediction_history.py    # 予測結果保存
-    ...
-streamlit_app.py            # Streamlit Webアプリ
-prisma/
-    schema.prisma           # データベーススキーマ
-    seed.ts                 # シードデータ
+million-pocket/
+├── numbers3/                    # ナンバーズ3予測ロジック
+├── numbers4/                    # ナンバーズ4予測ロジック
+├── loto6/                       # ロト6予測ロジック
+├── tools/                       # ユーティリティツール
+│   ├── utils.py                 # DB接続・共通関数
+│   ├── run_numbers4_pipeline.py # Numbers4自動パイプライン
+│   ├── run_loto6_pipeline.py    # Loto6自動パイプライン
+│   ├── scrape_numbers4_rakuten.py # Numbers4データ取得
+│   ├── scrape_loto6_rakuten.py  # Loto6データ取得
+│   └── send_notification.py     # LINE通知
+├── .github/workflows/           # GitHub Actions
+├── lottery.db                   # SQLiteデータベース
+├── schema.sql                   # DBスキーマ
+├── requirements.txt             # Python依存関係
+└── streamlit_app.py             # Streamlit Webアプリ
 ```
 
-## 必要な環境
+## 🚀 セットアップ
+
+### 必要な環境
 
 - Python 3.10 以上
-- Node.js 18 以上
-- PostgreSQL（Docker推奨）
-- 必要パッケージ: pandas, numpy, streamlit, tqdm, psycopg2 など
 
 ### インストール
 
 ```bash
-# Pythonパッケージのインストール
+# リポジトリをクローン
+git clone <your-repo-url>
+cd million-pocket
+
+# Python仮想環境を作成（推奨）
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+
+# 依存パッケージをインストール
 pip install -r requirements.txt
 
-# Node.jsパッケージのインストール
-npm install
-
-# データベースの起動（Docker）
-docker-compose up -d
-
-# データベースマイグレーション
-npx prisma migrate dev
-
-# シードデータの投入
-npx prisma db seed
+# データベースを初期化
+python tools/utils.py
 ```
 
-## Streamlitアプリの起動方法
+これだけ！Docker不要、Node.js不要！🎉
 
-1. 必要なパッケージをインストール
-2. 環境変数 `DATABASE_URL` に PostgreSQL 接続文字列を設定（例: `postgresql://user:pass@host:5432/dbname`）
-3. 以下のコマンドでWebアプリを起動
+## 📈 予測の実行
+
+### 自動パイプライン（推奨）
+
+```bash
+# ナンバーズ4の予測パイプライン
+python tools/run_numbers4_pipeline.py
+
+# ロト6の予測パイプライン
+python tools/run_loto6_pipeline.py
+```
+
+パイプラインは以下を自動実行：
+1. 楽天銀行から最新データをスクレイピング
+2. モデルの学習更新
+3. アンサンブル予測の実行
+4. 結果をデータベースに保存
+
+### 手動予測
+
+```bash
+# ナンバーズ4
+python numbers4/predict_ensemble.py
+
+# ロト6
+python loto6/predict_ensemble.py
+```
+
+## 🔄 GitHub Actionsで毎日自動実行
+
+`.github/workflows/daily-prediction.yml` により、毎日JST 17:00に自動で予測が実行されます。
+
+### 設定方法
+
+1. リポジトリをGitHubにプッシュ
+2. Settings → Secrets and variables → Actions から必要なシークレットを設定
+3. Actions タブで手動実行も可能
+
+### LINE通知を有効にする場合
+
+1. [LINE Notify](https://notify-bot.line.me/) でトークンを取得
+2. GitHubシークレットに `LINE_NOTIFY_TOKEN` を設定
+3. ワークフローファイルのLINE通知部分のコメントを解除
+
+## 📊 予測履歴の管理
+
+```bash
+# 予測履歴を表示
+python numbers4/manage_prediction_history.py list
+
+# 特定の予測の詳細を表示
+python numbers4/manage_prediction_history.py show <予測ID>
+
+# 統計情報を表示
+python numbers4/manage_prediction_history.py stats
+
+# 予測結果を更新（当選番号が判明後）
+python numbers4/manage_prediction_history.py update <予測ID> <実際の当選番号>
+```
+
+## 🖥️ Streamlit Webアプリ
 
 ```bash
 python -m streamlit run streamlit_app.py
 ```
 
-- ブラウザで `http://localhost:8501` にアクセス
-- 画面上部の「予測を実行」ボタンで最新予測を表示
-- 下部で過去の予測と当選番号の比較・分析が可能
+ブラウザで `http://localhost:8501` にアクセス
 
-## 予測・学習サイクル
+## 🏗️ アーキテクチャ
 
-### ナンバーズ3の完全サイクル
+### データベース
 
-```bash
-# 1. 次回当選番号を予測
-python numbers3/predict_ensemble.py
-# → 予測ID: 2, 予測番号: 272, 636, 727...
+SQLiteを使用（`lottery.db`）
 
-# 2. 実際の当選番号が判明（例：729）
-python numbers3/manage_prediction_history.py update 2 729
+- 外部サービス不要
+- シンプルで高速
+- リポジトリに含めて管理可能
 
-# 3. 予測結果から学習（モデルを更新）
-python numbers3/learn_from_predictions.py 729
+### 予測モデル
 
-# 4. 統計確認
-python numbers3/manage_prediction_history.py stats
-
-# 5. 次の予測サイクルへ
-python numbers3/predict_ensemble.py
-```
-
-### ナンバーズ4の完全サイクル
-
-```bash
-# 1. 次回当選番号を予測
-python numbers4/predict_ensemble.py
-# → 予測ID: 5, 予測番号: 2025, 3456, 7890...
-
-# 2. 実際の当選番号が判明（例：2025）
-python numbers4/manage_prediction_history.py update 5 2025
-
-# 3. 予測結果から学習
-python numbers4/learn_from_predictions.py
-
-# 4. 統計確認
-python numbers4/manage_prediction_history.py stats
-
-# 5. 次の予測サイクルへ
-python numbers4/predict_ensemble.py
-```
-
-### ロト6の完全サイクル
-
-```bash
-# 1. 次回当選番号を予測
-python loto6/predict_ensemble.py
-# → 予測ID: 1, 予測番号: 06 13 17 21 35 36, 06 13 17 20 35 36...
-
-# 2. 実際の当選番号が判明（例：06,13,17,21,35,36、ボーナス数字：7）
-python loto6/manage_prediction_history.py update 1 06,13,17,21,35,36 7
-
-# 3. 予測結果から学習（モデルを更新）
-python loto6/learn_from_predictions.py 06,13,17,21,35,36 7
-
-# 4. 統計確認
-python loto6/manage_prediction_history.py stats
-
-# 5. 次の予測サイクルへ
-python loto6/predict_ensemble.py
-```
-
-## 予測ロジックについて
-
-各予測システム（`predict_ensemble.py`）にて：
+各予測システムは複数のモデルを統合：
 - 基本統計モデル
 - 高度ヒューリスティックモデル
-- 機械学習モデル
+- 機械学習モデル（LightGBM）
 - 探索的モデル
-など複数モデルの予測を統合
-- Streamlit UIから直接呼び出し可能
 
-## 予測履歴管理コマンド
+## 📝 完全サイクル例
 
-### 予測履歴の確認
 ```bash
-# 予測履歴一覧表示
-python numbers3/manage_prediction_history.py list
+# 1. 予測パイプラインを実行
+python tools/run_numbers4_pipeline.py
+
+# 2. 予測結果を確認
 python numbers4/manage_prediction_history.py list
-python loto6/manage_prediction_history.py list
 
-# 特定の予測の詳細表示
-python numbers4/manage_prediction_history.py show <予測ID>
+# 3. 当選番号が判明したら結果を更新
+python numbers4/manage_prediction_history.py update <ID> <当選番号>
 
-# 統計情報表示
+# 4. 統計を確認
 python numbers4/manage_prediction_history.py stats
 ```
 
-### 予測結果の更新
-```bash
-# ナンバーズ3/4の場合
-python numbers4/manage_prediction_history.py update <予測ID> <実際の当選番号>
+## ⚠️ 注意事項
 
-# ロト6の場合（ボーナス数字も含む）
-python loto6/manage_prediction_history.py update <予測ID> <実際の当選番号> <ボーナス数字>
-```
+- 宝くじの予測は参考情報です
+- 購入は自己責任でお願いします
+- SMBCでの自動購入APIは公開されていないため、購入は手動で行う必要があります
 
-## よくあるトラブル
-
-- 予測ボタンでエラーが出る場合は、
-    - Pythonバージョンや依存パッケージを確認
-    - データベース接続を確認（PostgreSQLが起動しているか）
-    - 環境変数 `DATABASE_URL` が正しく設定されているか確認
-    - エラーメッセージをもとに各 `predict_ensemble.py` のカラム名や返り値を調整
-
-## ライセンス
+## 📄 ライセンス
 
 MIT License
-
----
-
-ご質問・機能追加要望はIssueまたはチャットでご連絡ください。

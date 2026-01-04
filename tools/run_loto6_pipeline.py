@@ -1,13 +1,16 @@
+"""
+Loto6 自動予測パイプライン（SQLite版）
+"""
 import os
 import subprocess
 import sys
-import psycopg2
-import json
-from dotenv import load_dotenv
 
-load_dotenv()
-
+# プロジェクトルートをパスに追加
 ROOT = os.path.dirname(os.path.dirname(__file__))
+sys.path.insert(0, ROOT)
+
+from tools.utils import get_db_connection
+
 PY = sys.executable or 'python'
 
 
@@ -24,11 +27,7 @@ def update_learning_models():
     loto6/learn_from_predictions.py を呼び出します。
     """
     try:
-        db_url = os.environ.get('DATABASE_URL')
-        if db_url and '?schema' in db_url:
-            db_url = db_url.split('?schema')[0]
-        
-        conn = psycopg2.connect(db_url)
+        conn = get_db_connection()
         cur = conn.cursor()
         # 最新の当選番号を取得 (numbers format: "01,02,03,04,05,06" or similar)
         cur.execute("SELECT numbers, bonus_number, draw_number FROM loto6_draws ORDER BY draw_date DESC LIMIT 1")

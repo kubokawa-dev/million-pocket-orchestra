@@ -1,15 +1,20 @@
+"""
+楽天銀行ナンバーズ4スクレイパー（SQLite版）
+"""
 import os
 import re
 import csv
-import psycopg2
+import sqlite3
 import sys
 from datetime import datetime, date
 from urllib.request import urlopen, Request
-from dotenv import load_dotenv
 
-load_dotenv()
-
+# プロジェクトルートをパスに追加
 ROOT = os.path.dirname(os.path.dirname(__file__))
+sys.path.insert(0, ROOT)
+
+from tools.utils import get_db_connection, DB_PATH
+
 CSV_DIR = os.path.join(ROOT, 'numbers4')
 
 HEADERS = {
@@ -21,9 +26,16 @@ HEADERS = {
 
 
 def fetch_text(url: str) -> str:
+    from urllib.error import HTTPError
     req = Request(url, headers=HEADERS)
-    with urlopen(req) as resp:
-        html = resp.read()
+    try:
+        with urlopen(req) as resp:
+            html = resp.read()
+    except HTTPError as e:
+        if e.code == 404:
+            print(f'[scrape] Page not found (404): {url}')
+            return ''
+        raise
     # Try utf-8 first
     try:
         return html.decode('utf-8')
@@ -168,11 +180,8 @@ def ensure_db(conn):
     conn.commit()
 
 
-def upsert_postgres(rows):
-    db_url = os.environ.get('DATABASE_URL')
-    if db_url and '?schema' in db_url:
-        db_url = db_url.split('?schema')[0]
-    conn = psycopg2.connect(db_url)
+def upsert_sqlite(rows):
+    conn = get_db_connection()
     ensure_db(conn)
     cur = conn.cursor()
     inserted = 0
@@ -180,11 +189,11 @@ def upsert_postgres(rows):
         kai = r['kai']
         if kai is None:
             continue
-        cur.execute('SELECT 1 FROM numbers4_draws WHERE draw_number = %s', (kai,))
+        cur.execute('SELECT 1 FROM numbers4_draws WHERE draw_number = ?', (kai,))
         if cur.fetchone():
             continue
         cur.execute(
-            'INSERT INTO numbers4_draws(draw_number, draw_date, numbers) VALUES (%s,%s,%s)',
+            'INSERT INTO numbers4_draws(draw_number, draw_date, numbers) VALUES (?,?,?)',
             (kai, r['date'], r['number'])
         )
         inserted += 1
@@ -211,11 +220,11 @@ def run(url: str):
         return
 
     appended, csv_path = upsert_csv(mstr, rows)
-    inserted = upsert_postgres(rows)
+    inserted = upsert_sqlite(rows)
 
     print(f"[scrape] Parsed range: 第{start}回～第{end}回 | Rows: {len(rows)}")
     print(f"[scrape] CSV updated: +{appended} rows -> {csv_path}")
-    print(f"[scrape] PostgreSQL updated: +{inserted} rows")
+    print(f"[scrape] SQLite updated: +{inserted} rows")
 
 
 if __name__ == '__main__':
