@@ -6,20 +6,22 @@ from datetime import datetime
 
 # ========== Temperature Scaling ==========
 # 確率分布を平滑化して多様性を向上させる
-# temperature > 1.0: より均一に（多様性UP）
-# temperature < 1.0: よりピーキーに（確信度UP）
+# temperature > 1.0: より均一に (多様性UP)
+# temperature < 1.0: よりピーキーに (確信度UP)
 DEFAULT_TEMPERATURE = 2.0
 
 def apply_temperature(probs: np.ndarray, temperature: float = DEFAULT_TEMPERATURE) -> np.ndarray:
     """
     確率分布にTemperature Scalingを適用
     
+    数学的に: exp(log(p)/T) = p^(1/T) と等価
+    
     Args:
-        probs: 確率分布（0-1の配列、合計1）
-        temperature: 温度パラメータ（デフォルト: 2.0）
+        probs: 確率分布 (0-1の配列、合計1)
+        temperature: 温度パラメータ (デフォルト: 2.0)
             - 1.0: 変化なし
-            - 2.0: 確率を平滑化（低確率の数字も選ばれやすく）
-            - 0.5: 確率を尖らせる（高確率の数字がより選ばれやすく）
+            - 2.0: 確率を平滑化 (低確率の数字も選ばれやすく)
+            - 0.5: 確率を尖らせる (高確率の数字がより選ばれやすく)
     
     Returns:
         Temperature適用後の確率分布
@@ -27,11 +29,8 @@ def apply_temperature(probs: np.ndarray, temperature: float = DEFAULT_TEMPERATUR
     probs = np.array(probs, dtype=np.float64)
     # ゼロ除算防止
     probs = np.clip(probs, 1e-10, 1.0)
-    # 対数を取って温度で割る
-    log_probs = np.log(probs)
-    scaled_log_probs = log_probs / temperature
-    # 再度確率に変換（softmax）
-    scaled_probs = np.exp(scaled_log_probs)
+    # Temperature適用 (確率をべき乗): p^(1/T)
+    scaled_probs = probs ** (1.0 / temperature)
     # 正規化
     return scaled_probs / scaled_probs.sum()
 
@@ -163,9 +162,18 @@ def create_features(df: pd.DataFrame):
     df_clean = df.dropna().reset_index(drop=True)
     return df_clean
 
-def train_and_predict_lgbm(df: pd.DataFrame, limit: int = 15):
+def train_and_predict_lgbm(
+    df: pd.DataFrame,
+    limit: int = 15,
+    temperature: float = DEFAULT_TEMPERATURE
+):
     """
     LightGBMモデルを学習し、次回予測を行う
+    
+    Args:
+        df: 履歴データのDataFrame
+        limit: 生成する予測数 (デフォルト: 15)
+        temperature: 確率分布の温度パラメータ (デフォルト: 2.0)
     """
     # Prepare data
     df_features = create_features(df)
@@ -274,16 +282,16 @@ def train_and_predict_lgbm(df: pd.DataFrame, limit: int = 15):
     X_pred = df_features_ext[feature_cols].iloc[[-1]]
     
     # Predict probabilities for each digit position
-    # Temperature Scalingを適用して多様性を向上！
+    # Temperature Scalingを適用して多様性を向上
     preds_probs = {}
     for target in target_cols:
         raw_probs = models[target].predict(X_pred)[0]  # array of 10 probs
-        # Temperature Scaling適用（デフォルト: 2.0で平滑化）
-        preds_probs[target] = apply_temperature(raw_probs, temperature=DEFAULT_TEMPERATURE)
+        # Temperature Scaling適用
+        preds_probs[target] = apply_temperature(raw_probs, temperature=temperature)
     
     # Generate candidates based on top probabilities
     # Strategy: Randomly sample from prob distribution to generate diversity
-    # Temperature Scalingにより、低確率の数字も選ばれやすくなる！
+    # Temperature Scalingにより、低確率の数字も選ばれやすくなる
     
     generated_preds = []
     seen = set()
@@ -309,9 +317,18 @@ def train_and_predict_lgbm(df: pd.DataFrame, limit: int = 15):
             
     return generated_preds
 
-def predict_from_lightgbm(df: pd.DataFrame, limit: int = 15):
+def predict_from_lightgbm(
+    df: pd.DataFrame,
+    limit: int = 15,
+    temperature: float = DEFAULT_TEMPERATURE
+):
     """
     Main entry point for LightGBM prediction
+    
+    Args:
+        df: 履歴データのDataFrame
+        limit: 生成する予測数 (デフォルト: 15)
+        temperature: 確率分布の温度パラメータ (デフォルト: 2.0)
     """
     try:
         # Convert 'date' column if needed or ensure format
@@ -325,7 +342,7 @@ def predict_from_lightgbm(df: pd.DataFrame, limit: int = 15):
             df_local['draw_date'] = df_local['date']
         
         # Run prediction
-        return train_and_predict_lgbm(df_local, limit=limit)
+        return train_and_predict_lgbm(df_local, limit=limit, temperature=temperature)
         
     except Exception as e:
         print(f"[LightGBM] Error: {e}")
