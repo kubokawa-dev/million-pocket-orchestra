@@ -34,11 +34,28 @@ jobs:
       - name: Run Numbers4 prediction pipeline
         run: python tools/run_numbers4_pipeline.py
       
-      # Note: lottery.db is in .gitignore, so we don't commit it.
-      # Predictions are stored in the DB during the workflow run.
-      # If you need to persist predictions, consider using artifacts or a remote database.
+      - name: Generate prediction summary
+        id: summary
+        run: |
+          # 予測サマリーをMarkdownで生成
+          OUTPUT_FILE="predictions/numbers4_$(date '+%Y%m%d').md"
+          python numbers4/summarize_daily_predictions.py --output "$OUTPUT_FILE"
+          echo "output_file=$OUTPUT_FILE" >> $GITHUB_OUTPUT
+          
+          # サマリーの内容を環境変数に保存（通知用）
+          echo "SUMMARY_CONTENT<<EOF" >> $GITHUB_ENV
+          head -100 "$OUTPUT_FILE" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+      
+      - name: Commit summary
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add predictions/
+          git diff --staged --quiet || git commit -m "📊 Numbers4 prediction $(date '+%Y-%m-%d %H:%M')"
+          git push
+      
       - name: Summary
         run: |
           echo "✅ Numbers4 prediction completed successfully!"
-          echo "📊 Predictions have been saved to the local database."
-
+          echo "📊 Summary saved to: ${{ steps.summary.outputs.output_file }}"
