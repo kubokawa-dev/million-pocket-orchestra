@@ -32,6 +32,66 @@ from numbers4.save_prediction_json import save_prediction_to_json
 from numbers4.online_learning import load_model_weights
 # learn_model_from_data は不要になったので削除
 
+# --- 合計値ボーナス設定 ---
+# 理論的な平均値: 4桁 × 4.5 = 18
+# 標準偏差: 約5.7
+# 実データ分析より、合計値15-24が約50%を占める
+SUM_IDEAL = 18  # 理想的な合計値
+SUM_TOLERANCE = 6  # 許容範囲（±6で12-24をカバー）
+SUM_BONUS_MAX = 0.3  # 最大ボーナス（30%）
+
+
+def apply_sum_bonus(df: pd.DataFrame, ideal_sum: int = SUM_IDEAL, 
+                    tolerance: int = SUM_TOLERANCE, max_bonus: float = SUM_BONUS_MAX) -> pd.DataFrame:
+    """
+    合計値ボーナスを適用：理想的な合計値に近い候補のスコアを上げる
+    
+    Numbers4の合計値（0-36）の分布は正規分布に近く、
+    平均18、標準偏差約5.7となる。
+    合計値15-24が全体の約50%を占めるため、この範囲にボーナスを付与。
+    
+    Args:
+        df: 予測結果のDataFrame（'prediction'と'score'列を持つ）
+        ideal_sum: 理想的な合計値（デフォルト: 18）
+        tolerance: 許容範囲（デフォルト: 6、つまり12-24がボーナス対象）
+        max_bonus: 最大ボーナス倍率（デフォルト: 0.3 = 30%）
+    
+    Returns:
+        合計値ボーナス適用後のDataFrame
+    """
+    if df.empty:
+        return df
+    
+    df = df.copy()
+    
+    def calc_bonus(pred: str) -> float:
+        """予測番号の合計値に基づいてボーナス倍率を計算"""
+        try:
+            s = sum(int(d) for d in pred)
+            distance = abs(s - ideal_sum)
+            
+            if distance <= tolerance:
+                # 距離が近いほどボーナスが大きい
+                # distance=0 で max_bonus、distance=tolerance で 0
+                bonus = max_bonus * (1 - distance / tolerance)
+                return 1.0 + bonus
+            else:
+                # 範囲外は軽いペナルティ
+                return 0.95
+        except (ValueError, TypeError):
+            return 1.0
+    
+    # ボーナスを適用
+    df['sum_bonus'] = df['prediction'].apply(calc_bonus)
+    df['score'] = df['score'] * df['sum_bonus']
+    df = df.drop(columns=['sum_bonus'])
+    
+    # スコアで再ソート
+    df = df.sort_values(by='score', ascending=False).reset_index(drop=True)
+    
+    return df
+
+
 # --- 設定 ---
 NUM_PREDICTIONS_BASIC = 5
 NUM_PREDICTIONS_ADVANCED = 5
@@ -182,7 +242,13 @@ def generate_ensemble_prediction(progress_callback=None):
     final_predictions_df = aggregate_predictions(predictions_by_model, ensemble_weights, normalize_scores=True)
     
     # 多様性ペナルティを適用（類似した候補のスコアを下げる）
-    final_predictions_df = apply_diversity_penalty(final_predictions_df, penalty_strength=0.2, similarity_threshold=3)
+    # v10.1: penalty_strength を 0.2 → 0.4 に強化
+    final_predictions_df = apply_diversity_penalty(final_predictions_df, penalty_strength=0.4, similarity_threshold=2)
+    
+    # 合計値ボーナスを適用（合計値15-24の範囲にある候補を優遇）
+    # v10.1: 合計値が理想的な範囲にある候補にボーナスを付与
+    report_progress(0.95, "合計値ボーナスを適用中...")
+    final_predictions_df = apply_sum_bonus(final_predictions_df)
     
     report_progress(1.0, "予測完了！")
     
@@ -202,7 +268,7 @@ def generate_ensemble_prediction(progress_callback=None):
             ensemble_weights=ensemble_weights,
             predictions_by_model=predictions_by_model,
             model_state=model_state,
-            notes="v10.0 Update: Integration of Digit Repetition, Continuation, Large Change, and Realistic Frequency models."
+            notes="v10.1 Update: Temperature Scaling (LightGBM確率平滑化) + 合計値ボーナス (sum=18付近を優遇) + 多様性ペナルティ強化"
         )
         print(f"✅ 予測履歴の保存が完了しました (ID: {prediction_id})")
         
