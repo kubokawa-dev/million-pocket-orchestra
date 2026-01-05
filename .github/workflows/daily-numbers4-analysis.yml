@@ -1,0 +1,125 @@
+name: Daily Numbers4 Analysis
+
+on:
+  schedule:
+    # 平日（月〜金）JST 23:00 に実行
+    # JST 23:00 = UTC 14:00
+    - cron: '0 14 * * 1-5'
+  workflow_dispatch:  # 手動実行も可能
+    inputs:
+      date:
+        description: '分析対象日（YYYYMMDD形式、空白なら今日）'
+        required: false
+        default: ''
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Pull latest changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git pull origin main --rebase || true
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Initialize database
+        run: python tools/utils.py
+      
+      - name: Scrape latest results
+        run: |
+          echo "📡 Fetching latest lottery results..."
+          python tools/scrape_numbers4_rakuten.py
+      
+      - name: Check prediction data
+        run: |
+          TODAY=$(date '+%Y%m%d')
+          TARGET_DATE="${{ github.event.inputs.date }}"
+          if [ -z "$TARGET_DATE" ]; then
+            TARGET_DATE="$TODAY"
+          fi
+          
+          echo "📂 Looking for prediction data: ${TARGET_DATE}"
+          if [ -f "predictions/daily/${TARGET_DATE}.json" ]; then
+            echo "✅ Found predictions/daily/${TARGET_DATE}.json"
+            python -c "
+          import json
+          with open('predictions/daily/${TARGET_DATE}.json', 'r') as f:
+              data = json.load(f)
+          print(f'  📊 Prediction count: {len(data.get(\"predictions\", []))}')
+          print(f'  🎯 Target draw: {data.get(\"target_draw_number\")}')
+          "
+          else
+            echo "⚠️ No prediction data for ${TARGET_DATE}"
+            echo "Available files:"
+            ls -la predictions/daily/ || echo "No daily predictions directory"
+            exit 1
+          fi
+      
+      - name: Run analysis
+        id: analysis
+        run: |
+          TARGET_DATE="${{ github.event.inputs.date }}"
+          if [ -z "$TARGET_DATE" ]; then
+            TARGET_DATE=$(date '+%Y%m%d')
+          fi
+          
+          echo "📊 Analyzing predictions for ${TARGET_DATE}..."
+          python numbers4/analyze_prediction_result.py --date "$TARGET_DATE"
+          
+          echo "date=$TARGET_DATE" >> $GITHUB_OUTPUT
+      
+      - name: Commit analysis report
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          # reportsディレクトリとmodel_weights.jsonをコミット
+          git add reports/*.md || true
+          git add numbers4/model_weights.json || true
+          
+          if git diff --staged --quiet; then
+            echo "📝 No changes to commit"
+          else
+            TARGET_DATE="${{ steps.analysis.outputs.date }}"
+            git commit -m "📊 Numbers4 analysis report ${TARGET_DATE}"
+            git push origin main
+            echo "✅ Analysis report committed and pushed!"
+          fi
+      
+      - name: Summary
+        run: |
+          echo "✅ Numbers4 analysis completed!"
+          echo "📊 Report saved to: reports/analysis_${{ steps.analysis.outputs.date }}.md"
+      
+      # ========================================
+      # 通知設定（使いたいものをコメント解除してね！）
+      # ========================================
+      
+      # --- Discord Webhook ---
+      # - name: Send Discord notification
+      #   if: env.DISCORD_WEBHOOK_URL != ''
+      #   env:
+      #     DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      #   run: |
+      #     python tools/send_notification.py --discord --summary "reports/analysis_${{ steps.analysis.outputs.date }}.md"
+
