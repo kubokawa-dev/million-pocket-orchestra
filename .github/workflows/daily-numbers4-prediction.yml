@@ -34,11 +34,11 @@ jobs:
       - name: Run Numbers4 prediction pipeline
         run: python tools/run_numbers4_pipeline.py
       
-      - name: Commit database changes
+      # Note: lottery.db is in .gitignore, so we don't commit it.
+      # Predictions are stored in the DB during the workflow run.
+      # If you need to persist predictions, consider using artifacts or a remote database.
+      - name: Summary
         run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add lottery.db
-          git diff --staged --quiet || git commit -m "🎰 Numbers4 prediction update $(date '+%Y-%m-%d %H:%M')"
-          git push
+          echo "✅ Numbers4 prediction completed successfully!"
+          echo "📊 Predictions have been saved to the local database."
 
