@@ -61,7 +61,7 @@ def extract_top_predictions(markdown: str, top_n: int = 5) -> str:
         if '安定上位予測' in line:
             in_ranking = True
             continue
-        if in_ranking and line.startswith('| 🥇') or line.startswith('| 🥈') or line.startswith('| 🥉'):
+        if in_ranking and (line.startswith('| 🥇') or line.startswith('| 🥈') or line.startswith('| 🥉')):
             # テーブルから番号を抽出
             parts = line.split('|')
             if len(parts) >= 3:
@@ -103,14 +103,14 @@ def send_line_notify(message: str, token: str) -> bool:
     data = {'message': message}
     
     try:
-        response = requests.post(url, headers=headers, data=data)
+        response = requests.post(url, headers=headers, data=data, timeout=30)
         if response.status_code == 200:
             print("✅ LINE通知を送信しました")
             return True
         else:
             print(f"❌ LINE通知に失敗: {response.status_code} - {response.text}")
             return False
-    except Exception as e:
+    except requests.exceptions.RequestException as e:
         print(f"❌ LINE通知エラー: {e}")
         return False
 
@@ -128,7 +128,8 @@ def send_discord_webhook(message: str, webhook_url: str) -> bool:
         response = requests.post(
             webhook_url,
             json=data,
-            headers={'Content-Type': 'application/json'}
+            headers={'Content-Type': 'application/json'},
+            timeout=30
         )
         if response.status_code in [200, 204]:
             print("✅ Discord通知を送信しました")
@@ -136,7 +137,7 @@ def send_discord_webhook(message: str, webhook_url: str) -> bool:
         else:
             print(f"❌ Discord通知に失敗: {response.status_code} - {response.text}")
             return False
-    except Exception as e:
+    except requests.exceptions.RequestException as e:
         print(f"❌ Discord通知エラー: {e}")
         return False
 
@@ -153,7 +154,8 @@ def send_slack_webhook(message: str, webhook_url: str) -> bool:
         response = requests.post(
             webhook_url,
             json=data,
-            headers={'Content-Type': 'application/json'}
+            headers={'Content-Type': 'application/json'},
+            timeout=30
         )
         if response.status_code == 200:
             print("✅ Slack通知を送信しました")
@@ -161,7 +163,7 @@ def send_slack_webhook(message: str, webhook_url: str) -> bool:
         else:
             print(f"❌ Slack通知に失敗: {response.status_code} - {response.text}")
             return False
-    except Exception as e:
+    except requests.exceptions.RequestException as e:
         print(f"❌ Slack通知エラー: {e}")
         return False
 

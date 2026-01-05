@@ -100,7 +100,7 @@ def aggregate_predictions(predictions: List[Dict]) -> Dict:
             try:
                 dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
                 time_str = dt.strftime('%H:%M')
-            except:
+            except (ValueError, AttributeError):
                 time_str = created_at[:16]
         else:
             time_str = str(created_at)
@@ -118,7 +118,7 @@ def aggregate_predictions(predictions: List[Dict]) -> Dict:
             stats['times'].append(time_str)
     
     # 平均スコア・平均順位を計算
-    for number, stats in number_stats.items():
+    for _number, stats in number_stats.items():
         stats['avg_score'] = stats['total_score'] / stats['appearances']
         stats['avg_rank'] = sum(stats['ranks']) / len(stats['ranks'])
         stats['appearance_rate'] = stats['appearances'] / total_predictions * 100
@@ -159,8 +159,8 @@ def generate_markdown(
     # メタ情報
     md.append("## 📋 予測情報")
     md.append("")
-    md.append(f"| 項目 | 内容 |")
-    md.append(f"|:---|:---|")
+    md.append("| 項目 | 内容 |")
+    md.append("|:---|:---|")
     md.append(f"| 対象回号 | 第{target_draw_number}回 |")
     md.append(f"| 予測回数 | {len(predictions)}回 |")
     
@@ -170,7 +170,7 @@ def generate_markdown(
             try:
                 dt = datetime.fromisoformat(t.replace('Z', '+00:00'))
                 return dt.strftime('%Y-%m-%d %H:%M JST')
-            except:
+            except (ValueError, AttributeError):
                 return t[:16]
         return str(t)
     
@@ -242,7 +242,7 @@ def generate_markdown(
             try:
                 dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
                 time_str = dt.strftime('%H:%M')
-            except:
+            except (ValueError, AttributeError):
                 time_str = created_at[11:16]
         else:
             time_str = str(created_at)
