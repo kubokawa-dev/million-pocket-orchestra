@@ -10,13 +10,8 @@ from datetime import datetime, timezone
 from typing import Dict, List, Optional
 import pandas as pd
 
-
-def get_predictions_dir() -> str:
-    """予測結果保存ディレクトリを取得"""
-    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    predictions_dir = os.path.join(project_root, 'predictions', 'daily')
-    os.makedirs(predictions_dir, exist_ok=True)
-    return predictions_dir
+# 共通ユーティリティからインポート
+from numbers4.prediction_utils import get_predictions_dir
 
 
 def save_prediction_to_json(
@@ -27,6 +22,8 @@ def save_prediction_to_json(
 ) -> str:
     """
     予測結果をJSONファイルとして保存
+    
+    ファイル名は対象抽選回号ベース（例: 6891.json）
     
     Args:
         predictions_df: 予測結果のDataFrame
@@ -41,18 +38,19 @@ def save_prediction_to_json(
     date_str = now.strftime('%Y%m%d')
     time_str = now.strftime('%H%M')
     
-    # 今日の予測ファイルパス
+    # 抽選回号ベースのファイルパス（例: 6891.json）
     predictions_dir = get_predictions_dir()
-    daily_file = os.path.join(predictions_dir, f'{date_str}.json')
+    draw_file = os.path.join(predictions_dir, f'{target_draw_number}.json')
     
     # 既存のデータを読み込む（あれば）
-    if os.path.exists(daily_file):
-        with open(daily_file, 'r', encoding='utf-8') as f:
+    if os.path.exists(draw_file):
+        with open(draw_file, 'r', encoding='utf-8') as f:
             daily_data = json.load(f)
     else:
         daily_data = {
-            'date': date_str,
-            'target_draw_number': target_draw_number,
+            'draw_number': target_draw_number,
+            'target_draw_number': target_draw_number,  # 後方互換性のため残す
+            'date': date_str,  # 最初の予測日
             'predictions': []
         }
     
@@ -78,49 +76,35 @@ def save_prediction_to_json(
     daily_data['prediction_count'] = len(daily_data['predictions'])
     
     # ファイルに保存
-    with open(daily_file, 'w', encoding='utf-8') as f:
+    with open(draw_file, 'w', encoding='utf-8') as f:
         json.dump(daily_data, f, ensure_ascii=False, indent=2)
     
-    print(f"✅ 予測結果をJSONに保存しました: {daily_file}")
-    print(f"   📊 本日の予測回数: {len(daily_data['predictions'])}回")
+    print(f"✅ 予測結果をJSONに保存しました: {draw_file}")
+    print(f"   🎯 対象回号: 第{target_draw_number}回")
+    print(f"   📊 予測回数: {len(daily_data['predictions'])}回")
     
-    return daily_file
+    return draw_file
 
 
-def load_daily_predictions(date_str: str = None) -> Optional[Dict]:
+# 後方互換性のため、共通モジュールの関数を再エクスポート
+from numbers4.prediction_utils import load_predictions_by_draw, load_daily_predictions
+
+
+def get_aggregated_predictions(draw_number: int = None, date_str: str = None) -> Dict:
     """
-    指定日の予測データを読み込む
+    予測を集計して、安定して上位に来る番号を抽出
     
     Args:
-        date_str: 日付文字列（YYYYMMDD）。Noneなら今日
-    
-    Returns:
-        予測データ辞書、またはNone
-    """
-    if date_str is None:
-        date_str = datetime.now(timezone.utc).strftime('%Y%m%d')
-    
-    predictions_dir = get_predictions_dir()
-    daily_file = os.path.join(predictions_dir, f'{date_str}.json')
-    
-    if not os.path.exists(daily_file):
-        return None
-    
-    with open(daily_file, 'r', encoding='utf-8') as f:
-        return json.load(f)
-
-
-def get_aggregated_predictions(date_str: str = None) -> Dict:
-    """
-    1日分の予測を集計して、安定して上位に来る番号を抽出
-    
-    Args:
-        date_str: 日付文字列（YYYYMMDD）
+        draw_number: 抽選回号（優先）
+        date_str: 日付文字列（YYYYMMDD）- 後方互換性用
     
     Returns:
         集計結果の辞書
     """
-    daily_data = load_daily_predictions(date_str)
+    if draw_number:
+        daily_data = load_predictions_by_draw(draw_number)
+    else:
+        daily_data = load_daily_predictions(date_str)
     
     if not daily_data or not daily_data.get('predictions'):
         return {'error': '予測データがありません'}

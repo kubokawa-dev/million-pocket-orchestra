@@ -5,9 +5,9 @@
 また、モデルの重みを自動調整して改善を図る
 
 使い方:
-  python numbers4/analyze_prediction_result.py
-  python numbers4/analyze_prediction_result.py --date 20260105
-  python numbers4/analyze_prediction_result.py --output reports/analysis_20260105.md
+  python numbers4/analyze_prediction_result.py --draw 6890
+  python numbers4/analyze_prediction_result.py --draw 6890 --output reports/analysis_6890.md
+  python numbers4/analyze_prediction_result.py --date 20260105  # 後方互換
 """
 
 import os
@@ -25,30 +25,13 @@ sys.path.insert(0, project_root)
 from tools.utils import get_db_connection
 from numbers4.ai_analyzer import analyze_with_ai, format_ai_analysis_for_markdown
 
-
-def get_predictions_dir() -> str:
-    """予測結果保存ディレクトリを取得"""
-    return os.path.join(project_root, 'predictions', 'daily')
-
-
-def get_reports_dir() -> str:
-    """分析レポート保存ディレクトリを取得"""
-    reports_dir = os.path.join(project_root, 'reports')
-    os.makedirs(reports_dir, exist_ok=True)
-    return reports_dir
-
-
-def load_daily_predictions(date_str: str) -> Optional[Dict]:
-    """指定日の予測データを読み込む"""
-    predictions_dir = get_predictions_dir()
-    daily_file = os.path.join(predictions_dir, f'{date_str}.json')
-    
-    if not os.path.exists(daily_file):
-        print(f"❌ 予測ファイルが見つかりません: {daily_file}")
-        return None
-    
-    with open(daily_file, 'r', encoding='utf-8') as f:
-        return json.load(f)
+# 共通ユーティリティからインポート
+from numbers4.prediction_utils import (
+    get_predictions_dir,
+    get_reports_dir,
+    load_predictions_by_draw,
+    load_daily_predictions,
+)
 
 
 def get_actual_result(target_draw_number: int) -> Optional[Dict]:
@@ -439,8 +422,12 @@ def main():
         description='予測結果と当選番号を比較・分析'
     )
     parser.add_argument(
+        '--draw', type=int,
+        help='対象抽選回号（優先）'
+    )
+    parser.add_argument(
         '--date', '-d', type=str,
-        help='対象日（YYYYMMDD形式、未指定時は今日）'
+        help='対象日（YYYYMMDD形式）- 後方互換性用'
     )
     parser.add_argument(
         '--output', '-o', type=str,
@@ -457,17 +444,23 @@ def main():
     
     args = parser.parse_args()
     
-    # 日付を決定
-    if args.date:
-        date_str = args.date
+    # 予測データを読み込み (回号優先、なければ日付)
+    daily_data = None
+    
+    if args.draw:
+        # 回号ベースで読み込み
+        daily_data = load_predictions_by_draw(args.draw)
+        print(f"📊 第{args.draw}回 の予測結果を分析中...")
     else:
-        # 今日の日付（UTC）
-        date_str = datetime.now(timezone.utc).strftime('%Y%m%d')
+        # 日付ベースで読み込み（後方互換）
+        if args.date:
+            date_str = args.date
+        else:
+            date_str = datetime.now(timezone.utc).strftime('%Y%m%d')
+        
+        print(f"📊 {date_str} の予測結果を分析中...")
+        daily_data = load_daily_predictions(date_str)
     
-    print(f"📊 {date_str} の予測結果を分析中...")
-    
-    # 予測データを読み込み
-    daily_data = load_daily_predictions(date_str)
     if not daily_data:
         print("❌ 予測データが見つかりません")
         sys.exit(1)
@@ -551,7 +544,8 @@ def main():
         output_path = args.output
     else:
         reports_dir = get_reports_dir()
-        output_path = os.path.join(reports_dir, f'analysis_{date_str}.md')
+        # 回号ベースのファイル名を使用
+        output_path = os.path.join(reports_dir, f'analysis_{target_draw}.md')
     
     # ディレクトリを作成
     os.makedirs(os.path.dirname(output_path), exist_ok=True)

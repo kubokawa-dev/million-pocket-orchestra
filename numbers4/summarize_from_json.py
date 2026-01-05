@@ -2,8 +2,8 @@
 JSONファイルから予測データを読み込んでMarkdownサマリーを生成
 
 使い方:
-  python numbers4/summarize_from_json.py --output predictions/summary.md
-  python numbers4/summarize_from_json.py --date 20260105 --output predictions/summary.md
+  python numbers4/summarize_from_json.py --draw 6891 --output predictions/numbers4_6891.md
+  python numbers4/summarize_from_json.py --date 20260105 --output predictions/summary.md  # 後方互換
 """
 
 import os
@@ -18,27 +18,12 @@ from typing import Dict, List, Optional
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
 
-
-def get_predictions_dir() -> str:
-    """予測結果保存ディレクトリを取得"""
-    return os.path.join(project_root, 'predictions', 'daily')
-
-
-def load_daily_predictions(date_str: str = None) -> Optional[Dict]:
-    """指定日の予測データを読み込む"""
-    if date_str is None:
-        # 今日の日付（UTC）
-        date_str = datetime.now(timezone.utc).strftime('%Y%m%d')
-    
-    predictions_dir = get_predictions_dir()
-    daily_file = os.path.join(predictions_dir, f'{date_str}.json')
-    
-    if not os.path.exists(daily_file):
-        print(f"❌ 予測ファイルが見つかりません: {daily_file}")
-        return None
-    
-    with open(daily_file, 'r', encoding='utf-8') as f:
-        return json.load(f)
+# 共通ユーティリティからインポート
+from numbers4.prediction_utils import (
+    get_predictions_dir,
+    load_predictions_by_draw,
+    load_daily_predictions,
+)
 
 
 def aggregate_predictions(daily_data: Dict) -> Dict:
@@ -216,8 +201,12 @@ def main():
         description='JSONから予測データを読み込んでMarkdownサマリーを生成'
     )
     parser.add_argument(
+        '--draw', type=int,
+        help='対象抽選回号（優先）'
+    )
+    parser.add_argument(
         '--date', '-d', type=str,
-        help='対象日（YYYYMMDD形式、未指定時は今日）'
+        help='対象日（YYYYMMDD形式）- 後方互換性用'
     )
     parser.add_argument(
         '--output', '-o', type=str,
@@ -230,8 +219,12 @@ def main():
     
     args = parser.parse_args()
     
-    # 予測データを読み込み
-    daily_data = load_daily_predictions(args.date)
+    # 予測データを読み込み（回号優先、なければ日付）
+    if args.draw:
+        daily_data = load_predictions_by_draw(args.draw)
+        print(f"🎯 第{args.draw}回の予測データを読み込み中...")
+    else:
+        daily_data = load_daily_predictions(args.date)
     
     if not daily_data:
         print("❌ 予測データが見つかりません")

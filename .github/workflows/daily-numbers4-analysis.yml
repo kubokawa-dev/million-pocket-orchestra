@@ -7,8 +7,12 @@ on:
     - cron: '0 14 * * 1-5'
   workflow_dispatch:  # 手動実行も可能
     inputs:
+      draw:
+        description: '対象抽選回号（空白なら最新）'
+        required: false
+        default: ''
       date:
-        description: '分析対象日（YYYYMMDD形式、空白なら今日）'
+        description: '分析対象日（YYYYMMDD形式）- 後方互換用'
         required: false
         default: ''
 
@@ -50,29 +54,59 @@ jobs:
           echo "📡 Fetching latest lottery results..."
           python tools/scrape_numbers4_rakuten.py
       
-      - name: Check prediction data
+      - name: Check prediction data and get draw number
+        id: check
         run: |
-          TODAY=$(date '+%Y%m%d')
-          TARGET_DATE="${{ github.event.inputs.date }}"
-          if [ -z "$TARGET_DATE" ]; then
-            TARGET_DATE="$TODAY"
+          INPUT_DRAW="${{ github.event.inputs.draw }}"
+          INPUT_DATE="${{ github.event.inputs.date }}"
+          
+          # 回号が指定されている場合
+          if [ -n "$INPUT_DRAW" ]; then
+            DRAW_NUMBER="$INPUT_DRAW"
+            echo "📂 Looking for prediction data: Draw #${DRAW_NUMBER}"
+            if [ -f "predictions/daily/${DRAW_NUMBER}.json" ]; then
+              echo "✅ Found predictions/daily/${DRAW_NUMBER}.json"
+              echo "draw_number=$DRAW_NUMBER" >> $GITHUB_OUTPUT
+            else
+              echo "❌ No prediction file for Draw #${DRAW_NUMBER}"
+              exit 1
+            fi
+          else
+            # 回号が指定されていない場合は最新のファイルを探す
+            echo "📂 Looking for latest prediction data..."
+            LATEST_FILE=$(ls -1 predictions/daily/*.json 2>/dev/null | grep -E '/[0-9]+\.json$' | sort -t'/' -k3 -n | tail -1 || true)
+            
+            if [ -n "$LATEST_FILE" ]; then
+              DRAW_NUMBER=$(basename "$LATEST_FILE" .json)
+              echo "✅ Found $LATEST_FILE (Draw #$DRAW_NUMBER)"
+              echo "draw_number=$DRAW_NUMBER" >> $GITHUB_OUTPUT
+            elif [ -n "$INPUT_DATE" ] && [ -f "predictions/daily/${INPUT_DATE}.json" ]; then
+              # 旧形式（日付ベース）を探す
+              DRAW_NUMBER=$(python -c "
+          import json
+          with open('predictions/daily/${INPUT_DATE}.json', 'r') as f:
+              data = json.load(f)
+          print(data.get('target_draw_number', ''))
+          ")
+              echo "✅ Found predictions/daily/${INPUT_DATE}.json (Draw #$DRAW_NUMBER)"
+              echo "draw_number=$DRAW_NUMBER" >> $GITHUB_OUTPUT
+              echo "use_date=${INPUT_DATE}" >> $GITHUB_OUTPUT
+            else
+              echo "❌ No prediction data found"
+              ls -la predictions/daily/ || echo "No daily predictions directory"
+              exit 1
+            fi
           fi
           
-          echo "📂 Looking for prediction data: ${TARGET_DATE}"
-          if [ -f "predictions/daily/${TARGET_DATE}.json" ]; then
-            echo "✅ Found predictions/daily/${TARGET_DATE}.json"
+          # 予測データの情報を表示
+          if [ -f "predictions/daily/${DRAW_NUMBER}.json" ]; then
             python -c "
           import json
-          with open('predictions/daily/${TARGET_DATE}.json', 'r') as f:
+          with open('predictions/daily/${DRAW_NUMBER}.json', 'r') as f:
               data = json.load(f)
           print(f'  📊 Prediction count: {len(data.get(\"predictions\", []))}')
-          print(f'  🎯 Target draw: {data.get(\"target_draw_number\")}')
-          "
-          else
-            echo "⚠️ No prediction data for ${TARGET_DATE}"
-            echo "Available files:"
-            ls -la predictions/daily/ || echo "No daily predictions directory"
-            exit 1
+          print(f'  🎯 Target draw: {data.get(\"target_draw_number\", data.get(\"draw_number\"))}')
+          " || true
           fi
       
       - name: Run analysis
@@ -80,23 +114,31 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          TARGET_DATE="${{ github.event.inputs.date }}"
-          if [ -z "$TARGET_DATE" ]; then
-            TARGET_DATE=$(date '+%Y%m%d')
-          fi
+          DRAW_NUMBER="${{ steps.check.outputs.draw_number }}"
+          USE_DATE="${{ steps.check.outputs.use_date }}"
           
-          echo "📊 Analyzing predictions for ${TARGET_DATE}..."
+          echo "📊 Analyzing predictions for Draw #${DRAW_NUMBER}..."
           
           # AI分析を実行（ANTHROPIC_API_KEYが設定されている場合）
           if [ -n "$ANTHROPIC_API_KEY" ]; then
             echo "🤖 AI analysis enabled"
-            python numbers4/analyze_prediction_result.py --date "$TARGET_DATE"
+            if [ -n "$USE_DATE" ]; then
+              # 旧形式の場合は日付で指定
+              python numbers4/analyze_prediction_result.py --date "$USE_DATE"
+            else
+              # 回号ベースで分析
+              python numbers4/analyze_prediction_result.py --draw "$DRAW_NUMBER"
+            fi
           else
             echo "⚠️ ANTHROPIC_API_KEY not set, using rule-based analysis"
-            python numbers4/analyze_prediction_result.py --date "$TARGET_DATE" --no-ai
+            if [ -n "$USE_DATE" ]; then
+              python numbers4/analyze_prediction_result.py --date "$USE_DATE" --no-ai
+            else
+              python numbers4/analyze_prediction_result.py --draw "$DRAW_NUMBER" --no-ai
+            fi
           fi
           
-          echo "date=$TARGET_DATE" >> $GITHUB_OUTPUT
+          echo "draw_number=$DRAW_NUMBER" >> $GITHUB_OUTPUT
       
       - name: Commit analysis report
         run: |
@@ -110,16 +152,17 @@ jobs:
           if git diff --staged --quiet; then
             echo "📝 No changes to commit"
           else
-            TARGET_DATE="${{ steps.analysis.outputs.date }}"
-            git commit -m "📊 Numbers4 analysis report ${TARGET_DATE}"
+            DRAW_NUMBER="${{ steps.analysis.outputs.draw_number }}"
+            git commit -m "📊 Numbers4 analysis report Draw #${DRAW_NUMBER}"
             git push origin main
             echo "✅ Analysis report committed and pushed!"
           fi
       
       - name: Summary
         run: |
+          DRAW_NUMBER="${{ steps.analysis.outputs.draw_number }}"
           echo "✅ Numbers4 analysis completed!"
-          echo "📊 Report saved to: reports/analysis_${{ steps.analysis.outputs.date }}.md"
+          echo "📊 Report saved to: reports/analysis_${DRAW_NUMBER}.md"
       
       # ========================================
       # 通知設定（使いたいものをコメント解除してね！）
@@ -131,5 +174,5 @@ jobs:
       #   env:
       #     DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
       #   run: |
-      #     python tools/send_notification.py --discord --summary "reports/analysis_${{ steps.analysis.outputs.date }}.md"
+      #     python tools/send_notification.py --discord --summary "reports/analysis_${{ steps.analysis.outputs.draw_number }}.md"
 
