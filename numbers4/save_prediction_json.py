@@ -18,31 +18,32 @@ def save_prediction_to_json(
     predictions_df: pd.DataFrame,
     ensemble_weights: Dict[str, float],
     target_draw_number: int,
-    top_n: int = 20
+    top_n: int = 20,
+    similar_patterns: Optional[Dict[str, List[Dict]]] = None
 ) -> str:
     """
     予測結果をJSONファイルとして保存
     
-    ファイル名は対象抽選回号ベース（例: 6891.json）
+    ファイル名は対象抽選回号ベース (例: numbers4_6891.json)
     
     Args:
         predictions_df: 予測結果のDataFrame
         ensemble_weights: アンサンブルの重み
         target_draw_number: 対象抽選回号
         top_n: 保存する上位予測数
+        similar_patterns: 類似パターン辞書 {番号: [{number, description, score}, ...]}
     
     Returns:
         保存したファイルパス
     """
     now = datetime.now(timezone.utc)
     date_str = now.strftime('%Y%m%d')
-    time_str = now.strftime('%H%M')
     
-    # 抽選回号ベースのファイルパス（例: 6891.json）
+    # 抽選回号ベースのファイルパス (例: numbers4_6891.json)
     predictions_dir = get_predictions_dir()
-    draw_file = os.path.join(predictions_dir, f'{target_draw_number}.json')
+    draw_file = os.path.join(predictions_dir, f'numbers4_{target_draw_number}.json')
     
-    # 既存のデータを読み込む（あれば）
+    # 既存のデータを読み込む (あれば)
     if os.path.exists(draw_file):
         with open(draw_file, 'r', encoding='utf-8') as f:
             daily_data = json.load(f)
@@ -57,11 +58,17 @@ def save_prediction_to_json(
     # 上位予測を抽出
     top_predictions = []
     for idx, row in predictions_df.head(top_n).iterrows():
-        top_predictions.append({
+        pred_data = {
             'rank': int(idx + 1),
             'number': str(row['prediction']),
             'score': round(float(row['score']), 2)
-        })
+        }
+        
+        # 類似パターンがあれば追加
+        if similar_patterns and str(row['prediction']) in similar_patterns:
+            pred_data['similar_patterns'] = similar_patterns[str(row['prediction'])]
+        
+        top_predictions.append(pred_data)
     
     # 新しい予測を追加
     prediction_entry = {
