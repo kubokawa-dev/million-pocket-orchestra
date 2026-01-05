@@ -279,3 +279,4 @@ if __name__ == '__main__':
     print(f"\n{test_number} の特徴:")
     print(json.dumps(features, ensure_ascii=False, indent=2))
 
+
