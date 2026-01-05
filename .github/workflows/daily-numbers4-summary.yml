@@ -37,30 +37,55 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
       
-      - name: Check prediction data
+      - name: Get latest draw number
+        id: draw
         run: |
-          echo "📂 Looking for today's prediction data..."
-          TODAY=$(date '+%Y%m%d')
-          if [ -f "predictions/daily/${TODAY}.json" ]; then
-            echo "✅ Found predictions/daily/${TODAY}.json"
+          echo "📂 Looking for latest prediction data..."
+          # 最新の回号ベースのJSONファイルを探す
+          LATEST_FILE=$(ls -1 predictions/daily/*.json 2>/dev/null | grep -E '/[0-9]+\.json$' | sort -t'/' -k3 -n | tail -1 || true)
+          
+          if [ -n "$LATEST_FILE" ]; then
+            DRAW_NUMBER=$(basename "$LATEST_FILE" .json)
+            echo "✅ Found $LATEST_FILE (Draw #$DRAW_NUMBER)"
+            echo "draw_number=$DRAW_NUMBER" >> $GITHUB_OUTPUT
             python -c "
+          import json
+          with open('$LATEST_FILE', 'r') as f:
+              data = json.load(f)
+          print(f'  📊 Prediction count: {len(data.get(\"predictions\", []))}')
+          print(f'  🎯 Target draw: {data.get(\"target_draw_number\", data.get(\"draw_number\"))}')
+          "
+          else
+            # 旧形式（日付ベース）を探す
+            TODAY=$(date '+%Y%m%d')
+            if [ -f "predictions/daily/${TODAY}.json" ]; then
+              echo "✅ Found predictions/daily/${TODAY}.json (legacy format)"
+              DRAW_NUMBER=$(python -c "
           import json
           with open('predictions/daily/${TODAY}.json', 'r') as f:
               data = json.load(f)
-          print(f'  📊 Prediction count: {len(data.get(\"predictions\", []))}')
-          print(f'  🎯 Target draw: {data.get(\"target_draw_number\")}')
-          "
-          else
-            echo "⚠️ No prediction data for today (${TODAY})"
-            echo "Available files:"
-            ls -la predictions/daily/ || echo "No daily predictions directory"
+          print(data.get('target_draw_number', ''))
+          ")
+              echo "draw_number=$DRAW_NUMBER" >> $GITHUB_OUTPUT
+            else
+              echo "⚠️ No prediction data found"
+              echo "Available files:"
+              ls -la predictions/daily/ || echo "No daily predictions directory"
+            fi
           fi
       
       - name: Generate summary from JSON
         id: summary
         run: |
-          OUTPUT_FILE="predictions/numbers4_$(date '+%Y%m%d').md"
-          python numbers4/summarize_from_json.py --output "$OUTPUT_FILE"
+          DRAW_NUMBER="${{ steps.draw.outputs.draw_number }}"
+          if [ -n "$DRAW_NUMBER" ]; then
+            OUTPUT_FILE="predictions/numbers4_${DRAW_NUMBER}.md"
+            python numbers4/summarize_from_json.py --draw "$DRAW_NUMBER" --output "$OUTPUT_FILE"
+          else
+            # 回号が取得できない場合は日付ベースで試行
+            OUTPUT_FILE="predictions/numbers4_$(date '+%Y%m%d').md"
+            python numbers4/summarize_from_json.py --output "$OUTPUT_FILE"
+          fi
           echo "output_file=$OUTPUT_FILE" >> $GITHUB_OUTPUT
       
       - name: Commit summary
