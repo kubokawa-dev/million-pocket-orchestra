@@ -1,4 +1,3 @@
-import psycopg2
 import pandas as pd
 import sys
 import os
@@ -13,6 +12,7 @@ project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if project_root not in sys.path:
     sys.path.append(project_root)
 
+from tools.utils import get_db_connection, load_all_numbers4_draws
 from numbers4.prediction_logic import (
     predict_from_basic_stats,
     predict_from_advanced_heuristics,
@@ -45,32 +45,15 @@ NUM_PREDICTIONS_LARGE_CHANGE = 200
 NUM_PREDICTIONS_REALISTIC_FREQUENCY = 400
 
 
-def get_db_connection():
-    """データベース接続を取得する"""
-    db_url = os.environ.get('DATABASE_URL')
-    if db_url and '?schema' in db_url:
-        db_url = db_url.split('?schema')[0]
-    return psycopg2.connect(db_url)
-
 def load_all_draws():
-    """データベースからすべての抽選データを読み込む"""
-    conn = get_db_connection()
-    df = pd.read_sql_query("SELECT draw_date, numbers FROM numbers4_draws ORDER BY draw_date ASC", conn)
-    conn.close()
-    
-    # numbersを各桁に分割する
-    df['d1'] = df['numbers'].str[0]
-    df['d2'] = df['numbers'].str[1]
-    df['d3'] = df['numbers'].str[2]
-    df['d4'] = df['numbers'].str[3]
-
-    # データ型を整数に変換
-    for col in ['d1', 'd2', 'd3', 'd4']:
-        df[col] = pd.to_numeric(df[col], errors='coerce')
-    df = df.dropna()
-    for col in ['d1', 'd2', 'd3', 'd4']:
-        df[col] = df[col].astype(int)
-        
+    """データベースからすべての抽選データを読み込む（SQLite版）"""
+    # tools/utils.pyのload_all_numbers4_draws()を利用
+    df = load_all_numbers4_draws()
+    # カラム名の互換性を保つ（winning_numbers → numbers）
+    if 'winning_numbers' in df.columns:
+        df = df.rename(columns={'winning_numbers': 'numbers'})
+    if 'date' in df.columns:
+        df = df.rename(columns={'date': 'draw_date'})
     return df
 
 def generate_ensemble_prediction(progress_callback=None):
