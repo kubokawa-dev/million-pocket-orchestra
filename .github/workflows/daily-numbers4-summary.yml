@@ -11,6 +11,10 @@ jobs:
   summarize:
     runs-on: ubuntu-latest
     
+    permissions:
+      contents: write
+      actions: read
+    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -29,15 +33,11 @@ jobs:
       - name: Initialize database
         run: python tools/utils.py
       
-      # Predictionワークフローで保存したDBを復元
-      - name: Download database from prediction workflow
-        uses: dawidd6/action-download-artifact@v3
-        with:
-          name: lottery-db-today
-          path: .
-          workflow: daily-numbers4-prediction.yml
-          workflow_conclusion: success
-          search_artifacts: true
+      # まず予測を実行してDBにデータを入れる
+      - name: Run prediction pipeline (to populate DB)
+        run: |
+          echo "🔮 Running prediction to populate database..."
+          python tools/run_numbers4_pipeline.py
       
       - name: Check database
         run: |
@@ -52,6 +52,10 @@ jobs:
           cur.execute('SELECT COUNT(*) FROM numbers4_ensemble_predictions')
           count = cur.fetchone()[0]
           print(f'  Total predictions: {count}')
+          cur.execute('SELECT target_draw_number FROM numbers4_ensemble_predictions ORDER BY created_at DESC LIMIT 1')
+          row = cur.fetchone()
+          if row:
+              print(f'  Latest target draw: {row[0]}')
           conn.close()
           " || echo "❌ Failed to query database"
       
