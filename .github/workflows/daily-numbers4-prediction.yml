@@ -1,9 +1,12 @@
-name: Daily Lottery Prediction
+name: Daily Numbers4 Prediction
 
 on:
   schedule:
-    # UTC 8:00 = JST 17:00（抽選18:45の約2時間前）
-    - cron: '0 8 * * *'
+    # 平日（月〜金）JST 6:00〜15:00 の毎時実行（計10回）
+    # JST 06:00〜08:00 = UTC 21:00〜23:00（前日）
+    - cron: '0 21-23 * * 0-4'  # 日〜木の21-23時 UTC = 月〜金の06-08時 JST
+    # JST 09:00〜15:00 = UTC 00:00〜06:00
+    - cron: '0 0-6 * * 1-5'    # 月〜金の00-06時 UTC = 月〜金の09-15時 JST
   workflow_dispatch:  # 手動実行も可能
 
 jobs:
@@ -31,20 +34,11 @@ jobs:
       - name: Run Numbers4 prediction pipeline
         run: python tools/run_numbers4_pipeline.py
       
-      - name: Run Loto6 prediction pipeline
-        run: python tools/run_loto6_pipeline.py
-      
       - name: Commit database changes
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add lottery.db
-          git diff --staged --quiet || git commit -m "🎰 Daily prediction update $(date '+%Y-%m-%d')"
+          git diff --staged --quiet || git commit -m "🎰 Numbers4 prediction update $(date '+%Y-%m-%d %H:%M')"
           git push
-      
-      # LINE通知（オプション - シークレット設定後に有効化）
-      # - name: Send LINE notification
-      #   env:
-      #     LINE_NOTIFY_TOKEN: ${{ secrets.LINE_NOTIFY_TOKEN }}
-      #   run: python tools/send_notification.py
 
