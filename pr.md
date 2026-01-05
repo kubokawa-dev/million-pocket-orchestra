@@ -1,84 +1,77 @@
 ## 概要
 
-PostgreSQL + Prisma + Docker構成から、Pythonのみで完結するSQLite構成へ完全移行しました。
-これにより、シークレットなアプリケーションとして単一ファイルDBで運用可能になり、
-GitHub Actionsでの自動予測パイプライン実行にも対応しました。
-
-## 変更内容
-
-### 新規追加
-- **SQLiteスキーマ定義** (`schema.sql`): PostgreSQLと同等のテーブル構造をSQLite向けに定義
-- **データ移行スクリプト** (`tools/migrate_to_sqlite.py`): PostgreSQLからSQLiteへのデータ移行ツール
-- **LINE通知スクリプト** (`tools/send_notification.py`): 予測結果をLINE Notifyで通知する機能
-- **GitHub Actionsワークフロー** (`.github/workflows/daily-prediction.yml`): 毎日自動で予測パイプラインを実行
-
-### 変更
-- `tools/utils.py`: DB接続を `psycopg2` (PostgreSQL) から `sqlite3` へ変更
-- 全PythonファイルでSQLプレースホルダを `%s` から `?` へ変更
-- `RETURNING id` を `cur.lastrowid` に変更（SQLite互換）
-- `requirements.txt`: `psycopg2-binary` を削除、`requests` を追加
-
-### 削除（計約16,000行）
-- `docker-compose.yml`: PostgreSQLコンテナ定義
-- `packages/` ディレクトリ全体: Prismaスキーマ、マイグレーション、TypeScript設定
-- Node.js関連: `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `turbo.json`
+Numbers4の予測ワークフローを強化し、平日に10回の予測を実行して結果をサマリーとしてまとめる機能を追加しました。
 
 ## 背景・目的
 
-1. **シークレットなアプリケーション**: 単一ファイルDBで完結させ、外部DB依存を排除
-2. **シンプル化**: Docker/Node.js依存を排除し、Pythonのみで運用可能に
-3. **自動化対応**: GitHub Actionsで毎日の予測パイプラインを自動実行できるように
+- 1日1回の予測だと、その時点でのモデル状態に依存しすぎてしまう
+- 複数回予測を実行し、安定して上位に来る番号を特定することで、より信頼性の高い予測を提供したい
+- 予測結果を見やすいMarkdown形式でまとめ、外部サービスへの通知も可能にしたい
+
+## 変更内容
+
+- **ワークフローのリネームと最適化**
+  - `daily-loto6-prediction.yml` → `daily-numbers4-prediction.yml` にリネーム
+  - Numbers4専用のワークフローとして整理し、Loto6予測とLINE通知を削除
+  - 実行スケジュールを平日6:00〜15:00の毎時10回に変更
+
+- **サマリー生成ワークフローの新規作成**
+  - `daily-numbers4-summary.yml` を新規作成
+  - 平日16:00に実行され、1日の予測結果をMarkdownでまとめる
+  - LINE/Discord/Slack/Email/GitHub Issueへの通知に対応（コメントアウト状態）
+
+- **予測サマリースクリプトの実装**
+  - `summarize_daily_predictions.py` を新規作成
+  - 同一回号の複数予測を集計し、安定上位予測をランキング
+  - 出現率・平均スコア・最高順位・安定度などを可視化
+
+- **通知スクリプトの改修**
+  - `send_notification.py` を複数通知サービス（LINE/Discord/Slack/Email/GitHub Issue）対応に改修
+  - サマリーからTOP5予測を抽出して通知メッセージを生成
 
 ## 影響範囲
 
-| 影響範囲 | 詳細 |
-|----------|------|
-| データベース | PostgreSQL → SQLite（既存データは移行スクリプトで移行済み） |
-| Numbers4予測パイプライン | 動作確認済み（予測ID: 231まで正常動作） |
-| Loto6予測パイプライン | SQLite対応完了 |
-| Node.js/TypeScript | 完全削除（使用していなかった部分） |
+- GitHub Actionsのワークフロー実行スケジュール
+- `predictions/` ディレクトリへのMarkdownファイル出力
+- 通知機能（設定後に有効化）
 
 ## リスクと対策
 
-| リスク | 対策 |
-|--------|------|
-| SQLite同時書き込み制限 | 単一プロセスでの実行を想定しており問題なし |
-| データ移行漏れ | 移行スクリプトで9,473件のレコード移行を確認済み |
-| GitHub Actions実行時のDB永続化 | ワークフロー内でSQLite DBをGitコミットするオプションを用意 |
-
-## 動作確認
-
-- [x] PostgreSQL → SQLiteデータ移行（9,473件移行完了）
-- [x] Numbers4予測パイプライン実行テスト（予測ID: 231まで正常動作）
-- [x] スクレイピング動作確認（404エラーハンドリング追加済み）
-- [ ] GitHub Actions自動実行（マージ後に確認予定）
-- [ ] LINE通知テスト（LINE_NOTIFY_TOKEN設定後に確認予定）
+- **GitHub Actionsの無料枠消費**: 平日10回×月22日=220回/月の実行となるが、無料枠内に収まる見込み
+- **cron実行の遅延**: GitHub Actionsのcronは混雑時に5〜15分遅れる可能性あり（許容範囲）
 
 ## レビュー観点
 
-1. **SQLite互換性**: `?` プレースホルダ、`cur.lastrowid` の使用が正しいか
-2. **移行スクリプト**: データ型変換（datetime→TEXT、BOOLEAN→INTEGER）が適切か
-3. **GitHub Actionsワークフロー**: cron設定、シークレット利用が適切か
+- [ ] cronスケジュールのUTC/JST変換が正しいか
+- [ ] サマリー生成スクリプトのMarkdown出力が適切か
+- [ ] 通知スクリプトの各サービス対応が正しいか
+
+## 動作確認
+
+- [x] ローカルでのサマリー生成スクリプト動作確認
+- [ ] GitHub Actions での実行確認（マージ後）
 
 ---
 
 ## 自動情報（参考）
 
 ### diffstat
-```
- 50 files changed, 1120 insertions(+), 16018 deletions(-)
+```diff
+ .github/workflows/daily-numbers4-prediction.yml |  20 +-
+ .github/workflows/daily-numbers4-summary.yml    | 104 ++++++
+ numbers4/model_state.json                       |  84 ++---
+ numbers4/summarize_daily_predictions.py         | 370 +++++++++++++++++++++
+ pr.md                                           | 134 ++++----
+ tools/send_notification.py                      | 348 +++++++++++--------
+ 6 files changed, 783 insertions(+), 277 deletions(-)
 ```
 
 ### changed files
-- `.github/workflows/daily-prediction.yml` (新規)
-- `README.md` (更新)
-- `docker-compose.yml` (削除)
-- `loto6/*.py` (SQLite対応)
-- `numbers4/*.py` (SQLite対応)
-- `tools/*.py` (SQLite対応、新規スクリプト追加)
-- `packages/` (全削除)
-- `package.json`, `pnpm-lock.yaml`, `turbo.json` (削除)
-- `schema.sql` (新規)
+- .github/workflows/daily-numbers4-prediction.yml
+- .github/workflows/daily-numbers4-summary.yml
+- numbers4/model_state.json
+- numbers4/summarize_daily_predictions.py
+- tools/send_notification.py
 
 ### commits
-- `8e91a33` refactor: PostgreSQL/PrismaからSQLiteへの移行とNode.js関連ファイルの削除
+- 303b12c feat(numbers4): 平日10回予測とサマリー通知ワークフローの追加
