@@ -64,8 +64,12 @@ jobs:
           if [ -n "$INPUT_DRAW" ]; then
             DRAW_NUMBER="$INPUT_DRAW"
             echo "📂 Looking for prediction data: Draw #${DRAW_NUMBER}"
-            if [ -f "predictions/daily/${DRAW_NUMBER}.json" ]; then
-              echo "✅ Found predictions/daily/${DRAW_NUMBER}.json"
+            # 新形式: numbers4_{draw}.json を優先
+            if [ -f "predictions/daily/numbers4_${DRAW_NUMBER}.json" ]; then
+              echo "✅ Found predictions/daily/numbers4_${DRAW_NUMBER}.json"
+              echo "draw_number=$DRAW_NUMBER" >> $GITHUB_OUTPUT
+            elif [ -f "predictions/daily/${DRAW_NUMBER}.json" ]; then
+              echo "✅ Found predictions/daily/${DRAW_NUMBER}.json (legacy)"
               echo "draw_number=$DRAW_NUMBER" >> $GITHUB_OUTPUT
             else
               echo "❌ No prediction file for Draw #${DRAW_NUMBER}"
@@ -74,10 +78,21 @@ jobs:
           else
             # 回号が指定されていない場合は最新のファイルを探す
             echo "📂 Looking for latest prediction data..."
-            LATEST_FILE=$(ls -1 predictions/daily/*.json 2>/dev/null | grep -E '/[0-9]+\.json$' | sort -t'/' -k3 -n | tail -1 || true)
+            # 新形式: numbers4_{draw}.json を優先
+            LATEST_FILE=$(ls -1 predictions/daily/numbers4_*.json 2>/dev/null | sort -t'_' -k2 -n | tail -1 || true)
+            if [ -z "$LATEST_FILE" ]; then
+              # 旧形式: {draw}.json にフォールバック
+              LATEST_FILE=$(ls -1 predictions/daily/*.json 2>/dev/null | grep -E '/[0-9]+\.json$' | sort -t'/' -k3 -n | tail -1 || true)
+            fi
             
             if [ -n "$LATEST_FILE" ]; then
-              DRAW_NUMBER=$(basename "$LATEST_FILE" .json)
+              # ファイル名から回号を抽出 (numbers4_6891.json -> 6891 or 6891.json -> 6891)
+              BASENAME=$(basename "$LATEST_FILE" .json)
+              if [[ "$BASENAME" == numbers4_* ]]; then
+                DRAW_NUMBER="${BASENAME#numbers4_}"
+              else
+                DRAW_NUMBER="$BASENAME"
+              fi
               echo "✅ Found $LATEST_FILE (Draw #$DRAW_NUMBER)"
               echo "draw_number=$DRAW_NUMBER" >> $GITHUB_OUTPUT
             elif [ -n "$INPUT_DATE" ] && [ -f "predictions/daily/${INPUT_DATE}.json" ]; then
@@ -99,10 +114,17 @@ jobs:
           fi
           
           # 予測データの情報を表示
-          if [ -f "predictions/daily/${DRAW_NUMBER}.json" ]; then
+          PRED_FILE=""
+          if [ -f "predictions/daily/numbers4_${DRAW_NUMBER}.json" ]; then
+            PRED_FILE="predictions/daily/numbers4_${DRAW_NUMBER}.json"
+          elif [ -f "predictions/daily/${DRAW_NUMBER}.json" ]; then
+            PRED_FILE="predictions/daily/${DRAW_NUMBER}.json"
+          fi
+          
+          if [ -n "$PRED_FILE" ]; then
             python -c "
           import json
-          with open('predictions/daily/${DRAW_NUMBER}.json', 'r') as f:
+          with open('$PRED_FILE', 'r') as f:
               data = json.load(f)
           print(f'  📊 Prediction count: {len(data.get(\"predictions\", []))}')
           print(f'  🎯 Target draw: {data.get(\"target_draw_number\", data.get(\"draw_number\"))}')

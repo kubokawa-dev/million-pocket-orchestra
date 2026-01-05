@@ -51,7 +51,8 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           
-          # predictions/daily/ ディレクトリのJSONをコミット
+          # predictions/daily/ ディレクトリのJSONをコミット (新形式: numbers4_*.json)
+          git add predictions/daily/numbers4_*.json || true
           git add predictions/daily/*.json || true
           
           if git diff --staged --quiet; then

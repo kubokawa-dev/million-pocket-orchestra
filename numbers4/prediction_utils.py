@@ -37,14 +37,21 @@ def load_predictions_by_draw(draw_number: int) -> Optional[Dict]:
         予測データ辞書、またはNone
     """
     predictions_dir = get_predictions_dir()
-    draw_file = os.path.join(predictions_dir, f'{draw_number}.json')
     
-    if not os.path.exists(draw_file):
-        print(f"❌ 予測ファイルが見つかりません: {draw_file}")
-        return None
+    # 新形式: numbers4_{draw_number}.json
+    draw_file = os.path.join(predictions_dir, f'numbers4_{draw_number}.json')
+    if os.path.exists(draw_file):
+        with open(draw_file, 'r', encoding='utf-8') as f:
+            return json.load(f)
     
-    with open(draw_file, 'r', encoding='utf-8') as f:
-        return json.load(f)
+    # 旧形式: {draw_number}.json (後方互換)
+    legacy_file = os.path.join(predictions_dir, f'{draw_number}.json')
+    if os.path.exists(legacy_file):
+        with open(legacy_file, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    
+    print(f"❌ 予測ファイルが見つかりません: {draw_file}")
+    return None
 
 
 def load_daily_predictions(date_str: Optional[str] = None) -> Optional[Dict]:
@@ -69,13 +76,36 @@ def load_daily_predictions(date_str: Optional[str] = None) -> Optional[Dict]:
             return json.load(f)
     
     # 日付ベースがなければ、回号ベースのファイルから探す (数値順でソート)
+    # 新形式: numbers4_{draw}.json
     json_files = [
+        fn for fn in os.listdir(predictions_dir)
+        if fn.startswith('numbers4_') and fn.endswith('.json')
+    ]
+    
+    def extract_draw_number(fn: str) -> int:
+        """ファイル名から回号を抽出 (numbers4_6891.json -> 6891)"""
+        try:
+            return int(fn[8:-5])  # "numbers4_" = 8文字, ".json" = 5文字
+        except ValueError:
+            return -1
+    
+    json_files.sort(key=extract_draw_number, reverse=True)
+    
+    for filename in json_files:
+        filepath = os.path.join(predictions_dir, filename)
+        with open(filepath, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            if data.get('date') == date_str:
+                return data
+    
+    # 旧形式: {draw}.json (後方互換)
+    legacy_files = [
         fn for fn in os.listdir(predictions_dir)
         if fn.endswith('.json') and fn[:-5].isdigit()
     ]
-    json_files.sort(key=lambda fn: int(fn[:-5]), reverse=True)
+    legacy_files.sort(key=lambda fn: int(fn[:-5]), reverse=True)
     
-    for filename in json_files:
+    for filename in legacy_files:
         filepath = os.path.join(predictions_dir, filename)
         with open(filepath, 'r', encoding='utf-8') as f:
             data = json.load(f)
@@ -95,16 +125,34 @@ def get_latest_prediction() -> Optional[Dict]:
     """
     predictions_dir = get_predictions_dir()
     
-    # 回号ベースのファイルを数値順でソート
+    def extract_draw_number(fn: str) -> int:
+        """ファイル名から回号を抽出"""
+        if fn.startswith('numbers4_') and fn.endswith('.json'):
+            try:
+                return int(fn[8:-5])  # numbers4_6891.json -> 6891
+            except ValueError:
+                return -1
+        elif fn.endswith('.json') and fn[:-5].isdigit():
+            return int(fn[:-5])  # 6891.json -> 6891
+        return -1
+    
+    # 新形式: numbers4_{draw}.json (優先)
     json_files = [
         fn for fn in os.listdir(predictions_dir)
-        if fn.endswith('.json') and fn[:-5].isdigit()
+        if fn.startswith('numbers4_') and fn.endswith('.json')
     ]
+    
+    if not json_files:
+        # 旧形式: {draw}.json (後方互換)
+        json_files = [
+            fn for fn in os.listdir(predictions_dir)
+            if fn.endswith('.json') and fn[:-5].isdigit()
+        ]
     
     if not json_files:
         return None
     
-    json_files.sort(key=lambda fn: int(fn[:-5]), reverse=True)
+    json_files.sort(key=extract_draw_number, reverse=True)
     
     latest_file = os.path.join(predictions_dir, json_files[0])
     with open(latest_file, 'r', encoding='utf-8') as f:

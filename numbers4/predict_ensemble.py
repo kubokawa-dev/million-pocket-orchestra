@@ -287,10 +287,22 @@ def generate_ensemble_prediction(progress_callback=None):
         target_draw = latest_draw['draw_number'] + 1 if latest_draw else None
         
         if target_draw:
+            # 上位5件の類似パターンを生成
+            similar_patterns_dict = {}
+            for _, row in final_predictions_df.head(5).iterrows():
+                number = str(row['prediction'])
+                patterns = generate_similar_patterns_n4(number, count=3, all_draws_df=all_draws_df)
+                if patterns:
+                    similar_patterns_dict[number] = [
+                        {'number': p[0], 'description': p[1]}
+                        for p in patterns
+                    ]
+            
             save_prediction_to_json(
                 predictions_df=final_predictions_df,
                 ensemble_weights=ensemble_weights,
-                target_draw_number=target_draw
+                target_draw_number=target_draw,
+                similar_patterns=similar_patterns_dict
             )
     except Exception as e:
         # 履歴保存に失敗しても予測結果は返す
