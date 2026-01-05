@@ -25,53 +25,13 @@ sys.path.insert(0, project_root)
 from tools.utils import get_db_connection
 from numbers4.ai_analyzer import analyze_with_ai, format_ai_analysis_for_markdown
 
-
-def get_predictions_dir() -> str:
-    """予測結果保存ディレクトリを取得"""
-    return os.path.join(project_root, 'predictions', 'daily')
-
-
-def get_reports_dir() -> str:
-    """分析レポート保存ディレクトリを取得"""
-    reports_dir = os.path.join(project_root, 'reports')
-    os.makedirs(reports_dir, exist_ok=True)
-    return reports_dir
-
-
-def load_predictions_by_draw(draw_number: int) -> Optional[Dict]:
-    """指定回号の予測データを読み込む"""
-    predictions_dir = get_predictions_dir()
-    draw_file = os.path.join(predictions_dir, f'{draw_number}.json')
-    
-    if not os.path.exists(draw_file):
-        print(f"❌ 予測ファイルが見つかりません: {draw_file}")
-        return None
-    
-    with open(draw_file, 'r', encoding='utf-8') as f:
-        return json.load(f)
-
-
-def load_daily_predictions(date_str: str) -> Optional[Dict]:
-    """指定日の予測データを読み込む（後方互換性用）"""
-    predictions_dir = get_predictions_dir()
-    
-    # まず日付ベースのファイルを探す（旧形式）
-    daily_file = os.path.join(predictions_dir, f'{date_str}.json')
-    if os.path.exists(daily_file):
-        with open(daily_file, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    
-    # 日付ベースがなければ、回号ベースのファイルから探す
-    for filename in sorted(os.listdir(predictions_dir), reverse=True):
-        if filename.endswith('.json') and filename[:-5].isdigit():
-            filepath = os.path.join(predictions_dir, filename)
-            with open(filepath, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                if data.get('date') == date_str:
-                    return data
-    
-    print(f"❌ 予測ファイルが見つかりません: {date_str}")
-    return None
+# 共通ユーティリティからインポート
+from numbers4.prediction_utils import (
+    get_predictions_dir,
+    get_reports_dir,
+    load_predictions_by_draw,
+    load_daily_predictions,
+)
 
 
 def get_actual_result(target_draw_number: int) -> Optional[Dict]:
@@ -484,13 +444,11 @@ def main():
     
     args = parser.parse_args()
     
-    # 予測データを読み込み（回号優先、なければ日付）
+    # 予測データを読み込み (回号優先、なければ日付)
     daily_data = None
-    target_draw_from_arg = None
     
     if args.draw:
         # 回号ベースで読み込み
-        target_draw_from_arg = args.draw
         daily_data = load_predictions_by_draw(args.draw)
         print(f"📊 第{args.draw}回 の予測結果を分析中...")
     else:

@@ -10,13 +10,8 @@ from datetime import datetime, timezone
 from typing import Dict, List, Optional
 import pandas as pd
 
-
-def get_predictions_dir() -> str:
-    """予測結果保存ディレクトリを取得"""
-    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    predictions_dir = os.path.join(project_root, 'predictions', 'daily')
-    os.makedirs(predictions_dir, exist_ok=True)
-    return predictions_dir
+# 共通ユーティリティからインポート
+from numbers4.prediction_utils import get_predictions_dir
 
 
 def save_prediction_to_json(
@@ -91,61 +86,8 @@ def save_prediction_to_json(
     return draw_file
 
 
-def load_predictions_by_draw(draw_number: int) -> Optional[Dict]:
-    """
-    指定回号の予測データを読み込む
-    
-    Args:
-        draw_number: 抽選回号
-    
-    Returns:
-        予測データ辞書、またはNone
-    """
-    predictions_dir = get_predictions_dir()
-    draw_file = os.path.join(predictions_dir, f'{draw_number}.json')
-    
-    if not os.path.exists(draw_file):
-        return None
-    
-    with open(draw_file, 'r', encoding='utf-8') as f:
-        return json.load(f)
-
-
-def load_daily_predictions(date_str: str = None) -> Optional[Dict]:
-    """
-    指定日の予測データを読み込む（後方互換性のため残す）
-    
-    注意: 新しいコードでは load_predictions_by_draw を使用してください
-    
-    Args:
-        date_str: 日付文字列（YYYYMMDD）。Noneなら今日
-    
-    Returns:
-        予測データ辞書、またはNone
-    """
-    if date_str is None:
-        date_str = datetime.now(timezone.utc).strftime('%Y%m%d')
-    
-    predictions_dir = get_predictions_dir()
-    
-    # まず日付ベースのファイルを探す（旧形式）
-    daily_file = os.path.join(predictions_dir, f'{date_str}.json')
-    if os.path.exists(daily_file):
-        with open(daily_file, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    
-    # 日付ベースがなければ、回号ベースのファイルから最新を探す
-    # （この日に作成された可能性のあるファイル）
-    for filename in sorted(os.listdir(predictions_dir), reverse=True):
-        if filename.endswith('.json') and filename[:-5].isdigit():
-            filepath = os.path.join(predictions_dir, filename)
-            with open(filepath, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                # 日付が一致するかチェック
-                if data.get('date') == date_str:
-                    return data
-    
-    return None
+# 後方互換性のため、共通モジュールの関数を再エクスポート
+from numbers4.prediction_utils import load_predictions_by_draw, load_daily_predictions
 
 
 def get_aggregated_predictions(draw_number: int = None, date_str: str = None) -> Dict:
