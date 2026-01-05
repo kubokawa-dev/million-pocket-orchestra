@@ -6,3 +6,4 @@ streamlit>=1.30
 python-dotenv
 scikit-learn>=1.2
 lightgbm>=3.3
+anthropic>=0.18.0

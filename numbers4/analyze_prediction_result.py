@@ -23,6 +23,7 @@ project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
 
 from tools.utils import get_db_connection
+from numbers4.ai_analyzer import analyze_with_ai, format_ai_analysis_for_markdown
 
 
 def get_predictions_dir() -> str:
@@ -333,7 +334,7 @@ def update_model_weights(adjustments: Dict) -> Dict:
     return weights
 
 
-def generate_report_markdown(analysis: Dict, weight_adjustments: Dict) -> str:
+def generate_report_markdown(analysis: Dict, weight_adjustments: Dict, ai_analysis: Optional[Dict] = None) -> str:
     """分析レポートをMarkdown形式で生成"""
     md = []
     
@@ -396,30 +397,34 @@ def generate_report_markdown(analysis: Dict, weight_adjustments: Dict) -> str:
     
     md.append("")
     
-    # 良かった点
-    md.append("## 💡 分析・改善提案")
-    md.append("")
-    
-    for suggestion in analysis.get('improvement_suggestions', []):
-        md.append(f"- {suggestion}")
-    
-    md.append("")
-    
-    # 重み調整
-    if weight_adjustments:
-        md.append("## 🔧 自動重み調整")
-        md.append("")
-        md.append("| モデル | 調整 |")
-        md.append("|:---|:---|")
-        for model, delta in weight_adjustments.items():
-            sign = "+" if delta > 0 else ""
-            md.append(f"| {model} | {sign}{delta:.1f} |")
-        md.append("")
+    # AI分析結果がある場合はそれを使う
+    if ai_analysis:
+        md.append(format_ai_analysis_for_markdown(ai_analysis))
     else:
-        md.append("## 🔧 自動重み調整")
+        # フォールバック：ルールベースの分析
+        md.append("## 💡 分析・改善提案")
         md.append("")
-        md.append("*今回は調整なし*")
+        
+        for suggestion in analysis.get('improvement_suggestions', []):
+            md.append(f"- {suggestion}")
+        
         md.append("")
+        
+        # 重み調整
+        if weight_adjustments:
+            md.append("## 🔧 自動重み調整")
+            md.append("")
+            md.append("| モデル | 調整 |")
+            md.append("|:---|:---|")
+            for model, delta in weight_adjustments.items():
+                sign = "+" if delta > 0 else ""
+                md.append(f"| {model} | {sign}{delta:.1f} |")
+            md.append("")
+        else:
+            md.append("## 🔧 自動重み調整")
+            md.append("")
+            md.append("*今回は調整なし*")
+            md.append("")
     
     # フッター
     md.append("---")
@@ -444,6 +449,10 @@ def main():
     parser.add_argument(
         '--no-update', action='store_true',
         help='重み更新をスキップ'
+    )
+    parser.add_argument(
+        '--no-ai', action='store_true',
+        help='AI分析をスキップ（ルールベースのみ）'
     )
     
     args = parser.parse_args()
@@ -485,16 +494,57 @@ def main():
     # 分析実行
     analysis = analyze_predictions(daily_data, actual_result)
     
-    # 重み調整を計算
+    # AI分析を実行
+    ai_analysis = None
+    if not args.no_ai:
+        print("   🤖 AI分析を実行中...")
+        
+        # 予測データを整形
+        all_predictions = []
+        for pred_entry in daily_data.get('predictions', []):
+            for pred in pred_entry.get('top_predictions', []):
+                if pred not in all_predictions:
+                    all_predictions.append(pred)
+        
+        # 現在の重みを読み込む
+        weights_path = os.path.join(project_root, 'numbers4', 'model_weights.json')
+        if os.path.exists(weights_path):
+            with open(weights_path, 'r') as f:
+                weights_data = json.load(f)
+            current_weights = weights_data.get('weights', weights_data)
+        else:
+            current_weights = {}
+        
+        ai_analysis = analyze_with_ai(
+            actual_numbers=actual_result['numbers'],
+            target_draw=target_draw,
+            predictions=all_predictions[:20],  # 上位20件
+            digit_analysis=analysis.get('digit_analysis', {}),
+            position_hits=analysis.get('position_hits_max', 0),
+            current_weights=current_weights
+        )
+        
+        if ai_analysis:
+            print("   ✅ AI分析完了")
+            
+            # AI推奨の重み調整を適用
+            ai_weight_adjustments = ai_analysis.get('weight_adjustments', {})
+            if ai_weight_adjustments and not args.no_update:
+                print("   🔧 AI推奨の重み調整を適用中...")
+                update_model_weights(ai_weight_adjustments)
+        else:
+            print("   ⚠️ AI分析をスキップ（API未設定または エラー）")
+    
+    # ルールベースの重み調整（AI分析がない場合のフォールバック）
     weight_adjustments = {}
-    if not args.no_update:
+    if not ai_analysis and not args.no_update:
         weight_adjustments = calculate_weight_adjustments(analysis, {})
         if weight_adjustments:
-            print("   🔧 重み調整を適用中...")
+            print("   🔧 ルールベースの重み調整を適用中...")
             update_model_weights(weight_adjustments)
     
     # レポート生成
-    report = generate_report_markdown(analysis, weight_adjustments)
+    report = generate_report_markdown(analysis, weight_adjustments, ai_analysis)
     
     # 出力
     if args.output:

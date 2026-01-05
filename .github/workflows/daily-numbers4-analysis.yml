@@ -77,6 +77,8 @@ jobs:
       
       - name: Run analysis
         id: analysis
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           TARGET_DATE="${{ github.event.inputs.date }}"
           if [ -z "$TARGET_DATE" ]; then
@@ -84,7 +86,15 @@ jobs:
           fi
           
           echo "📊 Analyzing predictions for ${TARGET_DATE}..."
-          python numbers4/analyze_prediction_result.py --date "$TARGET_DATE"
+          
+          # AI分析を実行（ANTHROPIC_API_KEYが設定されている場合）
+          if [ -n "$ANTHROPIC_API_KEY" ]; then
+            echo "🤖 AI analysis enabled"
+            python numbers4/analyze_prediction_result.py --date "$TARGET_DATE"
+          else
+            echo "⚠️ ANTHROPIC_API_KEY not set, using rule-based analysis"
+            python numbers4/analyze_prediction_result.py --date "$TARGET_DATE" --no-ai
+          fi
           
           echo "date=$TARGET_DATE" >> $GITHUB_OUTPUT
       
