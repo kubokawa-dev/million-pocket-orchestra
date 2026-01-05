@@ -28,6 +28,8 @@ def save_prediction_to_json(
     """
     予測結果をJSONファイルとして保存
     
+    ファイル名は対象抽選回号ベース（例: 6891.json）
+    
     Args:
         predictions_df: 予測結果のDataFrame
         ensemble_weights: アンサンブルの重み
@@ -41,18 +43,19 @@ def save_prediction_to_json(
     date_str = now.strftime('%Y%m%d')
     time_str = now.strftime('%H%M')
     
-    # 今日の予測ファイルパス
+    # 抽選回号ベースのファイルパス（例: 6891.json）
     predictions_dir = get_predictions_dir()
-    daily_file = os.path.join(predictions_dir, f'{date_str}.json')
+    draw_file = os.path.join(predictions_dir, f'{target_draw_number}.json')
     
     # 既存のデータを読み込む（あれば）
-    if os.path.exists(daily_file):
-        with open(daily_file, 'r', encoding='utf-8') as f:
+    if os.path.exists(draw_file):
+        with open(draw_file, 'r', encoding='utf-8') as f:
             daily_data = json.load(f)
     else:
         daily_data = {
-            'date': date_str,
-            'target_draw_number': target_draw_number,
+            'draw_number': target_draw_number,
+            'target_draw_number': target_draw_number,  # 後方互換性のため残す
+            'date': date_str,  # 最初の予測日
             'predictions': []
         }
     
@@ -78,18 +81,41 @@ def save_prediction_to_json(
     daily_data['prediction_count'] = len(daily_data['predictions'])
     
     # ファイルに保存
-    with open(daily_file, 'w', encoding='utf-8') as f:
+    with open(draw_file, 'w', encoding='utf-8') as f:
         json.dump(daily_data, f, ensure_ascii=False, indent=2)
     
-    print(f"✅ 予測結果をJSONに保存しました: {daily_file}")
-    print(f"   📊 本日の予測回数: {len(daily_data['predictions'])}回")
+    print(f"✅ 予測結果をJSONに保存しました: {draw_file}")
+    print(f"   🎯 対象回号: 第{target_draw_number}回")
+    print(f"   📊 予測回数: {len(daily_data['predictions'])}回")
     
-    return daily_file
+    return draw_file
+
+
+def load_predictions_by_draw(draw_number: int) -> Optional[Dict]:
+    """
+    指定回号の予測データを読み込む
+    
+    Args:
+        draw_number: 抽選回号
+    
+    Returns:
+        予測データ辞書、またはNone
+    """
+    predictions_dir = get_predictions_dir()
+    draw_file = os.path.join(predictions_dir, f'{draw_number}.json')
+    
+    if not os.path.exists(draw_file):
+        return None
+    
+    with open(draw_file, 'r', encoding='utf-8') as f:
+        return json.load(f)
 
 
 def load_daily_predictions(date_str: str = None) -> Optional[Dict]:
     """
-    指定日の予測データを読み込む
+    指定日の予測データを読み込む（後方互換性のため残す）
+    
+    注意: 新しいコードでは load_predictions_by_draw を使用してください
     
     Args:
         date_str: 日付文字列（YYYYMMDD）。Noneなら今日
@@ -101,26 +127,42 @@ def load_daily_predictions(date_str: str = None) -> Optional[Dict]:
         date_str = datetime.now(timezone.utc).strftime('%Y%m%d')
     
     predictions_dir = get_predictions_dir()
+    
+    # まず日付ベースのファイルを探す（旧形式）
     daily_file = os.path.join(predictions_dir, f'{date_str}.json')
+    if os.path.exists(daily_file):
+        with open(daily_file, 'r', encoding='utf-8') as f:
+            return json.load(f)
     
-    if not os.path.exists(daily_file):
-        return None
+    # 日付ベースがなければ、回号ベースのファイルから最新を探す
+    # （この日に作成された可能性のあるファイル）
+    for filename in sorted(os.listdir(predictions_dir), reverse=True):
+        if filename.endswith('.json') and filename[:-5].isdigit():
+            filepath = os.path.join(predictions_dir, filename)
+            with open(filepath, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                # 日付が一致するかチェック
+                if data.get('date') == date_str:
+                    return data
     
-    with open(daily_file, 'r', encoding='utf-8') as f:
-        return json.load(f)
+    return None
 
 
-def get_aggregated_predictions(date_str: str = None) -> Dict:
+def get_aggregated_predictions(draw_number: int = None, date_str: str = None) -> Dict:
     """
-    1日分の予測を集計して、安定して上位に来る番号を抽出
+    予測を集計して、安定して上位に来る番号を抽出
     
     Args:
-        date_str: 日付文字列（YYYYMMDD）
+        draw_number: 抽選回号（優先）
+        date_str: 日付文字列（YYYYMMDD）- 後方互換性用
     
     Returns:
         集計結果の辞書
     """
-    daily_data = load_daily_predictions(date_str)
+    if draw_number:
+        daily_data = load_predictions_by_draw(draw_number)
+    else:
+        daily_data = load_daily_predictions(date_str)
     
     if not daily_data or not daily_data.get('predictions'):
         return {'error': '予測データがありません'}

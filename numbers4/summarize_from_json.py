@@ -2,8 +2,8 @@
 JSONファイルから予測データを読み込んでMarkdownサマリーを生成
 
 使い方:
-  python numbers4/summarize_from_json.py --output predictions/summary.md
-  python numbers4/summarize_from_json.py --date 20260105 --output predictions/summary.md
+  python numbers4/summarize_from_json.py --draw 6891 --output predictions/numbers4_6891.md
+  python numbers4/summarize_from_json.py --date 20260105 --output predictions/summary.md  # 後方互換
 """
 
 import os
@@ -24,21 +24,44 @@ def get_predictions_dir() -> str:
     return os.path.join(project_root, 'predictions', 'daily')
 
 
+def load_predictions_by_draw(draw_number: int) -> Optional[Dict]:
+    """指定回号の予測データを読み込む"""
+    predictions_dir = get_predictions_dir()
+    draw_file = os.path.join(predictions_dir, f'{draw_number}.json')
+    
+    if not os.path.exists(draw_file):
+        print(f"❌ 予測ファイルが見つかりません: {draw_file}")
+        return None
+    
+    with open(draw_file, 'r', encoding='utf-8') as f:
+        return json.load(f)
+
+
 def load_daily_predictions(date_str: str = None) -> Optional[Dict]:
-    """指定日の予測データを読み込む"""
+    """指定日の予測データを読み込む（後方互換性用）"""
     if date_str is None:
         # 今日の日付（UTC）
         date_str = datetime.now(timezone.utc).strftime('%Y%m%d')
     
     predictions_dir = get_predictions_dir()
+    
+    # まず日付ベースのファイルを探す（旧形式）
     daily_file = os.path.join(predictions_dir, f'{date_str}.json')
+    if os.path.exists(daily_file):
+        with open(daily_file, 'r', encoding='utf-8') as f:
+            return json.load(f)
     
-    if not os.path.exists(daily_file):
-        print(f"❌ 予測ファイルが見つかりません: {daily_file}")
-        return None
+    # 日付ベースがなければ、回号ベースのファイルから探す
+    for filename in sorted(os.listdir(predictions_dir), reverse=True):
+        if filename.endswith('.json') and filename[:-5].isdigit():
+            filepath = os.path.join(predictions_dir, filename)
+            with open(filepath, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                if data.get('date') == date_str:
+                    return data
     
-    with open(daily_file, 'r', encoding='utf-8') as f:
-        return json.load(f)
+    print(f"❌ 予測ファイルが見つかりません: {date_str}")
+    return None
 
 
 def aggregate_predictions(daily_data: Dict) -> Dict:
@@ -216,8 +239,12 @@ def main():
         description='JSONから予測データを読み込んでMarkdownサマリーを生成'
     )
     parser.add_argument(
+        '--draw', type=int,
+        help='対象抽選回号（優先）'
+    )
+    parser.add_argument(
         '--date', '-d', type=str,
-        help='対象日（YYYYMMDD形式、未指定時は今日）'
+        help='対象日（YYYYMMDD形式）- 後方互換性用'
     )
     parser.add_argument(
         '--output', '-o', type=str,
@@ -230,8 +257,12 @@ def main():
     
     args = parser.parse_args()
     
-    # 予測データを読み込み
-    daily_data = load_daily_predictions(args.date)
+    # 予測データを読み込み（回号優先、なければ日付）
+    if args.draw:
+        daily_data = load_predictions_by_draw(args.draw)
+        print(f"🎯 第{args.draw}回の予測データを読み込み中...")
+    else:
+        daily_data = load_daily_predictions(args.date)
     
     if not daily_data:
         print("❌ 予測データが見つかりません")
