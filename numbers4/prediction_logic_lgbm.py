@@ -4,6 +4,37 @@ import lightgbm as lgb
 from collections import Counter
 from datetime import datetime
 
+# ========== Temperature Scaling ==========
+# 確率分布を平滑化して多様性を向上させる
+# temperature > 1.0: より均一に（多様性UP）
+# temperature < 1.0: よりピーキーに（確信度UP）
+DEFAULT_TEMPERATURE = 2.0
+
+def apply_temperature(probs: np.ndarray, temperature: float = DEFAULT_TEMPERATURE) -> np.ndarray:
+    """
+    確率分布にTemperature Scalingを適用
+    
+    Args:
+        probs: 確率分布（0-1の配列、合計1）
+        temperature: 温度パラメータ（デフォルト: 2.0）
+            - 1.0: 変化なし
+            - 2.0: 確率を平滑化（低確率の数字も選ばれやすく）
+            - 0.5: 確率を尖らせる（高確率の数字がより選ばれやすく）
+    
+    Returns:
+        Temperature適用後の確率分布
+    """
+    probs = np.array(probs, dtype=np.float64)
+    # ゼロ除算防止
+    probs = np.clip(probs, 1e-10, 1.0)
+    # 対数を取って温度で割る
+    log_probs = np.log(probs)
+    scaled_log_probs = log_probs / temperature
+    # 再度確率に変換（softmax）
+    scaled_probs = np.exp(scaled_log_probs)
+    # 正規化
+    return scaled_probs / scaled_probs.sum()
+
 def create_features(df: pd.DataFrame):
     """
     Numbers4の履歴データから特徴量を作成する
@@ -243,12 +274,16 @@ def train_and_predict_lgbm(df: pd.DataFrame, limit: int = 15):
     X_pred = df_features_ext[feature_cols].iloc[[-1]]
     
     # Predict probabilities for each digit position
+    # Temperature Scalingを適用して多様性を向上！
     preds_probs = {}
     for target in target_cols:
-        preds_probs[target] = models[target].predict(X_pred)[0] # array of 10 probs
+        raw_probs = models[target].predict(X_pred)[0]  # array of 10 probs
+        # Temperature Scaling適用（デフォルト: 2.0で平滑化）
+        preds_probs[target] = apply_temperature(raw_probs, temperature=DEFAULT_TEMPERATURE)
     
     # Generate candidates based on top probabilities
     # Strategy: Randomly sample from prob distribution to generate diversity
+    # Temperature Scalingにより、低確率の数字も選ばれやすくなる！
     
     generated_preds = []
     seen = set()
