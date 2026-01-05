@@ -33,7 +33,7 @@ from numbers4.online_learning import load_model_weights
 # learn_model_from_data は不要になったので削除
 
 # --- 合計値ボーナス設定 ---
-# 理論的な平均値: 4桁 × 4.5 = 18
+# 理論的な平均値: 4桁 x 4.5 = 18
 # 標準偏差: 約5.7
 # 実データ分析より、合計値15-24が約50%を占める
 SUM_IDEAL = 18  # 理想的な合計値
@@ -41,20 +41,26 @@ SUM_TOLERANCE = 6  # 許容範囲（±6で12-24をカバー）
 SUM_BONUS_MAX = 0.3  # 最大ボーナス（30%）
 
 
-def apply_sum_bonus(df: pd.DataFrame, ideal_sum: int = SUM_IDEAL, 
-                    tolerance: int = SUM_TOLERANCE, max_bonus: float = SUM_BONUS_MAX) -> pd.DataFrame:
+def apply_sum_bonus(
+    df: pd.DataFrame,
+    ideal_sum: int = SUM_IDEAL, 
+    tolerance: int = SUM_TOLERANCE,
+    max_bonus: float = SUM_BONUS_MAX,
+    out_of_range_penalty: float = 0.95
+) -> pd.DataFrame:
     """
-    合計値ボーナスを適用：理想的な合計値に近い候補のスコアを上げる
+    合計値ボーナスを適用: 理想的な合計値に近い候補のスコアを上げる
     
-    Numbers4の合計値（0-36）の分布は正規分布に近く、
+    Numbers4の合計値 (0-36) の分布は正規分布に近く、
     平均18、標準偏差約5.7となる。
     合計値15-24が全体の約50%を占めるため、この範囲にボーナスを付与。
     
     Args:
-        df: 予測結果のDataFrame（'prediction'と'score'列を持つ）
-        ideal_sum: 理想的な合計値（デフォルト: 18）
-        tolerance: 許容範囲（デフォルト: 6、つまり12-24がボーナス対象）
-        max_bonus: 最大ボーナス倍率（デフォルト: 0.3 = 30%）
+        df: 予測結果のDataFrame ('prediction'と'score'列を持つ)
+        ideal_sum: 理想的な合計値 (デフォルト: 18)
+        tolerance: 許容範囲 (デフォルト: 6、つまり12-24がボーナス対象)
+        max_bonus: 最大ボーナス倍率 (デフォルト: 0.3 = 30%)
+        out_of_range_penalty: 範囲外のペナルティ倍率 (デフォルト: 0.95 = 5%減)
     
     Returns:
         合計値ボーナス適用後のDataFrame
@@ -66,20 +72,21 @@ def apply_sum_bonus(df: pd.DataFrame, ideal_sum: int = SUM_IDEAL,
     
     def calc_bonus(pred: str) -> float:
         """予測番号の合計値に基づいてボーナス倍率を計算"""
-        try:
-            s = sum(int(d) for d in pred)
-            distance = abs(s - ideal_sum)
-            
-            if distance <= tolerance:
-                # 距離が近いほどボーナスが大きい
-                # distance=0 で max_bonus、distance=tolerance で 0
-                bonus = max_bonus * (1 - distance / tolerance)
-                return 1.0 + bonus
-            else:
-                # 範囲外は軽いペナルティ
-                return 0.95
-        except (ValueError, TypeError):
+        # 入力検証: 4桁の数字文字列であることを確認
+        if not isinstance(pred, str) or not pred.isdigit() or len(pred) != 4:
             return 1.0
+        
+        s = sum(int(d) for d in pred)
+        distance = abs(s - ideal_sum)
+        
+        if distance <= tolerance:
+            # 距離が近いほどボーナスが大きい
+            # distance=0 で max_bonus、distance=tolerance で 0
+            bonus = max_bonus * (1 - distance / tolerance)
+            return 1.0 + bonus
+        else:
+            # 範囲外はペナルティ
+            return out_of_range_penalty
     
     # ボーナスを適用
     df['sum_bonus'] = df['prediction'].apply(calc_bonus)
@@ -245,7 +252,7 @@ def generate_ensemble_prediction(progress_callback=None):
     # v10.1: penalty_strength を 0.2 → 0.4 に強化
     final_predictions_df = apply_diversity_penalty(final_predictions_df, penalty_strength=0.4, similarity_threshold=2)
     
-    # 合計値ボーナスを適用（合計値15-24の範囲にある候補を優遇）
+    # 合計値ボーナスを適用 (合計値15-24の範囲にある候補を優遇)
     # v10.1: 合計値が理想的な範囲にある候補にボーナスを付与
     report_progress(0.95, "合計値ボーナスを適用中...")
     final_predictions_df = apply_sum_bonus(final_predictions_df)
