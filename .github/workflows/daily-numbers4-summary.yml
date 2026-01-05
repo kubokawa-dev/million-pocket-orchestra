@@ -29,6 +29,32 @@ jobs:
       - name: Initialize database
         run: python tools/utils.py
       
+      # Predictionワークフローで保存したDBを復元
+      - name: Download database from prediction workflow
+        uses: dawidd6/action-download-artifact@v3
+        with:
+          name: lottery-db-today
+          path: .
+          workflow: daily-numbers4-prediction.yml
+          workflow_conclusion: success
+          search_artifacts: true
+      
+      - name: Check database
+        run: |
+          echo "📂 Database file info:"
+          ls -la lottery.db || echo "❌ lottery.db not found"
+          echo ""
+          echo "📊 Prediction count:"
+          python -c "
+          import sqlite3
+          conn = sqlite3.connect('lottery.db')
+          cur = conn.cursor()
+          cur.execute('SELECT COUNT(*) FROM numbers4_ensemble_predictions')
+          count = cur.fetchone()[0]
+          print(f'  Total predictions: {count}')
+          conn.close()
+          " || echo "❌ Failed to query database"
+      
       - name: Generate prediction summary
         id: summary
         run: |
@@ -50,6 +76,11 @@ jobs:
           git diff --staged --quiet || git commit -m "📊 Numbers4 daily summary $(date '+%Y-%m-%d')"
           git push
       
+      - name: Summary
+        run: |
+          echo "✅ Summary generation completed!"
+          echo "📄 Output: ${{ steps.summary.outputs.output_file }}"
+      
       # ========================================
       # 通知設定（使いたいものをコメント解除してね！）
       # ========================================
@@ -60,7 +91,7 @@ jobs:
       #   env:
       #     LINE_NOTIFY_TOKEN: ${{ secrets.LINE_NOTIFY_TOKEN }}
       #   run: |
-      #     python tools/send_line_notification.py --summary "${{ steps.summary.outputs.output_file }}"
+      #     python tools/send_notification.py --line --summary "${{ steps.summary.outputs.output_file }}"
       
       # --- Discord Webhook ---
       # - name: Send Discord notification
@@ -68,7 +99,7 @@ jobs:
       #   env:
       #     DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
       #   run: |
-      #     python tools/send_discord_notification.py --summary "${{ steps.summary.outputs.output_file }}"
+      #     python tools/send_notification.py --discord --summary "${{ steps.summary.outputs.output_file }}"
       
       # --- Slack Webhook ---
       # - name: Send Slack notification
@@ -76,29 +107,4 @@ jobs:
       #   env:
       #     SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
       #   run: |
-      #     python tools/send_slack_notification.py --summary "${{ steps.summary.outputs.output_file }}"
-      
-      # --- Email (SendGrid) ---
-      # - name: Send Email notification
-      #   if: env.SENDGRID_API_KEY != ''
-      #   env:
-      #     SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
-      #     EMAIL_TO: ${{ secrets.EMAIL_TO }}
-      #   run: |
-      #     python tools/send_email_notification.py --summary "${{ steps.summary.outputs.output_file }}"
-      
-      # --- GitHub Issue に記録 ---
-      # - name: Create GitHub Issue
-      #   uses: actions/github-script@v7
-      #   with:
-      #     script: |
-      #       const date = new Date().toISOString().split('T')[0];
-      #       const summary = process.env.SUMMARY_CONTENT;
-      #       await github.rest.issues.create({
-      #         owner: context.repo.owner,
-      #         repo: context.repo.repo,
-      #         title: `🎰 Numbers4 予測サマリー ${date}`,
-      #         body: summary,
-      #         labels: ['prediction', 'numbers4']
-      #       });
-
+      #     python tools/send_notification.py --slack --summary "${{ steps.summary.outputs.output_file }}"

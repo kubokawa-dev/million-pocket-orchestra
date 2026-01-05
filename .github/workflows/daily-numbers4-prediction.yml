@@ -31,31 +31,43 @@ jobs:
       - name: Initialize database
         run: python tools/utils.py
       
+      # 前回のDBアーティファクトがあれば復元（予測を蓄積するため）
+      - name: Download previous database
+        uses: dawidd6/action-download-artifact@v3
+        with:
+          name: lottery-db-${{ github.run_id }}
+          path: .
+          if_no_artifact_found: ignore
+          search_artifacts: true
+          workflow: daily-numbers4-prediction.yml
+          workflow_conclusion: success
+        continue-on-error: true
+      
+      # 同日の過去実行分があれば復元
+      - name: Download today's database
+        uses: dawidd6/action-download-artifact@v3
+        with:
+          name: lottery-db-today
+          path: .
+          if_no_artifact_found: ignore
+          search_artifacts: true
+          workflow: daily-numbers4-prediction.yml
+          workflow_conclusion: success
+        continue-on-error: true
+      
       - name: Run Numbers4 prediction pipeline
         run: python tools/run_numbers4_pipeline.py
       
-      - name: Generate prediction summary
-        id: summary
-        run: |
-          # 予測サマリーをMarkdownで生成
-          OUTPUT_FILE="predictions/numbers4_$(date '+%Y%m%d').md"
-          python numbers4/summarize_daily_predictions.py --output "$OUTPUT_FILE"
-          echo "output_file=$OUTPUT_FILE" >> $GITHUB_OUTPUT
-          
-          # サマリーの内容を環境変数に保存（通知用）
-          echo "SUMMARY_CONTENT<<EOF" >> $GITHUB_ENV
-          head -100 "$OUTPUT_FILE" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
-      
-      - name: Commit summary
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add predictions/
-          git diff --staged --quiet || git commit -m "📊 Numbers4 prediction $(date '+%Y-%m-%d %H:%M')"
-          git push
+      # DBをアーティファクトとして保存（Summaryワークフローで使う）
+      - name: Upload database artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lottery-db-today
+          path: lottery.db
+          retention-days: 1
+          overwrite: true
       
       - name: Summary
         run: |
           echo "✅ Numbers4 prediction completed successfully!"
-          echo "📊 Summary saved to: ${{ steps.summary.outputs.output_file }}"
+          echo "📊 Database saved as artifact for summary workflow."
