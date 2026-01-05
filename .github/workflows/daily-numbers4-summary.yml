@@ -62,13 +62,6 @@ jobs:
           OUTPUT_FILE="predictions/numbers4_$(date '+%Y%m%d').md"
           python numbers4/summarize_from_json.py --output "$OUTPUT_FILE"
           echo "output_file=$OUTPUT_FILE" >> $GITHUB_OUTPUT
-          
-          # サマリーの内容を環境変数に保存（通知用）
-          if [ -f "$OUTPUT_FILE" ]; then
-            echo "SUMMARY_CONTENT<<EOF" >> $GITHUB_ENV
-            head -100 "$OUTPUT_FILE" >> $GITHUB_ENV
-            echo "EOF" >> $GITHUB_ENV
-          fi
       
       - name: Commit summary
         run: |
