@@ -192,3 +192,4 @@ CREATE TABLE IF NOT EXISTS loto6_prediction_candidates (
 CREATE INDEX IF NOT EXISTS idx_loto6_candidates_ensemble ON loto6_prediction_candidates(ensemble_prediction_id);
 CREATE INDEX IF NOT EXISTS idx_loto6_candidates_number ON loto6_prediction_candidates(number);
 
+
