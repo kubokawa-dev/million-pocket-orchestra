@@ -13,9 +13,21 @@ jobs:
   predict:
     runs-on: ubuntu-latest
     
+    permissions:
+      contents: write
+    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          # 最新のコミットを取得（他のワークフロー実行分も含む）
+          fetch-depth: 0
+      
+      - name: Pull latest changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git pull origin main --rebase || true
       
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -31,43 +43,27 @@ jobs:
       - name: Initialize database
         run: python tools/utils.py
       
-      # 前回のDBアーティファクトがあれば復元（予測を蓄積するため）
-      - name: Download previous database
-        uses: dawidd6/action-download-artifact@v3
-        with:
-          name: lottery-db-${{ github.run_id }}
-          path: .
-          if_no_artifact_found: ignore
-          search_artifacts: true
-          workflow: daily-numbers4-prediction.yml
-          workflow_conclusion: success
-        continue-on-error: true
-      
-      # 同日の過去実行分があれば復元
-      - name: Download today's database
-        uses: dawidd6/action-download-artifact@v3
-        with:
-          name: lottery-db-today
-          path: .
-          if_no_artifact_found: ignore
-          search_artifacts: true
-          workflow: daily-numbers4-prediction.yml
-          workflow_conclusion: success
-        continue-on-error: true
-      
       - name: Run Numbers4 prediction pipeline
         run: python tools/run_numbers4_pipeline.py
       
-      # DBをアーティファクトとして保存（Summaryワークフローで使う）
-      - name: Upload database artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: lottery-db-today
-          path: lottery.db
-          retention-days: 1
-          overwrite: true
+      - name: Commit prediction JSON
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          # predictions/daily/ ディレクトリのJSONをコミット
+          git add predictions/daily/*.json || true
+          
+          if git diff --staged --quiet; then
+            echo "📝 No new predictions to commit"
+          else
+            TIMESTAMP=$(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M')
+            git commit -m "🔮 Numbers4 prediction $TIMESTAMP"
+            git push origin main
+            echo "✅ Prediction committed and pushed!"
+          fi
       
       - name: Summary
         run: |
           echo "✅ Numbers4 prediction completed successfully!"
-          echo "📊 Database saved as artifact for summary workflow."
+          echo "📊 Predictions saved to predictions/daily/"

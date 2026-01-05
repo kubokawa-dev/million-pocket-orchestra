@@ -13,11 +13,18 @@ jobs:
     
     permissions:
       contents: write
-      actions: read
     
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Pull latest changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git pull origin main --rebase || true
       
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -30,55 +37,52 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
       
-      - name: Initialize database
-        run: python tools/utils.py
-      
-      # まず予測を実行してDBにデータを入れる
-      - name: Run prediction pipeline (to populate DB)
+      - name: Check prediction data
         run: |
-          echo "🔮 Running prediction to populate database..."
-          python tools/run_numbers4_pipeline.py
+          echo "📂 Looking for today's prediction data..."
+          TODAY=$(date '+%Y%m%d')
+          if [ -f "predictions/daily/${TODAY}.json" ]; then
+            echo "✅ Found predictions/daily/${TODAY}.json"
+            python -c "
+          import json
+          with open('predictions/daily/${TODAY}.json', 'r') as f:
+              data = json.load(f)
+          print(f'  📊 Prediction count: {len(data.get(\"predictions\", []))}')
+          print(f'  🎯 Target draw: {data.get(\"target_draw_number\")}')
+          "
+          else
+            echo "⚠️ No prediction data for today (${TODAY})"
+            echo "Available files:"
+            ls -la predictions/daily/ || echo "No daily predictions directory"
+          fi
       
-      - name: Check database
-        run: |
-          echo "📂 Database file info:"
-          ls -la lottery.db || echo "❌ lottery.db not found"
-          echo ""
-          echo "📊 Prediction count:"
-          python -c "
-          import sqlite3
-          conn = sqlite3.connect('lottery.db')
-          cur = conn.cursor()
-          cur.execute('SELECT COUNT(*) FROM numbers4_ensemble_predictions')
-          count = cur.fetchone()[0]
-          print(f'  Total predictions: {count}')
-          cur.execute('SELECT target_draw_number FROM numbers4_ensemble_predictions ORDER BY created_at DESC LIMIT 1')
-          row = cur.fetchone()
-          if row:
-              print(f'  Latest target draw: {row[0]}')
-          conn.close()
-          " || echo "❌ Failed to query database"
-      
-      - name: Generate prediction summary
+      - name: Generate summary from JSON
         id: summary
         run: |
-          # 予測サマリーをMarkdownで生成
           OUTPUT_FILE="predictions/numbers4_$(date '+%Y%m%d').md"
-          python numbers4/summarize_daily_predictions.py --output "$OUTPUT_FILE"
+          python numbers4/summarize_from_json.py --output "$OUTPUT_FILE"
           echo "output_file=$OUTPUT_FILE" >> $GITHUB_OUTPUT
           
           # サマリーの内容を環境変数に保存（通知用）
-          echo "SUMMARY_CONTENT<<EOF" >> $GITHUB_ENV
-          head -100 "$OUTPUT_FILE" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+          if [ -f "$OUTPUT_FILE" ]; then
+            echo "SUMMARY_CONTENT<<EOF" >> $GITHUB_ENV
+            head -100 "$OUTPUT_FILE" >> $GITHUB_ENV
+            echo "EOF" >> $GITHUB_ENV
+          fi
       
       - name: Commit summary
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add predictions/
-          git diff --staged --quiet || git commit -m "📊 Numbers4 daily summary $(date '+%Y-%m-%d')"
-          git push
+          git add predictions/*.md || true
+          
+          if git diff --staged --quiet; then
+            echo "📝 No summary to commit"
+          else
+            git commit -m "📊 Numbers4 daily summary $(date '+%Y-%m-%d')"
+            git push origin main
+            echo "✅ Summary committed and pushed!"
+          fi
       
       - name: Summary
         run: |

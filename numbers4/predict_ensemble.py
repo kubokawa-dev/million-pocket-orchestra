@@ -28,6 +28,7 @@ from numbers4.prediction_logic import (
     apply_diversity_penalty
 )
 from numbers4.save_prediction_history import save_ensemble_prediction
+from numbers4.save_prediction_json import save_prediction_to_json
 from numbers4.online_learning import load_model_weights
 # learn_model_from_data は不要になったので削除
 
@@ -195,7 +196,7 @@ def generate_ensemble_prediction(progress_callback=None):
             with open(model_path, 'r') as f:
                 model_state = json.load(f)
         
-        # 履歴を保存
+        # 履歴を保存（DB）
         prediction_id = save_ensemble_prediction(
             predictions_df=final_predictions_df,
             ensemble_weights=ensemble_weights,
@@ -204,6 +205,20 @@ def generate_ensemble_prediction(progress_callback=None):
             notes="v10.0 Update: Integration of Digit Repetition, Continuation, Large Change, and Realistic Frequency models."
         )
         print(f"✅ 予測履歴の保存が完了しました (ID: {prediction_id})")
+        
+        # JSONにも保存（GitHub Actions用：リポジトリにコミットして蓄積）
+        from numbers4.save_prediction_history import get_latest_draw_info
+        conn = get_db_connection()
+        latest_draw = get_latest_draw_info(conn)
+        conn.close()
+        target_draw = latest_draw['draw_number'] + 1 if latest_draw else None
+        
+        if target_draw:
+            save_prediction_to_json(
+                predictions_df=final_predictions_df,
+                ensemble_weights=ensemble_weights,
+                target_draw_number=target_draw
+            )
     except Exception as e:
         # 履歴保存に失敗しても予測結果は返す
         import traceback
