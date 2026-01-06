@@ -193,3 +193,5 @@ CREATE INDEX IF NOT EXISTS idx_loto6_candidates_ensemble ON loto6_prediction_can
 CREATE INDEX IF NOT EXISTS idx_loto6_candidates_number ON loto6_prediction_candidates(number);
 
 
+
+
