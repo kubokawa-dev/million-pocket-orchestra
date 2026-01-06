@@ -24,6 +24,10 @@ from numbers4.prediction_logic import (
     predict_from_large_change_model_n4,       # v10.0
     predict_from_realistic_frequency_model_n4,# v10.0
     predict_from_lightgbm,                    # LightGBM
+    # v10.3 過去パターン学習モデル
+    predict_from_transition_probability_n4,   # 遷移確率モデル
+    predict_from_global_frequency_n4,         # 全体頻度モデル
+    predict_from_box_pattern_analysis_n4,     # ボックスパターン分析
     aggregate_predictions,
     apply_diversity_penalty
 )
@@ -203,31 +207,53 @@ def generate_ensemble_prediction(progress_callback=None):
     report_progress(0.85, f"- [v10] 現実的頻度モデル完了: {len(predictions_realistic)}件")
 
     # 10. LightGBMモデル
-    report_progress(0.88, "- [ML] LightGBMモデルで予測中...")
+    report_progress(0.82, "- [ML] LightGBMモデルで予測中...")
     predictions_lgbm = predict_from_lightgbm(all_draws_df, limit=20)
-    report_progress(0.9, f"- [ML] LightGBMモデル完了: {len(predictions_lgbm)}件")
+    report_progress(0.84, f"- [ML] LightGBMモデル完了: {len(predictions_lgbm)}件")
+
+    # --- v10.3 過去パターン学習モデル（直近依存からの脱却！） ---
+    
+    # 11. 遷移確率モデル（全履歴から学習）
+    report_progress(0.85, "- [v10.3] 遷移確率モデルで予測中...")
+    predictions_transition = predict_from_transition_probability_n4(all_draws_df, limit=200)
+    report_progress(0.87, f"- [v10.3] 遷移確率モデル完了: {len(predictions_transition)}件")
+    
+    # 12. 全体頻度モデル（全履歴から学習）
+    report_progress(0.88, "- [v10.3] 全体頻度モデルで予測中...")
+    predictions_global_freq = predict_from_global_frequency_n4(all_draws_df, limit=150)
+    report_progress(0.89, f"- [v10.3] 全体頻度モデル完了: {len(predictions_global_freq)}件")
+    
+    # 13. ボックスパターン分析モデル
+    report_progress(0.90, "- [v10.3] ボックスパターン分析モデルで予測中...")
+    predictions_box_pattern = predict_from_box_pattern_analysis_n4(all_draws_df, limit=100)
+    report_progress(0.91, f"- [v10.3] ボックスパターン分析モデル完了: {len(predictions_box_pattern)}件")
 
     # --- アンサンブル集計 ---
     report_progress(0.92, "全モデルの予測を統合・集計中...")
     
     ensemble_weights = {
-        # v10.0 最優先モデル（根本的改善）
-        'digit_repetition': 30.0,        # 数字再出現 - 最重要
-        'digit_continuation': 25.0,      # 桁継続 - 超重要
-        'realistic_frequency': 20.0,     # 現実的頻度 - 重要
+        # v10.3 過去パターン学習モデル（新主力！直近依存しない）
+        'transition_probability': 25.0,  # 遷移確率 - 全履歴から学習
+        'global_frequency': 20.0,        # 全体頻度 - 直近バイアスなし
+        'box_pattern': 18.0,             # ボックスパターン分析
+        
+        # v10.0 モデル（直近依存 - 重みダウン）
+        'digit_repetition': 12.0,        # 数字再出現（22→12に調整）
+        'digit_continuation': 10.0,      # 桁継続（18→10に調整）
+        'realistic_frequency': 12.0,     # 現実的頻度（20→12に調整）
         
         # 変化パターンモデル
         'large_change': 15.0,            # 大変化
         
-        # 従来モデル（中重み）
-        'advanced_heuristics': 10.0,     # 統計分析（合計値、偶奇、ペア頻度）- 最重要
-        'exploratory': 8.0,              # 探索的分析（コールドナンバー、未出現ペア）- 重要
-        'extreme_patterns': 3.0,         # 極端パターン（超低/超高合計値）
+        # 多様性モデル
+        'advanced_heuristics': 10.0,     # 統計分析
+        'exploratory': 15.0,             # 探索的分析
+        'extreme_patterns': 8.0,         # 極端パターン
         
         # 補助モデル（低重み）
-        'basic_stats': 2.0,              # 基本統計（頻度分析）
+        'basic_stats': 2.0,              # 基本統計
         'ml_model_new': 1.0,             # 機械学習
-        'lightgbm': 30.0,                # LightGBM (新主力モデル)
+        'lightgbm': 25.0,                # LightGBM（30→25に調整）
     }
     
     predictions_by_model = {
@@ -236,11 +262,15 @@ def generate_ensemble_prediction(progress_callback=None):
         'ml_model_new': predictions_ml_new,
         'exploratory': predictions_exploratory,
         'extreme_patterns': predictions_extreme,
-        # v10 models
+        # v10.0 直近依存モデル
         'digit_repetition': predictions_repetition,
         'digit_continuation': predictions_continuation,
         'large_change': predictions_large_change,
         'realistic_frequency': predictions_realistic,
+        # v10.3 過去パターン学習モデル（NEW!）
+        'transition_probability': predictions_transition,
+        'global_frequency': predictions_global_freq,
+        'box_pattern': predictions_box_pattern,
         # ML
         'lightgbm': predictions_lgbm
     }
@@ -256,6 +286,19 @@ def generate_ensemble_prediction(progress_callback=None):
     # v10.1: 合計値が理想的な範囲にある候補にボーナスを付与
     report_progress(0.95, "合計値ボーナスを適用中...")
     final_predictions_df = apply_sum_bonus(final_predictions_df)
+    
+    # v10.2: ボックスユニーク保証 - 同じ数字の組み合わせ（順不同）を持つ候補を排除
+    # これにより、毎回異なるボックス組み合わせの予測が出力される
+    report_progress(0.97, "ボックスユニーク処理中...")
+    seen_boxes = set()
+    box_unique_rows = []
+    for idx, row in final_predictions_df.iterrows():
+        pred_num = str(row['prediction'])
+        box_id = "".join(sorted(pred_num))  # 数字をソートしてボックスIDを作成
+        if box_id not in seen_boxes:
+            seen_boxes.add(box_id)
+            box_unique_rows.append(row)
+    final_predictions_df = pd.DataFrame(box_unique_rows).reset_index(drop=True)
     
     report_progress(1.0, "予測完了！")
     

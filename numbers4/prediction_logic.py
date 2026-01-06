@@ -288,8 +288,13 @@ def predict_from_exploratory_heuristics(df: pd.DataFrame, limit: int = 20):
     """
     探索的ヒューリスティックに基づき、統計的な「穴」を狙う予測を生成する。
     合計値が極端に低い/高い組み合わせや、長期間出現していない数字を重視する。
-    改善版：予測数を大幅に増加（5→20）
+    
+    v10.2改善: 
+    - 完全ランダムな候補を25%含めて多様性を大幅UP
+    - ボックスユニークを考慮した生成
     """
+    import random
+    
     df = df.copy()
     df['sum'] = df[['d1', 'd2', 'd3', 'd4']].sum(axis=1)
 
@@ -297,82 +302,96 @@ def predict_from_exploratory_heuristics(df: pd.DataFrame, limit: int = 20):
     all_digits = pd.concat([df[f'd{i+1}'] for i in range(4)])
     digit_counts = Counter(all_digits)
     cold_digits = [digit for digit, count in digit_counts.items() if count <= np.percentile(list(digit_counts.values()), 25)]
-    if not cold_digits: # もしコールドな数字がなければ、最も出現頻度の低いものを選ぶ
+    if not cold_digits:
         cold_digits = [digit_counts.most_common()[-1][0]]
 
     predictions = set()
+    seen_boxes = set()  # ボックスユニーク用
     attempts = 0
 
+    # 最新の当選番号
+    latest_number = "".join(map(str, df.iloc[-1][['d1', 'd2', 'd3', 'd4']].values))
+
+    # v10.2: 完全ランダムな候補を最初に追加（多様性確保の要）
+    random_count = max(5, limit // 4)  # 25%はランダム
+    random_attempts = 0
+    while len(predictions) < random_count and random_attempts < 1000:
+        random_attempts += 1
+        random_num = f"{random.randint(0,9)}{random.randint(0,9)}{random.randint(0,9)}{random.randint(0,9)}"
+        box_id = "".join(sorted(random_num))
+        if random_num != latest_number and box_id not in seen_boxes:
+            predictions.add(random_num)
+            seen_boxes.add(box_id)
+
     # 1. 超低合計値/超高合計値を狙う
-    low_sum_target = 9  # e.g., 0-9
-    high_sum_target = 28 # e.g., 28-36
+    low_sum_target = 9
+    high_sum_target = 28
 
     while len(predictions) < limit and attempts < 20000:
         attempts += 1
-        # 候補をランダムに生成
         pred = np.random.randint(0, 10000)
         num_str = f"{pred:04d}"
+        box_id = "".join(sorted(num_str))
+        
+        # ボックスが既出の場合はスキップ
+        if box_id in seen_boxes:
+            continue
+            
         n1, n2, n3, n4 = [int(d) for d in num_str]
         current_sum = sum([n1, n2, n3, n4])
 
-        # 50%の確率で低合計値、50%の確率で高合計値を狙う
         if np.random.rand() < 0.5:
-            # 低合計値に近ければ採用
             if current_sum <= low_sum_target:
                 predictions.add(num_str)
+                seen_boxes.add(box_id)
         else:
-            # 高合計値に近ければ採用
             if current_sum >= high_sum_target:
                 predictions.add(num_str)
+                seen_boxes.add(box_id)
 
-    # 2. ゼロ頻度ペアとコールドナンバーを組み合わせる (Refined)
-    # 過去の全ペアを計算
+    # 2. ゼロ頻度ペアとコールドナンバーを組み合わせる
     historical_pairs = set()
     for _, row in df.iterrows():
         for i in range(3):
-            historical_pairs.add(tuple(sorted((row[f'd{i+1}'], row[f'd{i+2}']))) )
+            historical_pairs.add(tuple(sorted((row[f'd{i+1}'], row[f'd{i+2}']))))
     
-    # ゼロ頻度のペアを特定
     all_possible_pairs = {tuple(sorted((i, j))) for i in range(10) for j in range(10)}
     zero_freq_pairs = list(all_possible_pairs - historical_pairs)
 
     if zero_freq_pairs and cold_digits:
         while len(predictions) < limit * 2 and attempts < 40000:
             attempts += 1
-            # ゼロ頻度ペアをランダムに1つ選択
             target_pair = list(zero_freq_pairs[np.random.randint(len(zero_freq_pairs))])
-            # 残りの2桁をコールドナンバーから選択
             other_digits = np.random.choice(cold_digits, 2, replace=True).tolist()
-            # 4桁のリストを作成してシャッフル
             pred_list = target_pair + other_digits
             np.random.shuffle(pred_list)
             num_str = "".join(map(str, pred_list))
-            predictions.add(num_str)
+            box_id = "".join(sorted(num_str))
+            
+            if num_str != latest_number and box_id not in seen_boxes:
+                predictions.add(num_str)
+                seen_boxes.add(box_id)
 
-
-    # 最新の当選番号を除外
-    latest_number = "".join(map(str, df.iloc[-1][['d1', 'd2', 'd3', 'd4']].values))
-    if latest_number in predictions:
-        predictions.remove(latest_number)
-    
     # 予測数が不足している場合は、低頻度の数字を含むパターンを追加
     if len(predictions) < limit:
         all_digits = pd.concat([df[f'd{i+1}'] for i in range(4)])
         digit_counts = Counter(all_digits)
-        cold_digits = [d for d, _ in digit_counts.most_common()[-5:]]  # 最も出現頻度が低い5つ
+        cold_digits = [d for d, _ in digit_counts.most_common()[-5:]]
         
         attempts = 0
         while len(predictions) < limit and attempts < 10000:
             attempts += 1
-            # コールドナンバーから2つ以上選ぶ
             num_cold = np.random.randint(2, 5)
             cold_selected = np.random.choice(cold_digits, num_cold, replace=True)
             other_selected = np.random.choice(10, 4 - num_cold, replace=True)
             all_digits_list = np.concatenate([cold_selected, other_selected])
             np.random.shuffle(all_digits_list)
             num_str = "".join(map(str, all_digits_list))
-            if num_str != latest_number:
+            box_id = "".join(sorted(num_str))
+            
+            if num_str != latest_number and box_id not in seen_boxes:
                 predictions.add(num_str)
+                seen_boxes.add(box_id)
 
     return list(predictions)[:limit]
 
@@ -426,14 +445,18 @@ def aggregate_predictions(predictions_by_model: dict, weights: dict, normalize_s
     return df
 
 
-def apply_diversity_penalty(df: pd.DataFrame, penalty_strength: float = 0.3, similarity_threshold: int = 3):
+def apply_diversity_penalty(df: pd.DataFrame, penalty_strength: float = 0.5, similarity_threshold: int = 2):
     """
-    多様性ペナルティを適用：類似した候補のスコアを下げる（ナンバーズ4用）
+    多様性ペナルティを適用：ボックス的に類似した候補のスコアを大幅に下げる（ナンバーズ4用）
+    
+    v10.2改善: ボックス（順不同）での完全一致に強いペナルティ
+    - 同じボックス（数字の組み合わせ）が既に上位にある場合: 90%減
+    - 3桁以上の数字が共通する場合: 段階的ペナルティ
     
     Args:
         df: 予測結果のDataFrame（'prediction'と'score'列を持つ）
-        penalty_strength: ペナルティの強さ（0.0-1.0、デフォルト: 0.3）
-        similarity_threshold: 類似と判定する共通桁数（デフォルト: 3）
+        penalty_strength: ペナルティの強さ（0.0-1.0、デフォルト: 0.5）
+        similarity_threshold: 類似と判定する共通桁数（デフォルト: 2）
     
     Returns:
         多様性ペナルティ適用後のDataFrame
@@ -444,27 +467,36 @@ def apply_diversity_penalty(df: pd.DataFrame, penalty_strength: float = 0.3, sim
     df = df.copy()
     df['adjusted_score'] = df['score'].copy()
     
+    seen_boxes = set()  # 既出のボックスID（ソート済み数字）を記録
+    
     # 上位から順に処理
     for i in range(len(df)):
-        current_pred = df.iloc[i]['prediction']
-        current_digits = set(current_pred)
+        current_pred = str(df.iloc[i]['prediction'])
+        current_box = "".join(sorted(current_pred))  # ボックスID（数字をソート）
         
-        # それより下位の候補と比較
-        for j in range(i + 1, len(df)):
-            other_pred = df.iloc[j]['prediction']
-            other_digits = set(other_pred)
+        # 同じボックスが既に上位にある場合、大幅ペナルティ（90%減）
+        if current_box in seen_boxes:
+            df.loc[df.index[i], 'adjusted_score'] *= 0.1
+        else:
+            seen_boxes.add(current_box)
             
-            # 共通する桁数を計算
-            common_digits = len(current_digits & other_digits)
-            
-            # 類似度が閾値以上ならペナルティ
-            if common_digits >= similarity_threshold:
-                penalty = penalty_strength * (common_digits / 4.0)  # 4桁中の共通割合
-                df.loc[j, 'adjusted_score'] *= (1 - penalty)
+            # 似たボックス（共通数字が多い）にもペナルティを適用
+            current_digits = set(current_pred)
+            for j in range(i + 1, len(df)):
+                other_pred = str(df.iloc[j]['prediction'])
+                other_digits = set(other_pred)
+                
+                # 共通する数字の種類を計算
+                common_digits = len(current_digits & other_digits)
+                
+                # 類似度が閾値以上ならペナルティ
+                if common_digits >= similarity_threshold:
+                    penalty = penalty_strength * (common_digits / 4.0)
+                    df.loc[df.index[j], 'adjusted_score'] *= (1 - penalty)
     
     # 調整後のスコアで再ソート
     df = df.sort_values(by='adjusted_score', ascending=False).reset_index(drop=True)
-    df['score'] = df['adjusted_score']  # スコアを更新
+    df['score'] = df['adjusted_score']
     df = df.drop(columns=['adjusted_score'])
     
     return df
@@ -610,3 +642,177 @@ def predict_from_realistic_frequency_model_n4(df: pd.DataFrame, limit: int = 400
     
     final_predictions = sorted(predictions_dict.items(), key=lambda x: -x[1])
     return [pred for pred, _ in final_predictions[:limit]]
+
+
+# --- v10.3 過去パターン学習モデル（直近依存からの脱却！） ---
+
+def predict_from_transition_probability_n4(df: pd.DataFrame, limit: int = 200):
+    """
+    遷移確率モデル（ナンバーズ4版）
+    
+    過去の全履歴から「前回の数字→次回の数字」の遷移確率を学習
+    直近ではなく全データを使うことで、短期的な偏りを排除
+    
+    例: 1桁目が「2」だった次の回、1桁目は何が出やすい？→全履歴から学習
+    """
+    from collections import defaultdict
+    import random
+    
+    predictions_dict = {}
+    latest = df.iloc[-1]
+    latest_digits = [latest['d1'], latest['d2'], latest['d3'], latest['d4']]
+    latest_number = "".join(map(str, latest_digits))
+    
+    # 各桁の遷移確率を計算（全履歴から）
+    transition_probs = []
+    for pos in range(4):
+        trans = defaultdict(lambda: defaultdict(int))
+        col = f'd{pos+1}'
+        for i in range(1, len(df)):
+            prev_digit = df.iloc[i-1][col]
+            curr_digit = df.iloc[i][col]
+            trans[prev_digit][curr_digit] += 1
+        
+        # 正規化して確率に
+        prob_dict = {}
+        for prev_d, next_counts in trans.items():
+            total = sum(next_counts.values())
+            prob_dict[prev_d] = {d: c/total for d, c in next_counts.items()}
+        transition_probs.append(prob_dict)
+    
+    # 遷移確率に基づいて予測を生成
+    seen_boxes = set()
+    attempts = 0
+    while len(predictions_dict) < limit and attempts < limit * 50:
+        attempts += 1
+        new_digits = []
+        score = 1.0
+        
+        for pos in range(4):
+            prev_d = latest_digits[pos]
+            probs = transition_probs[pos].get(prev_d, {})
+            
+            if probs:
+                # 確率に基づいてサンプリング
+                digits = list(probs.keys())
+                weights = list(probs.values())
+                chosen = random.choices(digits, weights=weights, k=1)[0]
+                new_digits.append(chosen)
+                score *= probs.get(chosen, 0.1)
+            else:
+                # データがない場合はランダム
+                new_digits.append(random.randint(0, 9))
+                score *= 0.1
+        
+        num_str = "".join(map(str, new_digits))
+        box_id = "".join(sorted(num_str))
+        
+        if num_str != latest_number and box_id not in seen_boxes:
+            predictions_dict[num_str] = predictions_dict.get(num_str, 0) + score * 100
+            seen_boxes.add(box_id)
+    
+    final_predictions = sorted(predictions_dict.items(), key=lambda x: -x[1])
+    return [pred for pred, _ in final_predictions[:limit]]
+
+
+def predict_from_global_frequency_n4(df: pd.DataFrame, limit: int = 150):
+    """
+    全体頻度モデル（ナンバーズ4版）
+    
+    全履歴から各桁の出現頻度を計算（直近バイアスなし）
+    長期的な統計パターンを反映し、直近の偏りに左右されない予測を生成
+    """
+    import random
+    
+    predictions = set()
+    seen_boxes = set()
+    latest_number = "".join(map(str, df.iloc[-1][['d1', 'd2', 'd3', 'd4']].values))
+    
+    # 全履歴から各桁の出現確率を計算
+    digit_probs = []
+    for pos in range(4):
+        col = f'd{pos+1}'
+        freq = Counter(df[col])
+        total = sum(freq.values())
+        probs = {d: freq.get(d, 0) / total for d in range(10)}
+        digit_probs.append(probs)
+    
+    # 全体確率に基づいて予測を生成
+    attempts = 0
+    while len(predictions) < limit and attempts < limit * 50:
+        attempts += 1
+        new_digits = []
+        
+        for pos in range(4):
+            probs = digit_probs[pos]
+            digits = list(probs.keys())
+            weights = list(probs.values())
+            chosen = random.choices(digits, weights=weights, k=1)[0]
+            new_digits.append(chosen)
+        
+        num_str = "".join(map(str, new_digits))
+        box_id = "".join(sorted(num_str))
+        
+        if num_str != latest_number and box_id not in seen_boxes:
+            predictions.add(num_str)
+            seen_boxes.add(box_id)
+    
+    return list(predictions)[:limit]
+
+
+def predict_from_box_pattern_analysis_n4(df: pd.DataFrame, limit: int = 100):
+    """
+    ボックスパターン分析モデル（ナンバーズ4版）
+    
+    過去の当選番号を「ボックス（順不同の組み合わせ）」として分析し、
+    出現しやすいボックスパターンを特定
+    """
+    import random
+    
+    predictions = set()
+    latest_number = "".join(map(str, df.iloc[-1][['d1', 'd2', 'd3', 'd4']].values))
+    latest_box = "".join(sorted(latest_number))
+    
+    # 全履歴からボックスパターンの頻度を計算
+    box_freq = Counter()
+    for _, row in df.iterrows():
+        num = f"{row['d1']}{row['d2']}{row['d3']}{row['d4']}"
+        box_id = "".join(sorted(num))
+        box_freq[box_id] += 1
+    
+    # 頻出ボックスパターンを取得（直近を除く）
+    top_boxes = [(box, freq) for box, freq in box_freq.most_common(limit * 2) if box != latest_box]
+    
+    # 各ボックスパターンから具体的な番号を生成
+    seen_boxes = set()
+    for box_id, freq in top_boxes:
+        if len(predictions) >= limit:
+            break
+        
+        if box_id in seen_boxes:
+            continue
+        
+        # ボックスIDから1つの番号を生成（シャッフル）
+        digits = list(box_id)
+        random.shuffle(digits)
+        num_str = "".join(digits)
+        
+        if num_str != latest_number:
+            predictions.add(num_str)
+            seen_boxes.add(box_id)
+    
+    # 足りない場合は、中頻度のボックスからも追加
+    if len(predictions) < limit:
+        mid_boxes = [(box, freq) for box, freq in box_freq.most_common()[limit:limit*3] if box != latest_box]
+        for box_id, freq in mid_boxes:
+            if len(predictions) >= limit:
+                break
+            if box_id not in seen_boxes:
+                digits = list(box_id)
+                random.shuffle(digits)
+                num_str = "".join(digits)
+                if num_str != latest_number:
+                    predictions.add(num_str)
+                    seen_boxes.add(box_id)
+    
+    return list(predictions)[:limit]

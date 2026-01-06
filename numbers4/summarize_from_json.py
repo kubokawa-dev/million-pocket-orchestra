@@ -38,7 +38,8 @@ def aggregate_predictions(daily_data: Dict) -> Dict:
         'total_score': 0.0,
         'best_rank': 999,
         'ranks': [],
-        'times': []
+        'times': [],
+        'similar_patterns': []  # 類似パターンを追加
     })
     
     total_predictions = len(predictions)
@@ -50,6 +51,7 @@ def aggregate_predictions(daily_data: Dict) -> Dict:
             number = pred['number']
             rank = pred['rank']
             score = pred['score']
+            similar = pred.get('similar_patterns', [])  # 類似パターンを取得
             
             stats = number_stats[number]
             stats['appearances'] += 1
@@ -57,6 +59,11 @@ def aggregate_predictions(daily_data: Dict) -> Dict:
             stats['best_rank'] = min(stats['best_rank'], rank)
             stats['ranks'].append(rank)
             stats['times'].append(time_str)
+            
+            # 類似パターンを追加（重複排除）
+            for sp in similar:
+                if sp not in stats['similar_patterns']:
+                    stats['similar_patterns'].append(sp)
     
     # 平均スコア・平均順位を計算
     for _number, stats in number_stats.items():
@@ -187,6 +194,62 @@ def generate_markdown(daily_data: Dict, aggregated: Dict, top_n: int = 20) -> st
         md.append(f"| {i+1}桁目 | {top3_str[0]} | {top3_str[1]} | {top3_str[2]} |")
     
     md.append("")
+    
+    # 類似パターン提案セクション（新規追加）
+    md.append("## 💡 上位予測 + 類似パターン")
+    md.append("")
+    md.append("各予測番号に対して、統計分析に基づく類似パターンを提案！")
+    md.append("ボックスやセットで購入する際の参考にしてね！")
+    md.append("")
+    
+    # 最新の予測から類似パターンを取得
+    latest_predictions = predictions[-1].get('top_predictions', []) if predictions else []
+    
+    if latest_predictions:
+        md.append("| 順位 | メイン予測 | スコア | 類似パターン（もしかしたらこれも？） |")
+        md.append("|:---:|:---:|:---:|:---|")
+        
+        for pred in latest_predictions[:10]:  # 上位10件
+            number = pred['number']
+            score = pred['score']
+            rank = pred['rank']
+            similar = pred.get('similar_patterns', [])
+            
+            # 絵文字でハイライト
+            if rank <= 3:
+                rank_emoji = ['🥇', '🥈', '🥉'][rank - 1]
+            else:
+                rank_emoji = ''
+            
+            # 類似パターンを整形
+            if similar:
+                similar_str = ", ".join([f"`{sp['number']}`" for sp in similar[:3]])
+            else:
+                similar_str = "-"
+            
+            md.append(f"| {rank_emoji} {rank} | `{number}` | {score:.1f} | {similar_str} |")
+        
+        md.append("")
+        
+        # 類似パターンの詳細説明（上位5件）
+        md.append("### 📝 類似パターン詳細（上位5件）")
+        md.append("")
+        
+        for pred in latest_predictions[:5]:
+            number = pred['number']
+            similar = pred.get('similar_patterns', [])
+            
+            if similar:
+                md.append(f"**`{number}`** の類似パターン:")
+                md.append("")
+                for sp in similar:
+                    sp_number = sp.get('number', '')
+                    sp_desc = sp.get('description', '')
+                    md.append(f"- `{sp_number}`: {sp_desc}")
+                md.append("")
+    else:
+        md.append("（類似パターンデータなし）")
+        md.append("")
     
     # フッター
     md.append("---")
