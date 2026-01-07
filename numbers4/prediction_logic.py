@@ -646,12 +646,60 @@ def predict_from_realistic_frequency_model_n4(df: pd.DataFrame, limit: int = 400
 
 # --- v10.3 過去パターン学習モデル（直近依存からの脱却！） ---
 
+def apply_temperature_scaling(probs: dict, temperature: float = 1.5, min_prob: float = 0.05) -> dict:
+    """
+    確率分布に温度スケーリングと最低確率閾値を適用
+    
+    v10.4改善: 過度な偏りを軽減し、すべての数字に最低限のチャンスを与える
+    
+    Args:
+        probs: 確率分布の辞書 {digit: probability}
+        temperature: 温度パラメータ（>1で分布を平滑化、<1で尖らせる）
+        min_prob: 最低確率（すべての数字がこの確率以上を持つ）
+    
+    Returns:
+        調整後の確率分布
+    """
+    import math
+    
+    # 全ての数字が存在することを保証
+    adjusted = {}
+    for d in range(10):
+        adjusted[d] = probs.get(d, 0.0)
+    
+    # 温度スケーリング（log-softmax的な変換）
+    if temperature != 1.0:
+        # 確率をlogオッズに変換し、温度で割って再正規化
+        epsilon = 1e-10
+        for d in adjusted:
+            adjusted[d] = max(adjusted[d], epsilon)
+        
+        # べき乗で温度調整（確率^(1/T)）
+        for d in adjusted:
+            adjusted[d] = adjusted[d] ** (1.0 / temperature)
+    
+    # 最低確率を保証
+    for d in adjusted:
+        adjusted[d] = max(adjusted[d], min_prob)
+    
+    # 正規化
+    total = sum(adjusted.values())
+    if total > 0:
+        adjusted = {d: p / total for d, p in adjusted.items()}
+    
+    return adjusted
+
+
 def predict_from_transition_probability_n4(df: pd.DataFrame, limit: int = 200):
     """
-    遷移確率モデル（ナンバーズ4版）
+    遷移確率モデル（ナンバーズ4版）v10.4
     
     過去の全履歴から「前回の数字→次回の数字」の遷移確率を学習
     直近ではなく全データを使うことで、短期的な偏りを排除
+    
+    v10.4改善:
+    - 温度スケーリングで過度な偏りを軽減
+    - 最低確率閾値で稀な遷移パターンもカバー
     
     例: 1桁目が「2」だった次の回、1桁目は何が出やすい？→全履歴から学習
     """
@@ -673,11 +721,13 @@ def predict_from_transition_probability_n4(df: pd.DataFrame, limit: int = 200):
             curr_digit = df.iloc[i][col]
             trans[prev_digit][curr_digit] += 1
         
-        # 正規化して確率に
+        # 正規化して確率に（温度スケーリング適用）
         prob_dict = {}
         for prev_d, next_counts in trans.items():
             total = sum(next_counts.values())
-            prob_dict[prev_d] = {d: c/total for d, c in next_counts.items()}
+            raw_probs = {d: c/total for d, c in next_counts.items()}
+            # v10.4: 温度スケーリングと最低確率を適用
+            prob_dict[prev_d] = apply_temperature_scaling(raw_probs, temperature=1.5, min_prob=0.03)
         transition_probs.append(prob_dict)
     
     # 遷移確率に基づいて予測を生成
@@ -700,7 +750,7 @@ def predict_from_transition_probability_n4(df: pd.DataFrame, limit: int = 200):
                 new_digits.append(chosen)
                 score *= probs.get(chosen, 0.1)
             else:
-                # データがない場合はランダム
+                # データがない場合はランダム（最低確率適用）
                 new_digits.append(random.randint(0, 9))
                 score *= 0.1
         
@@ -717,10 +767,14 @@ def predict_from_transition_probability_n4(df: pd.DataFrame, limit: int = 200):
 
 def predict_from_global_frequency_n4(df: pd.DataFrame, limit: int = 150):
     """
-    全体頻度モデル（ナンバーズ4版）
+    全体頻度モデル（ナンバーズ4版）v10.4
     
     全履歴から各桁の出現頻度を計算（直近バイアスなし）
     長期的な統計パターンを反映し、直近の偏りに左右されない予測を生成
+    
+    v10.4改善:
+    - 温度スケーリングで確率分布を平滑化
+    - すべての数字に最低限のチャンスを保証
     """
     import random
     
@@ -728,14 +782,16 @@ def predict_from_global_frequency_n4(df: pd.DataFrame, limit: int = 150):
     seen_boxes = set()
     latest_number = "".join(map(str, df.iloc[-1][['d1', 'd2', 'd3', 'd4']].values))
     
-    # 全履歴から各桁の出現確率を計算
+    # 全履歴から各桁の出現確率を計算（温度スケーリング適用）
     digit_probs = []
     for pos in range(4):
         col = f'd{pos+1}'
         freq = Counter(df[col])
         total = sum(freq.values())
-        probs = {d: freq.get(d, 0) / total for d in range(10)}
-        digit_probs.append(probs)
+        raw_probs = {d: freq.get(d, 0) / total for d in range(10)}
+        # v10.4: 温度スケーリングと最低確率を適用
+        adjusted_probs = apply_temperature_scaling(raw_probs, temperature=1.3, min_prob=0.05)
+        digit_probs.append(adjusted_probs)
     
     # 全体確率に基づいて予測を生成
     attempts = 0
@@ -762,57 +818,303 @@ def predict_from_global_frequency_n4(df: pd.DataFrame, limit: int = 150):
 
 def predict_from_box_pattern_analysis_n4(df: pd.DataFrame, limit: int = 100):
     """
-    ボックスパターン分析モデル（ナンバーズ4版）
+    ボックスパターン分析モデル（ナンバーズ4版）v10.5.1
     
-    過去の当選番号を「ボックス（順不同の組み合わせ）」として分析し、
-    出現しやすいボックスパターンを特定
+    ボックス/セット狙いに特化した予測モデル
+    - 頻出ペア（隣接2桁の組み合わせ）を重視
+    - ABCD型・AABC型・AABB型をバランスよくカバー
+    - 過去リピートボックスを含める
     """
     import random
+    from itertools import combinations
     
-    predictions = set()
+    predictions_dict = {}  # {box_id: score}
     latest_number = "".join(map(str, df.iloc[-1][['d1', 'd2', 'd3', 'd4']].values))
     latest_box = "".join(sorted(latest_number))
     
-    # 全履歴からボックスパターンの頻度を計算
-    box_freq = Counter()
+    # === 1. ペア分析（頻出する2桁の組み合わせ） ===
+    recent = df.tail(50)
+    pair_freq = Counter()
+    for _, row in recent.iterrows():
+        num = f"{row['d1']}{row['d2']}{row['d3']}{row['d4']}"
+        pair_freq[tuple(sorted([num[0], num[1]]))] += 1
+        pair_freq[tuple(sorted([num[1], num[2]]))] += 1
+        pair_freq[tuple(sorted([num[2], num[3]]))] += 1
+    
+    top_pairs = [pair for pair, _ in pair_freq.most_common(15)]
+    
+    # === 2. 頻出数字を取得 ===
+    all_digits = []
+    for _, row in recent.iterrows():
+        all_digits.extend([str(row['d1']), str(row['d2']), str(row['d3']), str(row['d4'])])
+    digit_freq = Counter(all_digits)
+    hot_digits = [d for d, _ in digit_freq.most_common(8)]
+    
+    # === 3. ABCD型ボックスを生成（頻出ペア + 頻出数字） ===
+    for pair in top_pairs:
+        pair_score = pair_freq[pair]
+        remaining_candidates = [d for d in hot_digits if d not in pair]
+        
+        for combo in combinations(remaining_candidates, 2):
+            box_digits = list(pair) + list(combo)
+            box_id = "".join(sorted(box_digits))
+            
+            if box_id == latest_box:
+                continue
+            
+            score = pair_score * 5
+            for d in box_digits:
+                score += digit_freq.get(d, 0)
+            
+            if len(set(box_digits)) == 4:
+                score *= 1.3  # ABCD型ボーナス
+            
+            predictions_dict[box_id] = predictions_dict.get(box_id, 0) + score
+    
+    # === 4. AABC型ボックスを生成（頻出数字が2回出現） ===
+    for d in hot_digits[:6]:
+        d_score = digit_freq.get(d, 0)
+        remaining = [x for x in hot_digits if x != d]
+        
+        for combo in combinations(remaining, 2):
+            box_digits = [d, d] + list(combo)
+            box_id = "".join(sorted(box_digits))
+            
+            if box_id == latest_box:
+                continue
+            
+            score = d_score * 2
+            for c in combo:
+                score += digit_freq.get(c, 0)
+            score *= 1.2  # AABC型ボーナス（40.5%の出現率）
+            
+            predictions_dict[box_id] = predictions_dict.get(box_id, 0) + score
+    
+    # === 5. AABB型ボックスを生成（ダブルダブル） ===
+    for i, d1 in enumerate(hot_digits[:5]):
+        for d2 in hot_digits[i+1:6]:
+            box_digits = [d1, d1, d2, d2]
+            box_id = "".join(sorted(box_digits))
+            
+            if box_id == latest_box:
+                continue
+            
+            score = (digit_freq.get(d1, 0) + digit_freq.get(d2, 0)) * 2
+            predictions_dict[box_id] = predictions_dict.get(box_id, 0) + score
+    
+    # === 6. 過去リピートボックス（2回以上出現）を追加 ===
+    box_history = Counter()
     for _, row in df.iterrows():
         num = f"{row['d1']}{row['d2']}{row['d3']}{row['d4']}"
         box_id = "".join(sorted(num))
-        box_freq[box_id] += 1
+        box_history[box_id] += 1
     
-    # 頻出ボックスパターンを取得（直近を除く）
-    top_boxes = [(box, freq) for box, freq in box_freq.most_common(limit * 2) if box != latest_box]
+    repeat_boxes = [(box, count) for box, count in box_history.items() if count >= 2 and box != latest_box]
+    for box_id, count in repeat_boxes:
+        predictions_dict[box_id] = predictions_dict.get(box_id, 0) + count * 25
     
-    # 各ボックスパターンから具体的な番号を生成
+    # === 7. ソートしてボックスから番号を生成 ===
+    sorted_boxes = sorted(predictions_dict.items(), key=lambda x: -x[1])
+    
+    predictions = []
     seen_boxes = set()
-    for box_id, freq in top_boxes:
+    for box_id, score in sorted_boxes:
         if len(predictions) >= limit:
             break
-        
         if box_id in seen_boxes:
             continue
         
-        # ボックスIDから1つの番号を生成（シャッフル）
         digits = list(box_id)
         random.shuffle(digits)
         num_str = "".join(digits)
         
         if num_str != latest_number:
-            predictions.add(num_str)
+            predictions.append(num_str)
             seen_boxes.add(box_id)
     
-    # 足りない場合は、中頻度のボックスからも追加
-    if len(predictions) < limit:
-        mid_boxes = [(box, freq) for box, freq in box_freq.most_common()[limit:limit*3] if box != latest_box]
-        for box_id, freq in mid_boxes:
-            if len(predictions) >= limit:
-                break
-            if box_id not in seen_boxes:
-                digits = list(box_id)
-                random.shuffle(digits)
-                num_str = "".join(digits)
-                if num_str != latest_number:
-                    predictions.add(num_str)
-                    seen_boxes.add(box_id)
+    return predictions[:limit]
+
+
+def predict_from_hot_pair_combination_n4(df: pd.DataFrame, limit: int = 150):
+    """
+    ホットペア組み合わせモデル（ナンバーズ4版）v10.5
     
-    return list(predictions)[:limit]
+    ボックス/セット狙いに最適化！
+    - 直近で頻出するペア（2桁の組み合わせ）を2つ組み合わせてボックスを生成
+    - ABCD型を優先しつつ、AABC型やAABB型もカバー
+    """
+    import random
+    from itertools import combinations
+    
+    predictions_dict = {}
+    latest_number = "".join(map(str, df.iloc[-1][['d1', 'd2', 'd3', 'd4']].values))
+    latest_box = "".join(sorted(latest_number))
+    
+    # === 直近データからペア頻度を計算 ===
+    recent = df.tail(50)
+    pair_freq = Counter()
+    
+    for _, row in recent.iterrows():
+        num = f"{row['d1']}{row['d2']}{row['d3']}{row['d4']}"
+        # 隣接ペア
+        pair_freq[tuple(sorted([num[0], num[1]]))] += 1
+        pair_freq[tuple(sorted([num[1], num[2]]))] += 1
+        pair_freq[tuple(sorted([num[2], num[3]]))] += 1
+        # 非隣接ペアも追加（1桁目と3桁目、2桁目と4桁目など）
+        pair_freq[tuple(sorted([num[0], num[2]]))] += 0.5
+        pair_freq[tuple(sorted([num[1], num[3]]))] += 0.5
+        pair_freq[tuple(sorted([num[0], num[3]]))] += 0.5
+    
+    # 頻出ペアTOP20
+    top_pairs = pair_freq.most_common(20)
+    
+    # === 2つのペアを組み合わせてボックスを生成 ===
+    for i, (pair1, score1) in enumerate(top_pairs):
+        for pair2, score2 in top_pairs[i:]:  # 重複を避ける
+            # 4桁の数字を作る
+            box_digits = list(pair1) + list(pair2)
+            box_id = "".join(sorted(box_digits))
+            
+            if box_id == latest_box:
+                continue
+            
+            # ボックスタイプを判定
+            digit_counter = Counter(box_digits)
+            vals = sorted(digit_counter.values(), reverse=True)
+            
+            # スコア計算
+            base_score = (score1 + score2) * 2
+            
+            # v10.5.1: 実際の出現率に合わせてボーナス調整
+            if vals == [1, 1, 1, 1]:  # ABCD型 (52.5%)
+                type_bonus = 1.3
+            elif vals == [2, 1, 1]:  # AABC型 (40.5%)
+                type_bonus = 1.2  # ABCD型とほぼ同等に扱う
+            elif vals == [2, 2]:  # AABB型 (1.9%)
+                type_bonus = 1.0  # 出ると当てにくいので維持
+            elif vals == [3, 1]:  # AAAB型 (5.1%)
+                type_bonus = 0.8
+            else:  # AAAA型 (0%)
+                type_bonus = 0.1
+            
+            final_score = base_score * type_bonus
+            predictions_dict[box_id] = max(predictions_dict.get(box_id, 0), final_score)
+    
+    # === ソートして番号を生成 ===
+    sorted_boxes = sorted(predictions_dict.items(), key=lambda x: -x[1])
+    
+    predictions = []
+    seen_boxes = set()
+    
+    for box_id, score in sorted_boxes:
+        if len(predictions) >= limit:
+            break
+        if box_id in seen_boxes:
+            continue
+        
+        digits = list(box_id)
+        random.shuffle(digits)
+        num_str = "".join(digits)
+        
+        if num_str != latest_number:
+            predictions.append(num_str)
+            seen_boxes.add(box_id)
+    
+    return predictions[:limit]
+
+
+def predict_from_digit_frequency_box_n4(df: pd.DataFrame, limit: int = 100):
+    """
+    数字頻度ベースのボックス生成モデル v10.5
+    
+    頻出する数字を4つ組み合わせてボックスを生成
+    - 直近の出現頻度に基づいてスコアリング
+    - ABCD型を最優先
+    """
+    import random
+    from itertools import combinations
+    
+    predictions_dict = {}
+    latest_number = "".join(map(str, df.iloc[-1][['d1', 'd2', 'd3', 'd4']].values))
+    latest_box = "".join(sorted(latest_number))
+    
+    # 直近50回の数字頻度
+    recent = df.tail(50)
+    digit_freq = Counter()
+    for _, row in recent.iterrows():
+        digit_freq[str(row['d1'])] += 1
+        digit_freq[str(row['d2'])] += 1
+        digit_freq[str(row['d3'])] += 1
+        digit_freq[str(row['d4'])] += 1
+    
+    # 全数字（頻度順）
+    all_digits = [str(d) for d in range(10)]
+    
+    # === ABCD型を生成（4つ異なる数字の組み合わせ） ===
+    for combo in combinations(all_digits, 4):
+        box_id = "".join(sorted(combo))
+        
+        if box_id == latest_box:
+            continue
+        
+        # スコア = 4つの数字の頻度の合計
+        score = sum(digit_freq.get(d, 0) for d in combo)
+        
+        # 頻度のバランスボーナス（偏りすぎない組み合わせを優遇）
+        freqs = [digit_freq.get(d, 0) for d in combo]
+        if min(freqs) > 0:  # 全部出現している
+            balance_bonus = min(freqs) / max(freqs) if max(freqs) > 0 else 0
+            score *= (1 + balance_bonus * 0.3)
+        
+        predictions_dict[box_id] = score
+    
+    # === AABC型も追加（1つだけ重複） - 40.5%を占める重要パターン！ ===
+    for d1 in all_digits:
+        for combo in combinations([d for d in all_digits if d != d1], 2):
+            # d1が2回、combo[0]が1回、combo[1]が1回
+            box_digits = [d1, d1] + list(combo)
+            box_id = "".join(sorted(box_digits))
+            
+            if box_id == latest_box:
+                continue
+            
+            # v10.5.1: AABC型の重みを1.0に戻す（40.5%の出現率に対応）
+            score = digit_freq.get(d1, 0) * 2 + sum(digit_freq.get(d, 0) for d in combo)
+            score *= 1.0  # AABC型も同等に扱う
+            
+            predictions_dict[box_id] = max(predictions_dict.get(box_id, 0), score)
+    
+    # === AABB型も追加（ダブルダブル） - 1.9%だが出ると当てにくい ===
+    for d1 in all_digits:
+        for d2 in all_digits:
+            if d1 < d2:  # 重複を避ける
+                box_digits = [d1, d1, d2, d2]
+                box_id = "".join(sorted(box_digits))
+                
+                if box_id == latest_box:
+                    continue
+                
+                score = (digit_freq.get(d1, 0) + digit_freq.get(d2, 0)) * 1.5
+                predictions_dict[box_id] = max(predictions_dict.get(box_id, 0), score)
+    
+    # ソートして番号を生成
+    sorted_boxes = sorted(predictions_dict.items(), key=lambda x: -x[1])
+    
+    predictions = []
+    seen_boxes = set()
+    
+    for box_id, score in sorted_boxes:
+        if len(predictions) >= limit:
+            break
+        if box_id in seen_boxes:
+            continue
+        
+        digits = list(box_id)
+        random.shuffle(digits)
+        num_str = "".join(digits)
+        
+        if num_str != latest_number:
+            predictions.append(num_str)
+            seen_boxes.add(box_id)
+    
+    return predictions[:limit]
