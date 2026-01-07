@@ -27,7 +27,10 @@ from numbers4.prediction_logic import (
     # v10.3 過去パターン学習モデル
     predict_from_transition_probability_n4,   # 遷移確率モデル
     predict_from_global_frequency_n4,         # 全体頻度モデル
-    predict_from_box_pattern_analysis_n4,     # ボックスパターン分析
+    predict_from_box_pattern_analysis_n4,     # ボックスパターン分析 v10.5
+    # v10.5 ボックス特化型モデル
+    predict_from_hot_pair_combination_n4,     # ホットペア組み合わせ
+    predict_from_digit_frequency_box_n4,      # 数字頻度ボックス
     aggregate_predictions,
     apply_diversity_penalty
 )
@@ -223,37 +226,53 @@ def generate_ensemble_prediction(progress_callback=None):
     predictions_global_freq = predict_from_global_frequency_n4(all_draws_df, limit=150)
     report_progress(0.89, f"- [v10.3] 全体頻度モデル完了: {len(predictions_global_freq)}件")
     
-    # 13. ボックスパターン分析モデル
-    report_progress(0.90, "- [v10.3] ボックスパターン分析モデルで予測中...")
+    # 13. ボックスパターン分析モデル v10.5（ペア分析強化版）
+    report_progress(0.90, "- [v10.5] ボックスパターン分析モデルで予測中...")
     predictions_box_pattern = predict_from_box_pattern_analysis_n4(all_draws_df, limit=100)
-    report_progress(0.91, f"- [v10.3] ボックスパターン分析モデル完了: {len(predictions_box_pattern)}件")
+    report_progress(0.91, f"- [v10.5] ボックスパターン分析モデル完了: {len(predictions_box_pattern)}件")
+    
+    # --- v10.5 ボックス/セット特化モデル ---
+    
+    # 14. ホットペア組み合わせモデル（頻出ペアを2つ組み合わせ）
+    report_progress(0.92, "- [v10.5] ホットペア組み合わせモデルで予測中...")
+    predictions_hot_pair = predict_from_hot_pair_combination_n4(all_draws_df, limit=120)
+    report_progress(0.93, f"- [v10.5] ホットペア組み合わせモデル完了: {len(predictions_hot_pair)}件")
+    
+    # 15. 数字頻度ボックスモデル（ABCD型優先）
+    report_progress(0.94, "- [v10.5] 数字頻度ボックスモデルで予測中...")
+    predictions_digit_freq_box = predict_from_digit_frequency_box_n4(all_draws_df, limit=100)
+    report_progress(0.95, f"- [v10.5] 数字頻度ボックスモデル完了: {len(predictions_digit_freq_box)}件")
 
     # --- アンサンブル集計 ---
-    report_progress(0.92, "全モデルの予測を統合・集計中...")
+    report_progress(0.96, "全モデルの予測を統合・集計中...")
     
     ensemble_weights = {
-        # v10.3 過去パターン学習モデル（新主力！直近依存しない）
-        'transition_probability': 25.0,  # 遷移確率 - 全履歴から学習
-        'global_frequency': 20.0,        # 全体頻度 - 直近バイアスなし
-        'box_pattern': 18.0,             # ボックスパターン分析
+        # v10.5 ボックス/セット特化モデル（最重要！）
+        'hot_pair': 35.0,                 # ホットペア組み合わせ（NEW!）
+        'box_pattern': 30.0,              # ボックスパターン分析 v10.5（18→30に強化）
+        'digit_freq_box': 25.0,           # 数字頻度ボックス（NEW!）
         
-        # v10.0 モデル（直近依存 - 重みダウン）
-        'digit_repetition': 12.0,        # 数字再出現（22→12に調整）
-        'digit_continuation': 10.0,      # 桁継続（18→10に調整）
-        'realistic_frequency': 12.0,     # 現実的頻度（20→12に調整）
+        # v10.3 過去パターン学習モデル
+        'transition_probability': 20.0,   # 遷移確率（25→20に調整）
+        'global_frequency': 15.0,         # 全体頻度（20→15に調整）
+        
+        # v10.0 モデル（直近依存 - 低重み）
+        'digit_repetition': 8.0,          # 数字再出現（12→8に調整）
+        'digit_continuation': 6.0,        # 桁継続（10→6に調整）
+        'realistic_frequency': 8.0,       # 現実的頻度（12→8に調整）
         
         # 変化パターンモデル
-        'large_change': 15.0,            # 大変化
+        'large_change': 10.0,             # 大変化（15→10に調整）
         
-        # 多様性モデル
-        'advanced_heuristics': 10.0,     # 統計分析
-        'exploratory': 15.0,             # 探索的分析
-        'extreme_patterns': 8.0,         # 極端パターン
+        # 多様性モデル（低重み）
+        'advanced_heuristics': 5.0,       # 統計分析（10→5に調整）
+        'exploratory': 8.0,               # 探索的分析（15→8に調整）
+        'extreme_patterns': 3.0,          # 極端パターン（8→3に調整）
         
-        # 補助モデル（低重み）
-        'basic_stats': 2.0,              # 基本統計
-        'ml_model_new': 1.0,             # 機械学習
-        'lightgbm': 25.0,                # LightGBM（30→25に調整）
+        # 補助モデル（最低重み）
+        'basic_stats': 1.0,               # 基本統計
+        'ml_model_new': 1.0,              # 機械学習
+        'lightgbm': 20.0,                 # LightGBM（25→20に調整）
     }
     
     predictions_by_model = {
@@ -267,10 +286,13 @@ def generate_ensemble_prediction(progress_callback=None):
         'digit_continuation': predictions_continuation,
         'large_change': predictions_large_change,
         'realistic_frequency': predictions_realistic,
-        # v10.3 過去パターン学習モデル（NEW!）
+        # v10.3 過去パターン学習モデル
         'transition_probability': predictions_transition,
         'global_frequency': predictions_global_freq,
+        # v10.5 ボックス特化モデル（NEW!）
         'box_pattern': predictions_box_pattern,
+        'hot_pair': predictions_hot_pair,
+        'digit_freq_box': predictions_digit_freq_box,
         # ML
         'lightgbm': predictions_lgbm
     }

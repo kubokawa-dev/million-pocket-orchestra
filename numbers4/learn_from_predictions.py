@@ -154,6 +154,42 @@ def normalize(vec: List[float]) -> List[float]:
     return [v / s for v in vec]
 
 
+def apply_smoothing(vec: List[float], min_prob: float = 0.02, temperature: float = 1.3) -> List[float]:
+    """
+    確率分布に平滑化を適用（v10.4改善）
+    
+    問題: 学習の過程で特定の数字の確率が極端に高くなり、
+          他の数字がほぼ0%になってしまう → 多様性が失われる
+    
+    解決策:
+    1. 最低確率を保証（どの数字も min_prob 以上）
+    2. 温度スケーリングで分布を平滑化
+    
+    Args:
+        vec: 確率分布 (長さ10のリスト)
+        min_prob: 最低確率（デフォルト: 0.02 = 2%）
+        temperature: 温度パラメータ（>1で平滑化、デフォルト: 1.3）
+    
+    Returns:
+        平滑化後の確率分布
+    """
+    import math
+    
+    # 最低確率を保証
+    smoothed = [max(v, min_prob) for v in vec]
+    
+    # 温度スケーリング（p^(1/T)）
+    if temperature != 1.0:
+        smoothed = [v ** (1.0 / temperature) for v in smoothed]
+    
+    # 正規化
+    total = sum(smoothed)
+    if total > 0:
+        smoothed = [v / total for v in smoothed]
+    
+    return smoothed
+
+
 def update_state_with_event(state: Dict, actual: str, predictions: List[Tuple[str, str, str]]) -> Dict:
     # weights
     beta = 0.3  # update strength for new evidence
@@ -183,7 +219,8 @@ def update_state_with_event(state: Dict, actual: str, predictions: List[Tuple[st
         tgt = normalize(targets[i])
         old = state['pos_probs'][i]
         new = [ (1.0 - beta) * old[d] + beta * tgt[d] for d in range(10) ]
-        state['pos_probs'][i] = normalize(new)
+        # v10.4: 正規化後に平滑化を適用（過度な偏りを防ぐ）
+        state['pos_probs'][i] = apply_smoothing(normalize(new), min_prob=0.02, temperature=1.3)
 
     state['events'] = int(state.get('events', 0)) + 1
     return state
