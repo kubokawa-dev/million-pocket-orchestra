@@ -50,7 +50,8 @@ def load_all_numbers4_draws() -> pd.DataFrame:
     conn = get_db_connection()
     try:
         # 'numbers' 列を 'winning_numbers' にエイリアスして互換性を保つ
-        query = "SELECT draw_date as date, numbers as winning_numbers FROM numbers4_draws ORDER BY draw_date ASC"
+        # draw_number も取得するように修正
+        query = "SELECT draw_number, draw_date as date, numbers as winning_numbers FROM numbers4_draws ORDER BY draw_date ASC"
         df = pd.read_sql_query(query, conn)
     finally:
         conn.close()

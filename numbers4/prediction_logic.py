@@ -4,8 +4,38 @@ from collections import Counter
 import json
 import os
 from itertools import product
-from numbers4.prediction_logic_lgbm import predict_from_lightgbm # LightGBM
+from numbers4.prediction_logic_lgbm import (
+    predict_from_lightgbm,  # LightGBM
+    train_and_predict_lgbm_with_probs,
+    DEFAULT_TEMPERATURE,
+)
+from numbers4.learn_from_predictions import (
+    ensure_state_schema,
+    rank_numbers_from_state,
+)
 # from numbers4.predict_numbers_with_model import predict_top_k as _predict_top_k_model  # 削除されたファイル
+
+def predict_from_lightgbm_with_probs(
+    df: pd.DataFrame,
+    limit: int = 15,
+    temperature: float = DEFAULT_TEMPERATURE
+):
+    """
+    LightGBM予測 + 各桁確率分布を返す（類似候補生成などで利用）。
+
+    Returns:
+        (predictions: List[str], preds_probs: Dict[str, np.ndarray])
+    """
+    try:
+        df_local = df.copy()
+        if 'draw_date' not in df_local.columns and 'date' in df_local.columns:
+            df_local['draw_date'] = df_local['date']
+        return train_and_predict_lgbm_with_probs(df_local, limit=limit, temperature=temperature)
+    except Exception as e:
+        print(f"[LightGBM] Error (with_probs): {e}")
+        import traceback
+        traceback.print_exc()
+        return [], {}
 
 # --- 1. predict_numbers.py からのロジック ---
 def predict_from_basic_stats(df: pd.DataFrame, limit: int = 5):
@@ -63,6 +93,37 @@ def predict_from_basic_stats(df: pd.DataFrame, limit: int = 5):
             predictions.add(prediction)
     
     return list(predictions)[:limit]
+
+
+def predict_from_model_state_v2(
+    limit: int = 120,
+    model_state_path: str | None = None,
+):
+    """
+    model_state.jsonの桁間相関（pair_probs）を使ったチェーンモデル予測。
+    limit件を確率順で返す。
+    """
+    try:
+        if model_state_path is None:
+            model_state_path = os.path.join(os.path.dirname(__file__), 'model_state.json')
+        if not os.path.exists(model_state_path):
+            return []
+        with open(model_state_path, 'r', encoding='utf-8') as f:
+            state = json.load(f)
+        state = ensure_state_schema(state)
+        ranked = rank_numbers_from_state(state, top_n=limit * 2)
+        preds = []
+        seen = set()
+        for num, _score in ranked:
+            if num not in seen:
+                preds.append(num)
+                seen.add(num)
+            if len(preds) >= limit:
+                break
+        return preds
+    except Exception as e:
+        print(f"[state_v2] failed to load model_state: {e}")
+        return []
 
 def calculate_heuristic_score(num_str: str, sum_mode: float, even_count_mode: float, pair_counts: Counter):
     """指定された番号文字列のヒューリスティックスコアを計算する"""
@@ -767,14 +828,16 @@ def predict_from_transition_probability_n4(df: pd.DataFrame, limit: int = 200):
 
 def predict_from_global_frequency_n4(df: pd.DataFrame, limit: int = 150):
     """
-    全体頻度モデル（ナンバーズ4版）v10.4
+    全体頻度モデル（ナンバーズ4版）v10.7
     
     全履歴から各桁の出現頻度を計算（直近バイアスなし）
     長期的な統計パターンを反映し、直近の偏りに左右されない予測を生成
     
-    v10.4改善:
-    - 温度スケーリングで確率分布を平滑化
-    - すべての数字に最低限のチャンスを保証
+    v10.7改善:
+    - 温度スケーリングをさらに強化（1.3→1.5）
+    - 最低確率を引き上げ（0.05→0.07）
+    - 均等分布に近づけて多様性を確保
+    - 「理論的には全数字が10%ずつ」に近い分布を目指す
     """
     import random
     
@@ -789,13 +852,13 @@ def predict_from_global_frequency_n4(df: pd.DataFrame, limit: int = 150):
         freq = Counter(df[col])
         total = sum(freq.values())
         raw_probs = {d: freq.get(d, 0) / total for d in range(10)}
-        # v10.4: 温度スケーリングと最低確率を適用
-        adjusted_probs = apply_temperature_scaling(raw_probs, temperature=1.3, min_prob=0.05)
+        # v10.7: 温度スケーリングと最低確率を強化
+        adjusted_probs = apply_temperature_scaling(raw_probs, temperature=1.5, min_prob=0.07)
         digit_probs.append(adjusted_probs)
     
-    # 全体確率に基づいて予測を生成
+    # === 戦略1: 全体確率に基づいて予測を生成 ===
     attempts = 0
-    while len(predictions) < limit and attempts < limit * 50:
+    while len(predictions) < limit * 0.7 and attempts < limit * 50:
         attempts += 1
         new_digits = []
         
@@ -805,6 +868,20 @@ def predict_from_global_frequency_n4(df: pd.DataFrame, limit: int = 150):
             weights = list(probs.values())
             chosen = random.choices(digits, weights=weights, k=1)[0]
             new_digits.append(chosen)
+        
+        num_str = "".join(map(str, new_digits))
+        box_id = "".join(sorted(num_str))
+        
+        if num_str != latest_number and box_id not in seen_boxes:
+            predictions.add(num_str)
+            seen_boxes.add(box_id)
+    
+    # === 戦略2: 完全均等分布からも生成（多様性確保） ===
+    # 理論的には各数字が10%ずつ出るはずなので、均等分布も混ぜる
+    attempts = 0
+    while len(predictions) < limit and attempts < limit * 30:
+        attempts += 1
+        new_digits = [random.randint(0, 9) for _ in range(4)]
         
         num_str = "".join(map(str, new_digits))
         box_id = "".join(sorted(num_str))
@@ -1021,6 +1098,115 @@ def predict_from_hot_pair_combination_n4(df: pd.DataFrame, limit: int = 150):
             seen_boxes.add(box_id)
     
     return predictions[:limit]
+
+
+def predict_from_cold_number_revival_n4(df: pd.DataFrame, limit: int = 150):
+    """
+    コールドナンバー復活モデル v10.7（NEW!）
+    
+    長期間出ていない数字を狙う！
+    - 直近50回で出現回数が少ない数字を「コールド」と判定
+    - コールドナンバーを含む組み合わせを優先的に生成
+    - 「そろそろ来そう」な数字を捕捉
+    
+    1263問題対策: 1桁目の「1」のような低頻度数字もカバー
+    """
+    import random
+    from collections import Counter
+    
+    predictions_dict = {}
+    latest_number = "".join(map(str, df.iloc[-1][['d1', 'd2', 'd3', 'd4']].values))
+    
+    # === 各桁ごとのコールドナンバーを特定 ===
+    recent_50 = df.tail(50)
+    cold_digits_by_pos = []
+    
+    for pos in range(4):
+        col = f'd{pos+1}'
+        freq = Counter(recent_50[col])
+        # 全数字の出現回数を取得（出現0回も含む）
+        all_freq = {d: freq.get(d, 0) for d in range(10)}
+        # 出現回数が少ない順にソート
+        sorted_digits = sorted(all_freq.items(), key=lambda x: x[1])
+        # 下位5つをコールドナンバーとする
+        cold_digits = [d for d, _ in sorted_digits[:5]]
+        cold_digits_by_pos.append(cold_digits)
+    
+    # === 全体のコールドナンバー（全桁合計） ===
+    all_digits = []
+    for _, row in recent_50.iterrows():
+        all_digits.extend([row['d1'], row['d2'], row['d3'], row['d4']])
+    overall_freq = Counter(all_digits)
+    overall_cold = [d for d in range(10) if overall_freq.get(d, 0) <= np.percentile(list(overall_freq.values()), 30)]
+    
+    seen_boxes = set()
+    
+    # === 戦略1: 各桁のコールドナンバーを1つ以上含む組み合わせ ===
+    attempts = 0
+    while len(predictions_dict) < limit * 0.6 and attempts < 10000:
+        attempts += 1
+        digits = []
+        cold_count = 0
+        
+        for pos in range(4):
+            # 50%の確率でコールドナンバーを選択
+            if random.random() < 0.5 and cold_digits_by_pos[pos]:
+                d = random.choice(cold_digits_by_pos[pos])
+                cold_count += 1
+            else:
+                d = random.randint(0, 9)
+            digits.append(d)
+        
+        # 最低1つはコールドナンバーを含む
+        if cold_count >= 1:
+            num_str = "".join(map(str, digits))
+            box_id = "".join(sorted(num_str))
+            
+            if num_str != latest_number and box_id not in seen_boxes:
+                # スコア = コールドナンバーの数 × 基本スコア
+                score = cold_count * 15
+                predictions_dict[num_str] = predictions_dict.get(num_str, 0) + score
+                seen_boxes.add(box_id)
+    
+    # === 戦略2: 全体コールドナンバーを2つ以上含む組み合わせ ===
+    attempts = 0
+    while len(predictions_dict) < limit and attempts < 10000:
+        attempts += 1
+        
+        # コールドナンバーを2つ選択
+        if len(overall_cold) >= 2:
+            cold_selected = random.sample(overall_cold, 2)
+        else:
+            cold_selected = overall_cold * 2
+        
+        # 残り2つはランダム
+        other_selected = [random.randint(0, 9) for _ in range(2)]
+        
+        digits = cold_selected + other_selected
+        random.shuffle(digits)
+        
+        num_str = "".join(map(str, digits))
+        box_id = "".join(sorted(num_str))
+        
+        if num_str != latest_number and box_id not in seen_boxes:
+            score = 20  # 全体コールド2つ含むボーナス
+            predictions_dict[num_str] = predictions_dict.get(num_str, 0) + score
+            seen_boxes.add(box_id)
+    
+    # === 戦略3: 1桁目にコールドナンバーを固定（1263問題対策） ===
+    for cold_d1 in cold_digits_by_pos[0]:
+        for _ in range(20):
+            digits = [cold_d1, random.randint(0, 9), random.randint(0, 9), random.randint(0, 9)]
+            num_str = "".join(map(str, digits))
+            box_id = "".join(sorted(num_str))
+            
+            if num_str != latest_number and box_id not in seen_boxes:
+                score = 25  # 1桁目コールド固定ボーナス
+                predictions_dict[num_str] = predictions_dict.get(num_str, 0) + score
+                seen_boxes.add(box_id)
+    
+    final_predictions = sorted(predictions_dict.items(), key=lambda x: -x[1])
+    return [pred for pred, _ in final_predictions[:limit]]
 
 
 def predict_from_digit_frequency_box_n4(df: pd.DataFrame, limit: int = 100):
