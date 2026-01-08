@@ -5,8 +5,9 @@ import json
 import os
 import re
 import sys
+import math
 from datetime import datetime, timezone
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Optional
 
 # プロジェクトルートをパスに追加
 ROOT_DIR = os.path.dirname(os.path.dirname(__file__))
@@ -17,6 +18,14 @@ from tools.utils import get_db_connection
 ADV_PATH = os.path.join(ROOT_DIR, 'numbers4', 'advanced_numbers4_prediction_result.md')
 BASIC_PATH = os.path.join(ROOT_DIR, 'numbers4', 'prediction_result.md')
 MODEL_PATH = os.path.join(ROOT_DIR, 'numbers4', 'model_state.json')
+
+# 新機能のデフォルト設定（桁間相関・キャリブレーション・平滑化など）
+# v10.7改善: 低確率数字にもチャンスを与える（1263問題対策）
+CALIBRATION_DEFAULT = 1.20  # 1.15→1.20 分布をより平滑化
+SMOOTH_MIN_PROB = 0.06      # 0.04→0.06 最低確率を6%に引き上げ（どの数字も6%以上）
+SMOOTH_TEMPERATURE = 1.6    # 1.4→1.6 温度を上げて分布を平滑化
+RECENCY_DECAY = 0.975       # 0.985→0.975 古いデータをより忘れる（新しいパターンに適応）
+ROLLING_METRICS_WINDOW = 30
 
 # -----------------------------
 # Utilities
@@ -130,14 +139,10 @@ def collect_predictions() -> List[Tuple[str, str, str]]:
 def load_model_state(path: str) -> Dict:
     if os.path.exists(path):
         with open(path, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    # Initialize uniform probabilities
-    return {
-        'version': 1,
-        'updated_at': None,
-        'events': 0,
-        'pos_probs': [[0.1 for _ in range(10)] for _ in range(4)],
-    }
+            state = json.load(f)
+    else:
+        state = {}
+    return ensure_state_schema(state)
 
 
 def save_model_state(path: str, state: Dict):
@@ -190,37 +195,192 @@ def apply_smoothing(vec: List[float], min_prob: float = 0.02, temperature: float
     return smoothed
 
 
+def init_pair_probs() -> List[List[List[float]]]:
+    """桁間相関（隣接2桁の条件付き確率）を初期化"""
+    return [
+        [[0.1 for _ in range(10)] for _ in range(10)],  # pos0 -> pos1
+        [[0.1 for _ in range(10)] for _ in range(10)],  # pos1 -> pos2
+        [[0.1 for _ in range(10)] for _ in range(10)],  # pos2 -> pos3
+    ]
+
+
+def ensure_state_schema(state: Dict) -> Dict:
+    """既存の状態に新しいキーを後方互換で追加"""
+    if not state:
+        state = {}
+    state.setdefault('version', 2)
+    state.setdefault('updated_at', None)
+    state.setdefault('events', 0)
+    state.setdefault('pos_probs', [[0.1 for _ in range(10)] for _ in range(4)])
+    state.setdefault('pair_probs', init_pair_probs())
+    state.setdefault('metadata', {})
+    meta = state['metadata']
+    meta.setdefault('calibration_temperature', CALIBRATION_DEFAULT)
+    meta.setdefault('recent_metrics', [])
+    meta.setdefault('pos_entropy', [])
+    meta.setdefault('pair_entropy', [])
+    meta.setdefault('top_boxes', [])
+    meta.setdefault('top_numbers', [])
+    return state
+
+
+def calibrate_distribution(vec: List[float], temperature: float) -> List[float]:
+    """温度スケーリングでキャリブレーション"""
+    if temperature is None or abs(temperature - 1.0) < 1e-6:
+        return vec
+    return normalize([v ** (1.0 / temperature) for v in vec])
+
+
+def apply_recency_decay(vec: List[float], decay: float) -> List[float]:
+    """古い分布を薄める（忘却因子）"""
+    base = (1.0 - decay) / len(vec)
+    return normalize([v * decay + base for v in vec])
+
+
+def apply_recency_decay_matrix(mat: List[List[float]], decay: float) -> List[List[float]]:
+    return [apply_recency_decay(row, decay) for row in mat]
+
+
+def entropy(vec: List[float]) -> float:
+    """正規化エントロピー（0〜1）"""
+    eps = 1e-12
+    h = -sum(p * math.log(p + eps) for p in vec if p > 0)
+    max_h = math.log(len(vec))
+    return h / max_h if max_h > 0 else 0.0
+
+
+def normalize_matrix(mat: List[List[float]]) -> List[List[float]]:
+    return [normalize(row) for row in mat]
+
+
+def rank_numbers_from_state(state: Dict, top_n: int = 50) -> List[Tuple[str, float]]:
+    """
+    桁間相関（pair_probs）を活用して4桁のjoint確率を計算し、上位を返す
+    P(d0) * P(d1|d0) * P(d2|d1) * P(d3|d2)
+    """
+    pos = state['pos_probs']
+    pair = state['pair_probs']
+    results: List[Tuple[str, float]] = []
+    for d0 in range(10):
+        p0 = pos[0][d0]
+        if p0 == 0:
+            continue
+        for d1 in range(10):
+            p1 = pair[0][d0][d1]
+            if p1 == 0:
+                continue
+            for d2 in range(10):
+                p2 = pair[1][d1][d2]
+                if p2 == 0:
+                    continue
+                for d3 in range(10):
+                    p3 = pair[2][d2][d3]
+                    if p3 == 0:
+                        continue
+                    prob = p0 * p1 * p2 * p3
+                    results.append((''.join(map(str, [d0, d1, d2, d3])), prob))
+    results.sort(key=lambda x: x[1], reverse=True)
+    return results[:top_n]
+
+
+def aggregate_boxes(top_numbers: List[Tuple[str, float]], top_k: int = 20) -> List[Tuple[str, float]]:
+    """ボックス（順不同）で確率を集約し、上位を返す"""
+    box_scores = {}
+    for num, score in top_numbers:
+        box_id = ''.join(sorted(num))
+        box_scores[box_id] = box_scores.get(box_id, 0.0) + score
+    ranked = sorted(box_scores.items(), key=lambda x: x[1], reverse=True)
+    return ranked[:top_k]
+
+
 def update_state_with_event(state: Dict, actual: str, predictions: List[Tuple[str, str, str]]) -> Dict:
-    # weights
-    beta = 0.3  # update strength for new evidence
+    """
+    pos_probs: 桁ごとの事前分布
+    pair_probs: 桁間の条件付き分布（d_i -> d_{i+1}）
+    """
+    state = ensure_state_schema(state)
+    temp = state['metadata'].get('calibration_temperature', CALIBRATION_DEFAULT)
+
+    # 直近重視のため、既存分布を軽く減衰
+    state['pos_probs'] = [apply_recency_decay(vec, RECENCY_DECAY) for vec in state['pos_probs']]
+    state['pair_probs'] = [apply_recency_decay_matrix(mat, RECENCY_DECAY) for mat in state['pair_probs']]
+
+    # 重み
     w_actual = 1.0
-    # predictions ranked by appearance: earlier is stronger
-    pred_weights = [0.5 * (0.7 ** i) for i in range(len(predictions))]  # decaying
+    pred_weights = [0.5 * (0.7 ** i) for i in range(len(predictions))]  # 出現順で減衰
 
-    # per-position target distributions
-    targets = [[1e-3 for _ in range(10)] for _ in range(4)]  # smoothing
+    # per-position / pair targets
+    targets = [[1e-3 for _ in range(10)] for _ in range(4)]
+    pair_targets = [
+        [[1e-3 for _ in range(10)] for _ in range(10)],
+        [[1e-3 for _ in range(10)] for _ in range(10)],
+        [[1e-3 for _ in range(10)] for _ in range(10)],
+    ]
 
-    # reinforce predictions (small)
+    # 予測を弱く反映
     for rank, (_, _label, num) in enumerate(predictions):
         w = pred_weights[rank] if rank < len(pred_weights) else 0.1
-        for i, ch in enumerate(num[:4]):
-            d = ord(ch) - 48
-            if 0 <= d <= 9:
-                targets[i][d] += 0.2 * w  # small impact
+        digits = [int(ch) for ch in num[:4]]
+        for i, d in enumerate(digits):
+            targets[i][d] += 0.2 * w
+        for i in range(3):
+            a, b = digits[i], digits[i + 1]
+            pair_targets[i][a][b] += 0.05 * w
 
-    # reinforce actual (strong)
-    for i, ch in enumerate(actual[:4]):
-        d = ord(ch) - 48
-        if 0 <= d <= 9:
-            targets[i][d] += w_actual
+    # 実際の当選を強く反映
+    actual_digits = [int(ch) for ch in actual[:4]]
+    for i, d in enumerate(actual_digits):
+        targets[i][d] += w_actual
+    for i in range(3):
+        a, b = actual_digits[i], actual_digits[i + 1]
+        pair_targets[i][a][b] += w_actual
 
-    # blend with existing state
+    # pos_probs を更新
+    beta_pos = 0.15
     for i in range(4):
         tgt = normalize(targets[i])
         old = state['pos_probs'][i]
-        new = [ (1.0 - beta) * old[d] + beta * tgt[d] for d in range(10) ]
-        # v10.4: 正規化後に平滑化を適用（過度な偏りを防ぐ）
-        state['pos_probs'][i] = apply_smoothing(normalize(new), min_prob=0.02, temperature=1.3)
+        mixed = [(1.0 - beta_pos) * old[d] + beta_pos * tgt[d] for d in range(10)]
+        mixed = calibrate_distribution(mixed, temp)
+        state['pos_probs'][i] = apply_smoothing(normalize(mixed), min_prob=SMOOTH_MIN_PROB, temperature=SMOOTH_TEMPERATURE)
+
+    # pair_probs を更新
+    beta_pair = 0.12
+    for i in range(3):
+        tgt_mat = normalize_matrix(pair_targets[i])
+        old_mat = state['pair_probs'][i]
+        new_mat = []
+        for a in range(10):
+            row = [(1.0 - beta_pair) * old_mat[a][b] + beta_pair * tgt_mat[a][b] for b in range(10)]
+            row = calibrate_distribution(row, temp)
+            row = apply_smoothing(normalize(row), min_prob=SMOOTH_MIN_PROB / 2, temperature=SMOOTH_TEMPERATURE)
+            new_mat.append(row)
+        state['pair_probs'][i] = new_mat
+
+    # 診断情報を更新（不確実性＋トップ候補）
+    pos_entropy = [entropy(vec) for vec in state['pos_probs']]
+    pair_entropy = [entropy([sum(row) / 10 for row in mat]) for mat in state['pair_probs']]
+    top_numbers = rank_numbers_from_state(state, top_n=30)
+    top_boxes = aggregate_boxes(top_numbers, top_k=15)
+
+    metrics_entry = {
+        'ts': now_iso(),
+        'actual': actual,
+        'top_hit': any(num == actual for _, _, num in predictions),
+        'pos_entropy': pos_entropy,
+        'pair_entropy': pair_entropy,
+        'best_number': top_numbers[0][0] if top_numbers else None,
+    }
+
+    meta = state['metadata']
+    meta['pos_entropy'] = pos_entropy
+    meta['pair_entropy'] = pair_entropy
+    meta['top_numbers'] = top_numbers[:10]
+    meta['top_boxes'] = top_boxes
+    # ローリングメトリクスを保持
+    recent = meta.get('recent_metrics', [])
+    recent.append(metrics_entry)
+    meta['recent_metrics'] = recent[-ROLLING_METRICS_WINDOW:]
 
     state['events'] = int(state.get('events', 0)) + 1
     return state
