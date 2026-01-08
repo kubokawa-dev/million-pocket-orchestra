@@ -1737,8 +1737,201 @@
           "score": 2.85
         }
       ]
+    },
+    {
+      "time": "2026-01-08T05:08:11.660024+00:00",
+      "time_jst": "14:08",
+      "ensemble_weights": {
+        "hot_pair": 35.0,
+        "box_pattern": 30.0,
+        "digit_freq_box": 25.0,
+        "transition_probability": 20.0,
+        "global_frequency": 15.0,
+        "digit_repetition": 8.0,
+        "digit_continuation": 6.0,
+        "realistic_frequency": 8.0,
+        "large_change": 10.0,
+        "advanced_heuristics": 5.0,
+        "exploratory": 8.0,
+        "extreme_patterns": 3.0,
+        "basic_stats": 1.0,
+        "ml_model_new": 1.0,
+        "lightgbm": 20.0
+      },
+      "top_predictions": [
+        {
+          "rank": 1,
+          "number": "2271",
+          "score": 58.92,
+          "similar_patterns": [
+            {
+              "number": "7271",
+              "description": "1桁目に頻出変化+5 (出現5回)"
+            },
+            {
+              "number": "0271",
+              "description": "1桁目に頻出変化-2 (出現4回)"
+            },
+            {
+              "number": "2270",
+              "description": "4桁目に頻出変化-1 (出現4回)"
+            }
+          ]
+        },
+        {
+          "rank": 2,
+          "number": "2235",
+          "score": 45.0,
+          "similar_patterns": [
+            {
+              "number": "7235",
+              "description": "1桁目に頻出変化+5 (出現5回)"
+            },
+            {
+              "number": "0235",
+              "description": "1桁目に頻出変化-2 (出現4回)"
+            },
+            {
+              "number": "2234",
+              "description": "4桁目に頻出変化-1 (出現4回)"
+            }
+          ]
+        },
+        {
+          "rank": 3,
+          "number": "0227",
+          "score": 37.81,
+          "similar_patterns": [
+            {
+              "number": "5227",
+              "description": "1桁目に頻出変化+5 (出現5回)"
+            },
+            {
+              "number": "0226",
+              "description": "4桁目に頻出変化-1 (出現4回)"
+            },
+            {
+              "number": "2227",
+              "description": "1桁目→頻出数字2 (出現19回)"
+            }
+          ]
+        },
+        {
+          "rank": 4,
+          "number": "2479",
+          "score": 34.64,
+          "similar_patterns": [
+            {
+              "number": "7479",
+              "description": "1桁目に頻出変化+5 (出現5回)"
+            },
+            {
+              "number": "0479",
+              "description": "1桁目に頻出変化-2 (出現4回)"
+            },
+            {
+              "number": "2478",
+              "description": "4桁目に頻出変化-1 (出現4回)"
+            }
+          ]
+        },
+        {
+          "rank": 5,
+          "number": "7227",
+          "score": 32.27,
+          "similar_patterns": [
+            {
+              "number": "5227",
+              "description": "1桁目に頻出変化-2 (出現4回)"
+            },
+            {
+              "number": "7226",
+              "description": "4桁目に頻出変化-1 (出現4回)"
+            },
+            {
+              "number": "2227",
+              "description": "1桁目→頻出数字2 (出現19回)"
+            }
+          ]
+        },
+        {
+          "rank": 6,
+          "number": "7373",
+          "score": 20.49
+        },
+        {
+          "rank": 7,
+          "number": "5728",
+          "score": 14.77
+        },
+        {
+          "rank": 8,
+          "number": "2123",
+          "score": 14.74
+        },
+        {
+          "rank": 9,
+          "number": "2222",
+          "score": 14.52
+        },
+        {
+          "rank": 10,
+          "number": "7284",
+          "score": 11.6
+        },
+        {
+          "rank": 11,
+          "number": "2243",
+          "score": 9.95
+        },
+        {
+          "rank": 12,
+          "number": "7234",
+          "score": 7.48
+        },
+        {
+          "rank": 13,
+          "number": "1111",
+          "score": 6.46
+        },
+        {
+          "rank": 14,
+          "number": "2202",
+          "score": 5.86
+        },
+        {
+          "rank": 15,
+          "number": "2517",
+          "score": 5.65
+        },
+        {
+          "rank": 16,
+          "number": "2363",
+          "score": 5.34
+        },
+        {
+          "rank": 17,
+          "number": "7257",
+          "score": 4.33
+        },
+        {
+          "rank": 18,
+          "number": "8888",
+          "score": 4.18
+        },
+        {
+          "rank": 19,
+          "number": "2796",
+          "score": 4.12
+        },
+        {
+          "rank": 20,
+          "number": "2631",
+          "score": 3.94
+        }
+      ]
     }
   ],
-  "last_updated": "2026-01-08T04:19:07.177568+00:00",
-  "prediction_count": 9
+  "last_updated": "2026-01-08T05:08:11.660024+00:00",
+  "prediction_count": 10
 }
