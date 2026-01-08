@@ -43,6 +43,11 @@ jobs:
       - name: Initialize database
         run: python tools/utils.py
       
+      - name: Load historical data from CSV to DB
+        run: |
+          echo "📂 Loading historical data from CSV files..."
+          python tools/load_csv_to_db.py
+      
       - name: Run Numbers4 prediction pipeline
         run: python tools/run_numbers4_pipeline.py
       
