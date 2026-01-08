@@ -1168,8 +1168,1094 @@
           ]
         }
       ]
+    },
+    {
+      "time": "2026-01-08T16:39:35.459085+00:00",
+      "time_jst": "01:39",
+      "ensemble_weights": {
+        "box_model": 50.0,
+        "cold_revival": 25.0,
+        "hot_pair": 20.0,
+        "box_pattern": 18.0,
+        "digit_freq_box": 15.0,
+        "state_chain": 12.0,
+        "transition_probability": 15.0,
+        "global_frequency": 20.0,
+        "digit_repetition": 5.0,
+        "digit_continuation": 4.0,
+        "realistic_frequency": 5.0,
+        "large_change": 10.0,
+        "advanced_heuristics": 4.0,
+        "exploratory": 12.0,
+        "extreme_patterns": 4.0,
+        "basic_stats": 2.0,
+        "ml_model_new": 2.0,
+        "lightgbm": 15.0
+      },
+      "top_predictions": [
+        {
+          "rank": 1,
+          "number": "3682",
+          "score": 71.04,
+          "similar_patterns": [
+            {
+              "number": "8682",
+              "description": "1桁目に頻出変化+5 (出現5回)",
+              "score": 50.0
+            },
+            {
+              "number": "3681",
+              "description": "4桁目に頻出変化-1 (出現5回)",
+              "score": 50.0
+            },
+            {
+              "number": "1682",
+              "description": "1桁目に頻出変化-2 (出現4回)",
+              "score": 40.0
+            },
+            {
+              "number": "2682",
+              "description": "1桁目→頻出数字2 (出現20回)",
+              "score": 40.0
+            },
+            {
+              "number": "3683",
+              "description": "4桁目→頻出数字3 (出現16回)",
+              "score": 32.0
+            },
+            {
+              "number": "3685",
+              "description": "4桁目に頻出変化+3 (出現3回)",
+              "score": 30.0
+            },
+            {
+              "number": "7682",
+              "description": "1桁目→頻出数字7 (出現12回)",
+              "score": 24.0
+            },
+            {
+              "number": "3687",
+              "description": "4桁目→頻出数字7 (出現12回)",
+              "score": 24.0
+            },
+            {
+              "number": "4682",
+              "description": "1桁目+1",
+              "score": 5.0
+            }
+          ]
+        },
+        {
+          "rank": 2,
+          "number": "4239",
+          "score": 54.95,
+          "similar_patterns": [
+            {
+              "number": "9239",
+              "description": "1桁目に頻出変化+5 (出現5回)",
+              "score": 50.0
+            },
+            {
+              "number": "4238",
+              "description": "4桁目に頻出変化-1 (出現5回)",
+              "score": 50.0
+            },
+            {
+              "number": "2239",
+              "description": "1桁目に頻出変化-2 (出現4回)",
+              "score": 40.0
+            },
+            {
+              "number": "4232",
+              "description": "4桁目→頻出数字2 (出現20回)",
+              "score": 40.0
+            },
+            {
+              "number": "3239",
+              "description": "1桁目→頻出数字3 (出現16回)",
+              "score": 32.0
+            },
+            {
+              "number": "4233",
+              "description": "4桁目→頻出数字3 (出現16回)",
+              "score": 32.0
+            },
+            {
+              "number": "7239",
+              "description": "1桁目→頻出数字7 (出現12回)",
+              "score": 24.0
+            },
+            {
+              "number": "4237",
+              "description": "4桁目→頻出数字7 (出現12回)",
+              "score": 24.0
+            },
+            {
+              "number": "5239",
+              "description": "1桁目+1",
+              "score": 5.0
+            }
+          ]
+        },
+        {
+          "rank": 3,
+          "number": "2382",
+          "score": 33.58,
+          "similar_patterns": [
+            {
+              "number": "7382",
+              "description": "1桁目に頻出変化+5 (出現5回)",
+              "score": 50.0
+            },
+            {
+              "number": "2381",
+              "description": "4桁目に頻出変化-1 (出現5回)",
+              "score": 50.0
+            },
+            {
+              "number": "0382",
+              "description": "1桁目に頻出変化-2 (出現4回)",
+              "score": 40.0
+            },
+            {
+              "number": "3382",
+              "description": "1桁目→頻出数字3 (出現16回)",
+              "score": 32.0
+            },
+            {
+              "number": "2383",
+              "description": "4桁目→頻出数字3 (出現16回)",
+              "score": 32.0
+            },
+            {
+              "number": "2385",
+              "description": "4桁目に頻出変化+3 (出現3回)",
+              "score": 30.0
+            },
+            {
+              "number": "2387",
+              "description": "4桁目→頻出数字7 (出現12回)",
+              "score": 24.0
+            },
+            {
+              "number": "1382",
+              "description": "1桁目-1",
+              "score": 5.0
+            }
+          ]
+        },
+        {
+          "rank": 4,
+          "number": "2714",
+          "score": 27.88,
+          "similar_patterns": [
+            {
+              "number": "7714",
+              "description": "1桁目に頻出変化+5 (出現5回)",
+              "score": 50.0
+            },
+            {
+              "number": "2713",
+              "description": "4桁目に頻出変化-1 (出現5回)",
+              "score": 50.0
+            },
+            {
+              "number": "0714",
+              "description": "1桁目に頻出変化-2 (出現4回)",
+              "score": 40.0
+            },
+            {
+              "number": "2712",
+              "description": "4桁目→頻出数字2 (出現20回)",
+              "score": 40.0
+            },
+            {
+              "number": "3714",
+              "description": "1桁目→頻出数字3 (出現16回)",
+              "score": 32.0
+            },
+            {
+              "number": "2717",
+              "description": "4桁目に頻出変化+3 (出現3回)",
+              "score": 30.0
+            },
+            {
+              "number": "1714",
+              "description": "1桁目-1",
+              "score": 5.0
+            },
+            {
+              "number": "2715",
+              "description": "4桁目+1",
+              "score": 5.0
+            }
+          ]
+        },
+        {
+          "rank": 5,
+          "number": "6666",
+          "score": 25.31,
+          "similar_patterns": [
+            {
+              "number": "6665",
+              "description": "4桁目に頻出変化-1 (出現5回)",
+              "score": 50.0
+            },
+            {
+              "number": "4666",
+              "description": "1桁目に頻出変化-2 (出現4回)",
+              "score": 40.0
+            },
+            {
+              "number": "2666",
+              "description": "1桁目→頻出数字2 (出現20回)",
+              "score": 40.0
+            },
+            {
+              "number": "6662",
+              "description": "4桁目→頻出数字2 (出現20回)",
+              "score": 40.0
+            },
+            {
+              "number": "3666",
+              "description": "1桁目→頻出数字3 (出現16回)",
+              "score": 32.0
+            },
+            {
+              "number": "6663",
+              "description": "4桁目→頻出数字3 (出現16回)",
+              "score": 32.0
+            },
+            {
+              "number": "6669",
+              "description": "4桁目に頻出変化+3 (出現3回)",
+              "score": 30.0
+            },
+            {
+              "number": "7666",
+              "description": "1桁目→頻出数字7 (出現12回)",
+              "score": 24.0
+            },
+            {
+              "number": "6667",
+              "description": "4桁目→頻出数字7 (出現12回)",
+              "score": 24.0
+            },
+            {
+              "number": "5666",
+              "description": "1桁目-1",
+              "score": 5.0
+            }
+          ]
+        },
+        {
+          "rank": 6,
+          "number": "3812",
+          "score": 21.56,
+          "similar_patterns": [
+            {
+              "number": "8812",
+              "description": "1桁目に頻出変化+5 (出現5回)",
+              "score": 50.0
+            },
+            {
+              "number": "3811",
+              "description": "4桁目に頻出変化-1 (出現5回)",
+              "score": 50.0
+            },
+            {
+              "number": "1812",
+              "description": "1桁目に頻出変化-2 (出現4回)",
+              "score": 40.0
+            },
+            {
+              "number": "2812",
+              "description": "1桁目→頻出数字2 (出現20回)",
+              "score": 40.0
+            },
+            {
+              "number": "3813",
+              "description": "4桁目→頻出数字3 (出現16回)",
+              "score": 32.0
+            },
+            {
+              "number": "3815",
+              "description": "4桁目に頻出変化+3 (出現3回)",
+              "score": 30.0
+            },
+            {
+              "number": "7812",
+              "description": "1桁目→頻出数字7 (出現12回)",
+              "score": 24.0
+            },
+            {
+              "number": "3817",
+              "description": "4桁目→頻出数字7 (出現12回)",
+              "score": 24.0
+            },
+            {
+              "number": "4812",
+              "description": "1桁目+1",
+              "score": 5.0
+            }
+          ]
+        },
+        {
+          "rank": 7,
+          "number": "0261",
+          "score": 16.61,
+          "similar_patterns": [
+            {
+              "number": "5261",
+              "description": "1桁目に頻出変化+5 (出現5回)",
+              "score": 50.0
+            },
+            {
+              "number": "0260",
+              "description": "4桁目に頻出変化-1 (出現5回)",
+              "score": 50.0
+            },
+            {
+              "number": "2261",
+              "description": "1桁目→頻出数字2 (出現20回)",
+              "score": 40.0
+            },
+            {
+              "number": "0262",
+              "description": "4桁目→頻出数字2 (出現20回)",
+              "score": 40.0
+            },
+            {
+              "number": "3261",
+              "description": "1桁目→頻出数字3 (出現16回)",
+              "score": 32.0
+            },
+            {
+              "number": "0263",
+              "description": "4桁目→頻出数字3 (出現16回)",
+              "score": 32.0
+            },
+            {
+              "number": "0264",
+              "description": "4桁目に頻出変化+3 (出現3回)",
+              "score": 30.0
+            },
+            {
+              "number": "7261",
+              "description": "1桁目→頻出数字7 (出現12回)",
+              "score": 24.0
+            },
+            {
+              "number": "0267",
+              "description": "4桁目→頻出数字7 (出現12回)",
+              "score": 24.0
+            },
+            {
+              "number": "1261",
+              "description": "1桁目+1",
+              "score": 5.0
+            }
+          ]
+        },
+        {
+          "rank": 8,
+          "number": "2631",
+          "score": 15.68,
+          "similar_patterns": [
+            {
+              "number": "7631",
+              "description": "1桁目に頻出変化+5 (出現5回)",
+              "score": 50.0
+            },
+            {
+              "number": "2630",
+              "description": "4桁目に頻出変化-1 (出現5回)",
+              "score": 50.0
+            },
+            {
+              "number": "0631",
+              "description": "1桁目に頻出変化-2 (出現4回)",
+              "score": 40.0
+            },
+            {
+              "number": "2632",
+              "description": "4桁目→頻出数字2 (出現20回)",
+              "score": 40.0
+            },
+            {
+              "number": "3631",
+              "description": "1桁目→頻出数字3 (出現16回)",
+              "score": 32.0
+            },
+            {
+              "number": "2633",
+              "description": "4桁目→頻出数字3 (出現16回)",
+              "score": 32.0
+            },
+            {
+              "number": "2634",
+              "description": "4桁目に頻出変化+3 (出現3回)",
+              "score": 30.0
+            },
+            {
+              "number": "2637",
+              "description": "4桁目→頻出数字7 (出現12回)",
+              "score": 24.0
+            },
+            {
+              "number": "1631",
+              "description": "1桁目-1",
+              "score": 5.0
+            }
+          ]
+        },
+        {
+          "rank": 9,
+          "number": "1024",
+          "score": 11.56,
+          "similar_patterns": [
+            {
+              "number": "6024",
+              "description": "1桁目に頻出変化+5 (出現5回)",
+              "score": 50.0
+            },
+            {
+              "number": "1023",
+              "description": "4桁目に頻出変化-1 (出現5回)",
+              "score": 50.0
+            },
+            {
+              "number": "2024",
+              "description": "1桁目→頻出数字2 (出現20回)",
+              "score": 40.0
+            },
+            {
+              "number": "1022",
+              "description": "4桁目→頻出数字2 (出現20回)",
+              "score": 40.0
+            },
+            {
+              "number": "3024",
+              "description": "1桁目→頻出数字3 (出現16回)",
+              "score": 32.0
+            },
+            {
+              "number": "1027",
+              "description": "4桁目に頻出変化+3 (出現3回)",
+              "score": 30.0
+            },
+            {
+              "number": "7024",
+              "description": "1桁目→頻出数字7 (出現12回)",
+              "score": 24.0
+            },
+            {
+              "number": "0024",
+              "description": "1桁目-1",
+              "score": 5.0
+            },
+            {
+              "number": "1025",
+              "description": "4桁目+1",
+              "score": 5.0
+            }
+          ]
+        },
+        {
+          "rank": 10,
+          "number": "2105",
+          "score": 11.44,
+          "similar_patterns": [
+            {
+              "number": "7105",
+              "description": "1桁目に頻出変化+5 (出現5回)",
+              "score": 50.0
+            },
+            {
+              "number": "2104",
+              "description": "4桁目に頻出変化-1 (出現5回)",
+              "score": 50.0
+            },
+            {
+              "number": "0105",
+              "description": "1桁目に頻出変化-2 (出現4回)",
+              "score": 40.0
+            },
+            {
+              "number": "2102",
+              "description": "4桁目→頻出数字2 (出現20回)",
+              "score": 40.0
+            },
+            {
+              "number": "3105",
+              "description": "1桁目→頻出数字3 (出現16回)",
+              "score": 32.0
+            },
+            {
+              "number": "2103",
+              "description": "4桁目→頻出数字3 (出現16回)",
+              "score": 32.0
+            },
+            {
+              "number": "2108",
+              "description": "4桁目に頻出変化+3 (出現3回)",
+              "score": 30.0
+            },
+            {
+              "number": "2107",
+              "description": "4桁目→頻出数字7 (出現12回)",
+              "score": 24.0
+            },
+            {
+              "number": "1105",
+              "description": "1桁目-1",
+              "score": 5.0
+            },
+            {
+              "number": "2106",
+              "description": "4桁目+1",
+              "score": 5.0
+            }
+          ]
+        },
+        {
+          "rank": 11,
+          "number": "6945",
+          "score": 10.13,
+          "similar_patterns": [
+            {
+              "number": "6944",
+              "description": "4桁目に頻出変化-1 (出現5回)",
+              "score": 50.0
+            },
+            {
+              "number": "4945",
+              "description": "1桁目に頻出変化-2 (出現4回)",
+              "score": 40.0
+            },
+            {
+              "number": "2945",
+              "description": "1桁目→頻出数字2 (出現20回)",
+              "score": 40.0
+            },
+            {
+              "number": "6942",
+              "description": "4桁目→頻出数字2 (出現20回)",
+              "score": 40.0
+            },
+            {
+              "number": "3945",
+              "description": "1桁目→頻出数字3 (出現16回)",
+              "score": 32.0
+            },
+            {
+              "number": "6943",
+              "description": "4桁目→頻出数字3 (出現16回)",
+              "score": 32.0
+            },
+            {
+              "number": "6948",
+              "description": "4桁目に頻出変化+3 (出現3回)",
+              "score": 30.0
+            },
+            {
+              "number": "7945",
+              "description": "1桁目→頻出数字7 (出現12回)",
+              "score": 24.0
+            },
+            {
+              "number": "6947",
+              "description": "4桁目→頻出数字7 (出現12回)",
+              "score": 24.0
+            },
+            {
+              "number": "5945",
+              "description": "1桁目-1",
+              "score": 5.0
+            }
+          ]
+        },
+        {
+          "rank": 12,
+          "number": "4484",
+          "score": 7.63,
+          "similar_patterns": [
+            {
+              "number": "9484",
+              "description": "1桁目に頻出変化+5 (出現5回)",
+              "score": 50.0
+            },
+            {
+              "number": "4483",
+              "description": "4桁目に頻出変化-1 (出現5回)",
+              "score": 50.0
+            },
+            {
+              "number": "2484",
+              "description": "1桁目に頻出変化-2 (出現4回)",
+              "score": 40.0
+            },
+            {
+              "number": "4482",
+              "description": "4桁目→頻出数字2 (出現20回)",
+              "score": 40.0
+            },
+            {
+              "number": "3484",
+              "description": "1桁目→頻出数字3 (出現16回)",
+              "score": 32.0
+            },
+            {
+              "number": "4487",
+              "description": "4桁目に頻出変化+3 (出現3回)",
+              "score": 30.0
+            },
+            {
+              "number": "7484",
+              "description": "1桁目→頻出数字7 (出現12回)",
+              "score": 24.0
+            },
+            {
+              "number": "5484",
+              "description": "1桁目+1",
+              "score": 5.0
+            },
+            {
+              "number": "4485",
+              "description": "4桁目+1",
+              "score": 5.0
+            }
+          ]
+        },
+        {
+          "rank": 13,
+          "number": "7444",
+          "score": 7.54,
+          "similar_patterns": [
+            {
+              "number": "7443",
+              "description": "4桁目に頻出変化-1 (出現5回)",
+              "score": 50.0
+            },
+            {
+              "number": "5444",
+              "description": "1桁目に頻出変化-2 (出現4回)",
+              "score": 40.0
+            },
+            {
+              "number": "2444",
+              "description": "1桁目→頻出数字2 (出現20回)",
+              "score": 40.0
+            },
+            {
+              "number": "7442",
+              "description": "4桁目→頻出数字2 (出現20回)",
+              "score": 40.0
+            },
+            {
+              "number": "3444",
+              "description": "1桁目→頻出数字3 (出現16回)",
+              "score": 32.0
+            },
+            {
+              "number": "7447",
+              "description": "4桁目に頻出変化+3 (出現3回)",
+              "score": 30.0
+            },
+            {
+              "number": "8444",
+              "description": "1桁目+1",
+              "score": 5.0
+            },
+            {
+              "number": "6444",
+              "description": "1桁目-1",
+              "score": 5.0
+            },
+            {
+              "number": "7445",
+              "description": "4桁目+1",
+              "score": 5.0
+            }
+          ]
+        },
+        {
+          "rank": 14,
+          "number": "3108",
+          "score": 6.9,
+          "similar_patterns": [
+            {
+              "number": "8108",
+              "description": "1桁目に頻出変化+5 (出現5回)",
+              "score": 50.0
+            },
+            {
+              "number": "3107",
+              "description": "4桁目に頻出変化-1 (出現5回)",
+              "score": 50.0
+            },
+            {
+              "number": "1108",
+              "description": "1桁目に頻出変化-2 (出現4回)",
+              "score": 40.0
+            },
+            {
+              "number": "2108",
+              "description": "1桁目→頻出数字2 (出現20回)",
+              "score": 40.0
+            },
+            {
+              "number": "3102",
+              "description": "4桁目→頻出数字2 (出現20回)",
+              "score": 40.0
+            },
+            {
+              "number": "3103",
+              "description": "4桁目→頻出数字3 (出現16回)",
+              "score": 32.0
+            },
+            {
+              "number": "7108",
+              "description": "1桁目→頻出数字7 (出現12回)",
+              "score": 24.0
+            },
+            {
+              "number": "4108",
+              "description": "1桁目+1",
+              "score": 5.0
+            },
+            {
+              "number": "3109",
+              "description": "4桁目+1",
+              "score": 5.0
+            }
+          ]
+        },
+        {
+          "rank": 15,
+          "number": "9665",
+          "score": 6.72,
+          "similar_patterns": [
+            {
+              "number": "9664",
+              "description": "4桁目に頻出変化-1 (出現5回)",
+              "score": 50.0
+            },
+            {
+              "number": "7665",
+              "description": "1桁目に頻出変化-2 (出現4回)",
+              "score": 40.0
+            },
+            {
+              "number": "2665",
+              "description": "1桁目→頻出数字2 (出現20回)",
+              "score": 40.0
+            },
+            {
+              "number": "9662",
+              "description": "4桁目→頻出数字2 (出現20回)",
+              "score": 40.0
+            },
+            {
+              "number": "3665",
+              "description": "1桁目→頻出数字3 (出現16回)",
+              "score": 32.0
+            },
+            {
+              "number": "9663",
+              "description": "4桁目→頻出数字3 (出現16回)",
+              "score": 32.0
+            },
+            {
+              "number": "9668",
+              "description": "4桁目に頻出変化+3 (出現3回)",
+              "score": 30.0
+            },
+            {
+              "number": "9667",
+              "description": "4桁目→頻出数字7 (出現12回)",
+              "score": 24.0
+            },
+            {
+              "number": "8665",
+              "description": "1桁目-1",
+              "score": 5.0
+            },
+            {
+              "number": "9666",
+              "description": "4桁目+1",
+              "score": 5.0
+            }
+          ]
+        },
+        {
+          "rank": 16,
+          "number": "1619",
+          "score": 6.23,
+          "similar_patterns": [
+            {
+              "number": "6619",
+              "description": "1桁目に頻出変化+5 (出現5回)",
+              "score": 50.0
+            },
+            {
+              "number": "1618",
+              "description": "4桁目に頻出変化-1 (出現5回)",
+              "score": 50.0
+            },
+            {
+              "number": "2619",
+              "description": "1桁目→頻出数字2 (出現20回)",
+              "score": 40.0
+            },
+            {
+              "number": "1612",
+              "description": "4桁目→頻出数字2 (出現20回)",
+              "score": 40.0
+            },
+            {
+              "number": "3619",
+              "description": "1桁目→頻出数字3 (出現16回)",
+              "score": 32.0
+            },
+            {
+              "number": "1613",
+              "description": "4桁目→頻出数字3 (出現16回)",
+              "score": 32.0
+            },
+            {
+              "number": "7619",
+              "description": "1桁目→頻出数字7 (出現12回)",
+              "score": 24.0
+            },
+            {
+              "number": "1617",
+              "description": "4桁目→頻出数字7 (出現12回)",
+              "score": 24.0
+            },
+            {
+              "number": "0619",
+              "description": "1桁目-1",
+              "score": 5.0
+            }
+          ]
+        },
+        {
+          "rank": 17,
+          "number": "3921",
+          "score": 4.91,
+          "similar_patterns": [
+            {
+              "number": "8921",
+              "description": "1桁目に頻出変化+5 (出現5回)",
+              "score": 50.0
+            },
+            {
+              "number": "3920",
+              "description": "4桁目に頻出変化-1 (出現5回)",
+              "score": 50.0
+            },
+            {
+              "number": "1921",
+              "description": "1桁目に頻出変化-2 (出現4回)",
+              "score": 40.0
+            },
+            {
+              "number": "2921",
+              "description": "1桁目→頻出数字2 (出現20回)",
+              "score": 40.0
+            },
+            {
+              "number": "3922",
+              "description": "4桁目→頻出数字2 (出現20回)",
+              "score": 40.0
+            },
+            {
+              "number": "3923",
+              "description": "4桁目→頻出数字3 (出現16回)",
+              "score": 32.0
+            },
+            {
+              "number": "3924",
+              "description": "4桁目に頻出変化+3 (出現3回)",
+              "score": 30.0
+            },
+            {
+              "number": "7921",
+              "description": "1桁目→頻出数字7 (出現12回)",
+              "score": 24.0
+            },
+            {
+              "number": "3927",
+              "description": "4桁目→頻出数字7 (出現12回)",
+              "score": 24.0
+            },
+            {
+              "number": "4921",
+              "description": "1桁目+1",
+              "score": 5.0
+            }
+          ]
+        },
+        {
+          "rank": 18,
+          "number": "6127",
+          "score": 4.91,
+          "similar_patterns": [
+            {
+              "number": "6126",
+              "description": "4桁目に頻出変化-1 (出現5回)",
+              "score": 50.0
+            },
+            {
+              "number": "4127",
+              "description": "1桁目に頻出変化-2 (出現4回)",
+              "score": 40.0
+            },
+            {
+              "number": "2127",
+              "description": "1桁目→頻出数字2 (出現20回)",
+              "score": 40.0
+            },
+            {
+              "number": "6122",
+              "description": "4桁目→頻出数字2 (出現20回)",
+              "score": 40.0
+            },
+            {
+              "number": "3127",
+              "description": "1桁目→頻出数字3 (出現16回)",
+              "score": 32.0
+            },
+            {
+              "number": "6123",
+              "description": "4桁目→頻出数字3 (出現16回)",
+              "score": 32.0
+            },
+            {
+              "number": "7127",
+              "description": "1桁目→頻出数字7 (出現12回)",
+              "score": 24.0
+            },
+            {
+              "number": "5127",
+              "description": "1桁目-1",
+              "score": 5.0
+            },
+            {
+              "number": "6128",
+              "description": "4桁目+1",
+              "score": 5.0
+            }
+          ]
+        },
+        {
+          "rank": 19,
+          "number": "2222",
+          "score": 4.71,
+          "similar_patterns": [
+            {
+              "number": "7222",
+              "description": "1桁目に頻出変化+5 (出現5回)",
+              "score": 50.0
+            },
+            {
+              "number": "2221",
+              "description": "4桁目に頻出変化-1 (出現5回)",
+              "score": 50.0
+            },
+            {
+              "number": "0222",
+              "description": "1桁目に頻出変化-2 (出現4回)",
+              "score": 40.0
+            },
+            {
+              "number": "3222",
+              "description": "1桁目→頻出数字3 (出現16回)",
+              "score": 32.0
+            },
+            {
+              "number": "2223",
+              "description": "4桁目→頻出数字3 (出現16回)",
+              "score": 32.0
+            },
+            {
+              "number": "2225",
+              "description": "4桁目に頻出変化+3 (出現3回)",
+              "score": 30.0
+            },
+            {
+              "number": "2227",
+              "description": "4桁目→頻出数字7 (出現12回)",
+              "score": 24.0
+            },
+            {
+              "number": "1222",
+              "description": "1桁目-1",
+              "score": 5.0
+            }
+          ]
+        },
+        {
+          "rank": 20,
+          "number": "3336",
+          "score": 4.55,
+          "similar_patterns": [
+            {
+              "number": "8336",
+              "description": "1桁目に頻出変化+5 (出現5回)",
+              "score": 50.0
+            },
+            {
+              "number": "3335",
+              "description": "4桁目に頻出変化-1 (出現5回)",
+              "score": 50.0
+            },
+            {
+              "number": "1336",
+              "description": "1桁目に頻出変化-2 (出現4回)",
+              "score": 40.0
+            },
+            {
+              "number": "2336",
+              "description": "1桁目→頻出数字2 (出現20回)",
+              "score": 40.0
+            },
+            {
+              "number": "3332",
+              "description": "4桁目→頻出数字2 (出現20回)",
+              "score": 40.0
+            },
+            {
+              "number": "3333",
+              "description": "4桁目→頻出数字3 (出現16回)",
+              "score": 32.0
+            },
+            {
+              "number": "3339",
+              "description": "4桁目に頻出変化+3 (出現3回)",
+              "score": 30.0
+            },
+            {
+              "number": "7336",
+              "description": "1桁目→頻出数字7 (出現12回)",
+              "score": 24.0
+            },
+            {
+              "number": "3337",
+              "description": "4桁目→頻出数字7 (出現12回)",
+              "score": 24.0
+            },
+            {
+              "number": "4336",
+              "description": "1桁目+1",
+              "score": 5.0
+            }
+          ]
+        }
+      ]
     }
   ],
-  "last_updated": "2026-01-08T16:29:34.118336+00:00",
-  "prediction_count": 1
+  "last_updated": "2026-01-08T16:39:35.459085+00:00",
+  "prediction_count": 2
 }
