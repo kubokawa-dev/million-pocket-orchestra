@@ -1,7 +1,9 @@
 import pandas as pd
+import numpy as np
 import sys
 import os
 from collections import Counter
+from itertools import permutations
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -24,6 +26,7 @@ from numbers4.prediction_logic import (
     predict_from_large_change_model_n4,       # v10.0
     predict_from_realistic_frequency_model_n4,# v10.0
     predict_from_lightgbm,                    # LightGBM
+    predict_from_lightgbm_with_probs,         # LightGBM + digit probabilities
     # v10.3 過去パターン学習モデル
     predict_from_transition_probability_n4,   # 遷移確率モデル
     predict_from_global_frequency_n4,         # 全体頻度モデル
@@ -31,8 +34,18 @@ from numbers4.prediction_logic import (
     # v10.5 ボックス特化型モデル
     predict_from_hot_pair_combination_n4,     # ホットペア組み合わせ
     predict_from_digit_frequency_box_n4,      # 数字頻度ボックス
+    predict_from_model_state_v2,              # model_stateチェーンモデル
+    # v10.7 コールドナンバー復活モデル（NEW!）
+    predict_from_cold_number_revival_n4,      # コールドナンバー復活
     aggregate_predictions,
     apply_diversity_penalty
+)
+# v11.0 ボックス特化型モデル（NEW!）
+from numbers4.box_learning import (
+    load_box_model,
+    predict_boxes_from_model,
+    predict_numbers_from_boxes,
+    rebuild_box_model,
 )
 from numbers4.save_prediction_history import save_ensemble_prediction
 from numbers4.save_prediction_json import save_prediction_to_json
@@ -211,8 +224,13 @@ def generate_ensemble_prediction(progress_callback=None):
 
     # 10. LightGBMモデル
     report_progress(0.82, "- [ML] LightGBMモデルで予測中...")
-    predictions_lgbm = predict_from_lightgbm(all_draws_df, limit=20)
+    predictions_lgbm, lgbm_digit_probs = predict_from_lightgbm_with_probs(all_draws_df, limit=20)
     report_progress(0.84, f"- [ML] LightGBMモデル完了: {len(predictions_lgbm)}件")
+
+    # 10.5 model_stateチェーンモデル（桁間相関を活用）
+    report_progress(0.845, "- [state] model_stateチェーンモデルで予測中...")
+    predictions_state_chain = predict_from_model_state_v2(limit=150)
+    report_progress(0.85, f"- [state] model_stateチェーンモデル完了: {len(predictions_state_chain)}件")
 
     # --- v10.3 過去パターン学習モデル（直近依存からの脱却！） ---
     
@@ -242,37 +260,69 @@ def generate_ensemble_prediction(progress_callback=None):
     report_progress(0.94, "- [v10.5] 数字頻度ボックスモデルで予測中...")
     predictions_digit_freq_box = predict_from_digit_frequency_box_n4(all_draws_df, limit=100)
     report_progress(0.95, f"- [v10.5] 数字頻度ボックスモデル完了: {len(predictions_digit_freq_box)}件")
+    
+    # 16. コールドナンバー復活モデル（v10.7 NEW!）
+    report_progress(0.955, "- [v10.7] コールドナンバー復活モデルで予測中...")
+    predictions_cold_revival = predict_from_cold_number_revival_n4(all_draws_df, limit=150)
+    report_progress(0.96, f"- [v10.7] コールドナンバー復活モデル完了: {len(predictions_cold_revival)}件")
+    
+    # 17. ボックス特化型モデル（v11.0 NEW! 最重要！）
+    report_progress(0.965, "- [v11.0] ボックス特化型モデルで予測中...")
+    try:
+        box_model_state = load_box_model()
+        if not box_model_state.get('box_counts'):
+            # モデルが未学習の場合は再構築
+            report_progress(0.966, "  → ボックスモデルを構築中...")
+            rebuild_box_model()
+            box_model_state = load_box_model()
+        
+        box_predictions = predict_boxes_from_model(box_model_state, limit=100)
+        predictions_box_model = predict_numbers_from_boxes(box_predictions, limit=100)
+        predictions_box_model = [num for num, _ in predictions_box_model]
+        report_progress(0.97, f"- [v11.0] ボックス特化型モデル完了: {len(predictions_box_model)}件")
+    except Exception as e:
+        print(f"⚠️ ボックスモデルの読み込みに失敗: {e}")
+        predictions_box_model = []
 
     # --- アンサンブル集計 ---
-    report_progress(0.96, "全モデルの予測を統合・集計中...")
+    report_progress(0.97, "全モデルの予測を統合・集計中...")
     
     ensemble_weights = {
-        # v10.5 ボックス/セット特化モデル（最重要！）
-        'hot_pair': 35.0,                 # ホットペア組み合わせ（NEW!）
-        'box_pattern': 30.0,              # ボックスパターン分析 v10.5（18→30に強化）
-        'digit_freq_box': 25.0,           # 数字頻度ボックス（NEW!）
+        # v11.0 ボックス特化型モデル（最重要！未出現ボックスを狙う）
+        'box_model': 50.0,                # ボックス特化型モデル（NEW! 最高重み）
         
-        # v10.3 過去パターン学習モデル
-        'transition_probability': 20.0,   # 遷移確率（25→20に調整）
-        'global_frequency': 15.0,         # 全体頻度（20→15に調整）
+        # v10.7 コールドナンバー復活モデル
+        'cold_revival': 25.0,             # コールドナンバー復活（30→25に調整）
         
-        # v10.0 モデル（直近依存 - 低重み）
-        'digit_repetition': 8.0,          # 数字再出現（12→8に調整）
-        'digit_continuation': 6.0,        # 桁継続（10→6に調整）
-        'realistic_frequency': 8.0,       # 現実的頻度（12→8に調整）
+        # v10.5 ボックス/セット特化モデル
+        'hot_pair': 20.0,                 # ホットペア組み合わせ（28→20に調整）
+        'box_pattern': 18.0,              # ボックスパターン分析（25→18に調整）
+        'digit_freq_box': 15.0,           # 数字頻度ボックス（20→15に調整）
+        
+        # model_stateチェーンモデル（桁間相関）
+        'state_chain': 12.0,              # model_state.json のpair_probsを活用（18→12）
+        
+        # v10.3 過去パターン学習モデル（全履歴ベース）
+        'transition_probability': 15.0,   # 遷移確率（22→15に調整）
+        'global_frequency': 20.0,         # 全体頻度（25→20に調整）
+        
+        # v10.0 モデル（直近依存 - 低重み維持）
+        'digit_repetition': 5.0,          # 数字再出現
+        'digit_continuation': 4.0,        # 桁継続
+        'realistic_frequency': 5.0,       # 現実的頻度
         
         # 変化パターンモデル
-        'large_change': 10.0,             # 大変化（15→10に調整）
+        'large_change': 10.0,             # 大変化
         
-        # 多様性モデル（低重み）
-        'advanced_heuristics': 5.0,       # 統計分析（10→5に調整）
-        'exploratory': 8.0,               # 探索的分析（15→8に調整）
-        'extreme_patterns': 3.0,          # 極端パターン（8→3に調整）
+        # 多様性モデル
+        'advanced_heuristics': 4.0,       # 統計分析
+        'exploratory': 12.0,              # 探索的分析
+        'extreme_patterns': 4.0,          # 極端パターン
         
-        # 補助モデル（最低重み）
-        'basic_stats': 1.0,               # 基本統計
-        'ml_model_new': 1.0,              # 機械学習
-        'lightgbm': 20.0,                 # LightGBM（25→20に調整）
+        # 補助モデル
+        'basic_stats': 2.0,               # 基本統計
+        'ml_model_new': 2.0,              # 機械学習
+        'lightgbm': 15.0,                 # LightGBM
     }
     
     predictions_by_model = {
@@ -289,12 +339,18 @@ def generate_ensemble_prediction(progress_callback=None):
         # v10.3 過去パターン学習モデル
         'transition_probability': predictions_transition,
         'global_frequency': predictions_global_freq,
-        # v10.5 ボックス特化モデル（NEW!）
+        # v10.5 ボックス特化モデル
         'box_pattern': predictions_box_pattern,
         'hot_pair': predictions_hot_pair,
         'digit_freq_box': predictions_digit_freq_box,
+        # v10.7 コールドナンバー復活モデル
+        'cold_revival': predictions_cold_revival,
+        # v11.0 ボックス特化型モデル（NEW! 最重要）
+        'box_model': predictions_box_model,
         # ML
-        'lightgbm': predictions_lgbm
+        'lightgbm': predictions_lgbm,
+        # model_state
+        'state_chain': predictions_state_chain,
     }
 
     # 重み付けして集計（スコア正規化を有効化）
@@ -340,7 +396,7 @@ def generate_ensemble_prediction(progress_callback=None):
             ensemble_weights=ensemble_weights,
             predictions_by_model=predictions_by_model,
             model_state=model_state,
-            notes="v10.1 Update: Temperature Scaling (LightGBM確率平滑化) + 合計値ボーナス (sum=18付近を優遇) + 多様性ペナルティ強化"
+            notes="v11.0 Update: ボックス特化型モデル追加（未出現ボックス狙い）+ 1263問題完全対策"
         )
         print(f"✅ 予測履歴の保存が完了しました (ID: {prediction_id})")
         
@@ -352,14 +408,19 @@ def generate_ensemble_prediction(progress_callback=None):
         target_draw = latest_draw['draw_number'] + 1 if latest_draw else None
         
         if target_draw:
-            # 上位5件の類似パターンを生成
+            # 上位20件の類似パターンを生成（各10件）
             similar_patterns_dict = {}
-            for _, row in final_predictions_df.head(5).iterrows():
+            for _, row in final_predictions_df.head(20).iterrows():
                 number = str(row['prediction'])
-                patterns = generate_similar_patterns_n4(number, count=3, all_draws_df=all_draws_df)
+                patterns = generate_similar_patterns_n4(
+                    number,
+                    count=10,
+                    all_draws_df=all_draws_df,
+                    preds_probs=lgbm_digit_probs
+                )
                 if patterns:
                     similar_patterns_dict[number] = [
-                        {'number': p[0], 'description': p[1]}
+                        {'number': p[0], 'description': p[1], 'score': round(float(p[2]), 4)}
                         for p in patterns
                     ]
             
@@ -378,7 +439,7 @@ def generate_ensemble_prediction(progress_callback=None):
     return final_predictions_df, ensemble_weights
 
 
-def generate_similar_patterns_n4(number: str, count: int = 3, all_draws_df=None):
+def generate_similar_patterns_n4(number: str, count: int = 3, all_draws_df=None, preds_probs=None):
     """
     統計分析に基づいて、指定された4桁の番号に対して類似パターンを生成（ナンバーズ4版）
     
@@ -390,8 +451,133 @@ def generate_similar_patterns_n4(number: str, count: int = 3, all_draws_df=None)
         all_draws_df: 全抽選データのDataFrame（統計分析用）
     
     Returns:
-        [(番号, 説明), ...] のリスト
+        [(番号, 説明, スコア), ...] のリスト
     """
+    # --- ML誘導版（LightGBMの各桁確率を使って“近いけど次回っぽい”を選抜） ---
+    if preds_probs and all(k in preds_probs for k in ['d1', 'd2', 'd3', 'd4']):
+        if not isinstance(number, str) or not number.isdigit() or len(number) != 4:
+            return []
+
+        base_digits = [int(d) for d in number]
+
+        def sum_bonus_multiplier(num_str: str) -> float:
+            # predict_ensemble.py の apply_sum_bonus と同じ思想（理想18±6を優遇）
+            ideal_sum = SUM_IDEAL
+            tolerance = SUM_TOLERANCE
+            max_bonus = SUM_BONUS_MAX
+            out_of_range_penalty = 0.95
+            s = sum(int(d) for d in num_str)
+            dist = abs(s - ideal_sum)
+            if dist <= tolerance:
+                bonus = max_bonus * (1 - dist / tolerance)
+                return 1.0 + bonus
+            return out_of_range_penalty
+
+        def ml_logp(num_str: str) -> float:
+            eps = 1e-12
+            d = [int(x) for x in num_str]
+            return (
+                float(np.log(preds_probs['d1'][d[0]] + eps)) +
+                float(np.log(preds_probs['d2'][d[1]] + eps)) +
+                float(np.log(preds_probs['d3'][d[2]] + eps)) +
+                float(np.log(preds_probs['d4'][d[3]] + eps))
+            )
+
+        def hamming(a: str, b: str) -> int:
+            return sum(x != y for x, y in zip(a, b))
+
+        def is_same_box(a: str, b: str) -> bool:
+            return sorted(a) == sorted(b)
+
+        # 候補生成（多めに作って、ML確率×近さで再ランキング）
+        candidates = {}  # num_str -> reason
+
+        # 1) ボックス（並び替え）候補
+        for p in set(permutations(base_digits, 4)):
+            cand = "".join(map(str, p))
+            if cand != number:
+                candidates[cand] = "並び替え(ボックス)"
+
+        # 2) 1〜2桁だけ“高確率の数字”に差し替え
+        topk = 5
+        top_digits = {}
+        for pos, key in enumerate(['d1', 'd2', 'd3', 'd4']):
+            probs = np.array(preds_probs[key], dtype=np.float64)
+            top_digits[pos] = [int(i) for i in probs.argsort()[::-1][:topk]]
+
+        # 1桁変更
+        for pos in range(4):
+            for d in top_digits[pos]:
+                if d == base_digits[pos]:
+                    continue
+                new_digits = base_digits.copy()
+                new_digits[pos] = d
+                cand = "".join(map(str, new_digits))
+                candidates.setdefault(cand, f"ML高確率で{pos+1}桁目だけ変更")
+
+        # 2桁変更（ランダムサンプル）
+        # 予測番号ごとに“安定して”異なる探索ができるよう、番号からseedを作る（先頭0もOK）
+        try:
+            seed = int(number)
+        except Exception:
+            seed = 42
+        rng = np.random.default_rng(seed)
+        for _ in range(300):
+            pos1, pos2 = rng.choice(4, size=2, replace=False)
+            d1 = int(rng.choice(top_digits[pos1]))
+            d2 = int(rng.choice(top_digits[pos2]))
+            new_digits = base_digits.copy()
+            new_digits[pos1] = d1
+            new_digits[pos2] = d2
+            cand = "".join(map(str, new_digits))
+            if cand != number:
+                candidates.setdefault(cand, "ML高確率で2桁変更")
+
+        # 3) 確率分布からサンプリングしつつ、元番号に寄せる（探索）
+        # keep_prob が高いほど「元の数字を保持」しやすい
+        keep_prob = 0.70
+        for _ in range(800):
+            digits = []
+            for pos, key in enumerate(['d1', 'd2', 'd3', 'd4']):
+                if rng.random() < keep_prob:
+                    digits.append(base_digits[pos])
+                else:
+                    digits.append(int(rng.choice(10, p=preds_probs[key])))
+            cand = "".join(map(str, digits))
+            if cand != number:
+                candidates.setdefault(cand, "ML分布サンプリング(近傍探索)")
+
+        scored = []
+        for cand, reason in candidates.items():
+            # 近すぎ/遠すぎのバランス：最大2桁違いを優先（ボックスは例外で通す）
+            ham = hamming(number, cand)
+            if ham > 2 and not is_same_box(number, cand):
+                continue
+
+            score = ml_logp(cand)
+            score += float(np.log(sum_bonus_multiplier(cand)))
+            # 近いほど少しだけ加点
+            score -= 0.65 * ham
+            # ボックス一致（並び替え）は“類似”としてボーナス
+            if is_same_box(number, cand):
+                score += 0.60
+
+            scored.append((cand, reason, score))
+
+        scored.sort(key=lambda x: x[2], reverse=True)
+
+        # 重複除去して上位count件
+        out = []
+        seen = set([number])
+        for cand, reason, score in scored:
+            if cand in seen:
+                continue
+            seen.add(cand)
+            out.append((cand, reason, score))
+            if len(out) >= count:
+                break
+        return out
+
     d1, d2, d3, d4 = int(number[0]), int(number[1]), int(number[2]), int(number[3])
     similar_patterns = []
     
@@ -474,7 +660,7 @@ def generate_similar_patterns_n4(number: str, count: int = 3, all_draws_df=None)
     for num, desc, score in similar_patterns:
         if num not in seen and num != number:
             seen.add(num)
-            unique_patterns.append((num, desc))
+            unique_patterns.append((num, desc, score))
             if len(unique_patterns) >= count:
                 break
     
@@ -553,11 +739,15 @@ def run_ensemble_prediction_cli():
         print(f"  🎯 メイン予測: {row['prediction']}  (スコア: {row['score']:.2f})")
         
         # 統計分析に基づいて類似パターンを生成
-        similar_patterns = generate_similar_patterns_n4(row['prediction'], count=3, all_draws_df=all_draws_df)
+        similar_patterns = generate_similar_patterns_n4(
+            row['prediction'],
+            count=10,
+            all_draws_df=all_draws_df
+        )
         
         if similar_patterns:
-            for i, (similar_num, desc) in enumerate(similar_patterns, 1):
-                print(f"    ↳ 類似{i}: {similar_num}  - {desc}")
+            for i, (similar_num, desc, score) in enumerate(similar_patterns, 1):
+                print(f"    ↳ 類似{i}: {similar_num}  - {desc} (score={score:.3f})")
         else:
             print(f"    ↳ (類似パターンなし)")
     
