@@ -9,49 +9,15 @@ import sys
 import os
 import glob
 import traceback
-from typing import List, Dict, Tuple, Optional
-from collections import Counter
+from typing import List, Dict, Optional
 from datetime import datetime
 
 # プロジェクトルートをパスに追加
 ROOT_DIR = os.path.dirname(os.path.dirname(__file__))
 sys.path.insert(0, ROOT_DIR)
 
-
-def get_box_type_info(number: str) -> Tuple[str, str, int]:
-    """
-    ボックスタイプとカバー範囲を判定
-    
-    Args:
-        number: 4桁の数字文字列
-    
-    Returns:
-        (タイプ表記, 説明, カバー範囲)
-    """
-    # 入力バリデーション
-    if not number or not isinstance(number, str) or len(number) != 4:
-        return "不明", "不明", 0
-    
-    if not number.isdigit():
-        return "不明", "不明", 0
-    
-    counts = Counter(number)
-    unique_count = len(counts)
-    max_count = max(counts.values())
-    
-    if unique_count == 4:
-        return "シングル(ABCD)", "4つの数字が全て異なる", 24
-    elif unique_count == 3:
-        return "ダブル(AABC)", "1つの数字が2回出現", 12
-    elif unique_count == 2:
-        if max_count == 3:
-            return "トリプル(AAAB)", "1つの数字が3回出現", 4
-        else:
-            return "ダブルダブル(AABB)", "2つの数字が2回ずつ", 6
-    elif unique_count == 1:
-        return "クアッド(AAAA)", "全て同じ数字 (ゾロ目)", 1
-    else:
-        return "不明", "不明", 0
+# 共通ユーティリティからインポート
+from numbers4.box_utils import get_box_type_info
 
 
 def get_reason(row: Dict, rank: int) -> str:
