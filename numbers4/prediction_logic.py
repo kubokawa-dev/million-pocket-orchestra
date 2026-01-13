@@ -40,19 +40,28 @@ def predict_from_ml_neighborhood_search_n4(df: pd.DataFrame, limit: int = 200):
         if not preds_probs or not all(k in preds_probs for k in ['d1', 'd2', 'd3', 'd4']):
             return []
         
-        # 各桁の確率分布から上位候補を取得
+        # 各桁の確率分布から上位候補を取得 (正規化して安全に)
         topk = 5
         top_digits = {}
+        normalized_probs = {}
         for pos, key in enumerate(['d1', 'd2', 'd3', 'd4']):
             probs = np.array(preds_probs[key], dtype=np.float64)
+            # 確率の正規化 (合計が1になるように)
+            probs = np.clip(probs, 0, None)  # 負の値を0に
+            prob_sum = probs.sum()
+            if prob_sum > 0:
+                probs = probs / prob_sum
+            else:
+                probs = np.ones(10) / 10  # フォールバック: 均等分布
+            normalized_probs[key] = probs
             top_digits[pos] = [int(i) for i in probs.argsort()[::-1][:topk]]
         
         # 近傍探索用の候補生成
         candidates = {}
         
-        # 確率分布からサンプリング（多様性重視）
+        # 確率分布からサンプリング (多様性重視)
         rng = np.random.default_rng(42)  # 固定seed
-        keep_prob = 0.60  # 高確率数字を保持する確率（やや低めで多様性確保）
+        keep_prob = 0.60  # 高確率数字を保持する確率 (やや低めで多様性確保)
         
         for _ in range(limit * 5):
             digits = []
@@ -61,8 +70,8 @@ def predict_from_ml_neighborhood_search_n4(df: pd.DataFrame, limit: int = 200):
                     # 高確率数字から選択
                     digits.append(int(rng.choice(top_digits[pos])))
                 else:
-                    # 確率分布からサンプリング
-                    digits.append(int(rng.choice(10, p=preds_probs[key])))
+                    # 正規化された確率分布からサンプリング
+                    digits.append(int(rng.choice(10, p=normalized_probs[key])))
             
             cand = "".join(map(str, digits))
             if cand not in candidates:
@@ -73,6 +82,8 @@ def predict_from_ml_neighborhood_search_n4(df: pd.DataFrame, limit: int = 200):
         return list(candidates.keys())[:limit]
     
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         print(f"⚠️ ML近傍探索モデルエラー: {e}")
         return []
 

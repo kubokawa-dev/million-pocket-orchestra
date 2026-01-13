@@ -142,7 +142,9 @@ def get_box_type(number: str) -> tuple[str, int]:
     if not isinstance(number, str) or len(number) != 4:
         return "不明", 0
     
-    from collections import Counter
+    if not number.isdigit():
+        return "不明", 0
+    
     counts = Counter(number)
     unique_count = len(counts)
     max_count = max(counts.values())
