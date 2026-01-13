@@ -37,6 +37,8 @@ from numbers4.prediction_logic import (
     predict_from_model_state_v2,              # model_stateチェーンモデル
     # v10.7 コールドナンバー復活モデル（NEW!）
     predict_from_cold_number_revival_n4,      # コールドナンバー復活
+    # v11.1 ML近傍探索モデル（NEW! 2827問題対策）
+    predict_from_ml_neighborhood_search_n4,   # ML近傍探索
     aggregate_predictions,
     apply_diversity_penalty
 )
@@ -117,6 +119,47 @@ def apply_sum_bonus(
     df = df.sort_values(by='score', ascending=False).reset_index(drop=True)
     
     return df
+
+
+# --- ボックスタイプ判定関数（v11.1 NEW! D対策）---
+def get_box_type(number: str) -> tuple[str, int]:
+    """
+    4桁の数字からボックスタイプとカバー範囲を判定
+    
+    Args:
+        number: 4桁の数字（例: "1234"）
+    
+    Returns:
+        (ボックスタイプ, カバー範囲)のタプル
+        
+    ボックスタイプ:
+    - シングル(ABCD): 4つの数字が全て異なる → 24通り
+    - ダブル(AABC): 1つの数字が2回出現 → 12通り
+    - ダブルダブル(AABB): 2つの数字が2回ずつ → 6通り
+    - トリプル(AAAB): 1つの数字が3回出現 → 4通り
+    - クアッド(AAAA): 全て同じ数字 → 1通り
+    """
+    if not isinstance(number, str) or len(number) != 4:
+        return "不明", 0
+    
+    from collections import Counter
+    counts = Counter(number)
+    unique_count = len(counts)
+    max_count = max(counts.values())
+    
+    if unique_count == 4:
+        return "シングル(ABCD)", 24
+    elif unique_count == 3:
+        return "ダブル(AABC)", 12
+    elif unique_count == 2:
+        if max_count == 3:
+            return "トリプル(AAAB)", 4
+        else:
+            return "ダブルダブル(AABB)", 6
+    elif unique_count == 1:
+        return "クアッド(AAAA)", 1
+    else:
+        return "不明", 0
 
 
 # --- 設定 ---
@@ -283,6 +326,11 @@ def generate_ensemble_prediction(progress_callback=None):
     except Exception as e:
         print(f"⚠️ ボックスモデルの読み込みに失敗: {e}")
         predictions_box_model = []
+    
+    # 18. ML近傍探索モデル（v11.1 NEW! 2827問題対策）
+    report_progress(0.975, "- [v11.1] ML近傍探索モデルで予測中...")
+    predictions_ml_neighborhood = predict_from_ml_neighborhood_search_n4(all_draws_df, limit=200)
+    report_progress(0.98, f"- [v11.1] ML近傍探索モデル完了: {len(predictions_ml_neighborhood)}件")
 
     # --- アンサンブル集計 ---
     report_progress(0.97, "全モデルの予測を統合・集計中...")
@@ -290,6 +338,9 @@ def generate_ensemble_prediction(progress_callback=None):
     ensemble_weights = {
         # v11.0 ボックス特化型モデル（最重要！未出現ボックスを狙う）
         'box_model': 50.0,                # ボックス特化型モデル（NEW! 最高重み）
+        
+        # v11.1 ML近傍探索モデル（NEW! 2827問題対策）
+        'ml_neighborhood': 35.0,          # ML近傍探索（高重み！中位候補を拾う）
         
         # v10.7 コールドナンバー復活モデル
         'cold_revival': 25.0,             # コールドナンバー復活（30→25に調整）
@@ -347,6 +398,8 @@ def generate_ensemble_prediction(progress_callback=None):
         'cold_revival': predictions_cold_revival,
         # v11.0 ボックス特化型モデル（NEW! 最重要）
         'box_model': predictions_box_model,
+        # v11.1 ML近傍探索モデル（NEW! 2827問題対策）
+        'ml_neighborhood': predictions_ml_neighborhood,
         # ML
         'lightgbm': predictions_lgbm,
         # model_state
@@ -377,6 +430,18 @@ def generate_ensemble_prediction(progress_callback=None):
             seen_boxes.add(box_id)
             box_unique_rows.append(row)
     final_predictions_df = pd.DataFrame(box_unique_rows).reset_index(drop=True)
+    
+    # v11.1: ボックス情報を追加（D対策）
+    report_progress(0.98, "ボックス情報を追加中...")
+    box_types = []
+    box_coverages = []
+    for pred in final_predictions_df['prediction']:
+        box_type, coverage = get_box_type(str(pred))
+        box_types.append(box_type)
+        box_coverages.append(coverage)
+    
+    final_predictions_df['box_type'] = box_types
+    final_predictions_df['box_coverage'] = box_coverages
     
     report_progress(1.0, "予測完了！")
     
@@ -722,7 +787,9 @@ def run_ensemble_prediction_cli():
         print("予測結果がありません。")
     else:
         for index, row in top_20_predictions.iterrows():
-            print(f"  {index+1:2d}位: {row['prediction']} (スコア: {row['score']:.1f})")
+            box_type = row.get('box_type', '不明')
+            box_coverage = row.get('box_coverage', 0)
+            print(f"  {index+1:2d}位: {row['prediction']} (スコア: {row['score']:.1f}) [{box_type} / {box_coverage}通り]")
 
     print("\n" + "="*40)
     print("スコアが高いほど、複数のモデルが共通して予測した、あるいは実績のあるモデルが強く推奨した有望な番号です。")

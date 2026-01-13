@@ -15,6 +15,67 @@ from numbers4.learn_from_predictions import (
 )
 # from numbers4.predict_numbers_with_model import predict_top_k as _predict_top_k_model  # 削除されたファイル
 
+
+# --- ML近傍探索モデル（v11.1 NEW!）---
+def predict_from_ml_neighborhood_search_n4(df: pd.DataFrame, limit: int = 200):
+    """
+    ML近傍探索モデル：LightGBMの確率分布を使って、近傍空間を探索
+    
+    背景:
+    - 第6895回で「2827」が当選したが、前回予測では82～92位（ML近傍探索）だった
+    - メイン予測では捉えきれなかったが、ML近傍探索では見つかっていた
+    - → ML近傍探索を独立したモデルとして重み付けを強化
+    
+    Args:
+        df: 全抽選データ
+        limit: 生成する予測数
+    
+    Returns:
+        予測番号のリスト
+    """
+    try:
+        # LightGBMで各桁の確率分布を取得
+        _, preds_probs = predict_from_lightgbm_with_probs(df, limit=20)
+        
+        if not preds_probs or not all(k in preds_probs for k in ['d1', 'd2', 'd3', 'd4']):
+            return []
+        
+        # 各桁の確率分布から上位候補を取得
+        topk = 5
+        top_digits = {}
+        for pos, key in enumerate(['d1', 'd2', 'd3', 'd4']):
+            probs = np.array(preds_probs[key], dtype=np.float64)
+            top_digits[pos] = [int(i) for i in probs.argsort()[::-1][:topk]]
+        
+        # 近傍探索用の候補生成
+        candidates = {}
+        
+        # 確率分布からサンプリング（多様性重視）
+        rng = np.random.default_rng(42)  # 固定seed
+        keep_prob = 0.60  # 高確率数字を保持する確率（やや低めで多様性確保）
+        
+        for _ in range(limit * 5):
+            digits = []
+            for pos, key in enumerate(['d1', 'd2', 'd3', 'd4']):
+                if rng.random() < keep_prob:
+                    # 高確率数字から選択
+                    digits.append(int(rng.choice(top_digits[pos])))
+                else:
+                    # 確率分布からサンプリング
+                    digits.append(int(rng.choice(10, p=preds_probs[key])))
+            
+            cand = "".join(map(str, digits))
+            if cand not in candidates:
+                candidates[cand] = True
+                if len(candidates) >= limit:
+                    break
+        
+        return list(candidates.keys())[:limit]
+    
+    except Exception as e:
+        print(f"⚠️ ML近傍探索モデルエラー: {e}")
+        return []
+
 def predict_from_lightgbm_with_probs(
     df: pd.DataFrame,
     limit: int = 15,

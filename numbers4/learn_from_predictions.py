@@ -297,6 +297,9 @@ def update_state_with_event(state: Dict, actual: str, predictions: List[Tuple[st
     """
     pos_probs: 桁ごとの事前分布
     pair_probs: 桁間の条件付き分布（d_i -> d_{i+1}）
+    
+    v11.1 改善: 中位候補（ML近傍探索など）を見逃さないように、
+    予測候補を広めに反映させる
     """
     state = ensure_state_schema(state)
     temp = state['metadata'].get('calibration_temperature', CALIBRATION_DEFAULT)
@@ -305,9 +308,10 @@ def update_state_with_event(state: Dict, actual: str, predictions: List[Tuple[st
     state['pos_probs'] = [apply_recency_decay(vec, RECENCY_DECAY) for vec in state['pos_probs']]
     state['pair_probs'] = [apply_recency_decay_matrix(mat, RECENCY_DECAY) for mat in state['pair_probs']]
 
-    # 重み
+    # 重み（v11.1: 予測候補の重みを強化 - 中位候補も反映）
     w_actual = 1.0
-    pred_weights = [0.5 * (0.7 ** i) for i in range(len(predictions))]  # 出現順で減衰
+    # 改善: 上位100位まで重みを付与（従来は数件のみ）
+    pred_weights = [0.5 * (0.95 ** i) for i in range(min(len(predictions), 100))]  # 減衰を緩やかに
 
     # per-position / pair targets
     targets = [[1e-3 for _ in range(10)] for _ in range(4)]
@@ -317,15 +321,15 @@ def update_state_with_event(state: Dict, actual: str, predictions: List[Tuple[st
         [[1e-3 for _ in range(10)] for _ in range(10)],
     ]
 
-    # 予測を弱く反映
-    for rank, (_, _label, num) in enumerate(predictions):
-        w = pred_weights[rank] if rank < len(pred_weights) else 0.1
+    # 予測を広めに反映（v11.1: 重みを増強）
+    for rank, (_, _label, num) in enumerate(predictions[:100]):  # 上位100件まで
+        w = pred_weights[rank] if rank < len(pred_weights) else 0.05
         digits = [int(ch) for ch in num[:4]]
         for i, d in enumerate(digits):
-            targets[i][d] += 0.2 * w
+            targets[i][d] += 0.3 * w  # 0.2 → 0.3 に増強
         for i in range(3):
             a, b = digits[i], digits[i + 1]
-            pair_targets[i][a][b] += 0.05 * w
+            pair_targets[i][a][b] += 0.08 * w  # 0.05 → 0.08 に増強
 
     # 実際の当選を強く反映
     actual_digits = [int(ch) for ch in actual[:4]]
@@ -335,8 +339,8 @@ def update_state_with_event(state: Dict, actual: str, predictions: List[Tuple[st
         a, b = actual_digits[i], actual_digits[i + 1]
         pair_targets[i][a][b] += w_actual
 
-    # pos_probs を更新
-    beta_pos = 0.15
+    # pos_probs を更新（v11.1: 学習率を上げる）
+    beta_pos = 0.20  # 0.15 → 0.20 に強化
     for i in range(4):
         tgt = normalize(targets[i])
         old = state['pos_probs'][i]
@@ -344,8 +348,8 @@ def update_state_with_event(state: Dict, actual: str, predictions: List[Tuple[st
         mixed = calibrate_distribution(mixed, temp)
         state['pos_probs'][i] = apply_smoothing(normalize(mixed), min_prob=SMOOTH_MIN_PROB, temperature=SMOOTH_TEMPERATURE)
 
-    # pair_probs を更新
-    beta_pair = 0.12
+    # pair_probs を更新（v11.1: 学習率を上げる）
+    beta_pair = 0.15  # 0.12 → 0.15 に強化
     for i in range(3):
         tgt_mat = normalize_matrix(pair_targets[i])
         old_mat = state['pair_probs'][i]
