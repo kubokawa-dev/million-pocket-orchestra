@@ -99,18 +99,30 @@ jobs:
           fi
           echo "output_file=$OUTPUT_FILE" >> $GITHUB_OUTPUT
       
+      - name: Generate budget plan (5-slot & 10-slot)
+        id: budget
+        run: |
+          DRAW_NUMBER="${{ steps.draw.outputs.draw_number }}"
+          if [ -n "$DRAW_NUMBER" ]; then
+            echo "💰 Generating budget plan for draw #${DRAW_NUMBER}..."
+            python numbers4/generate_budget_plan.py --draw "$DRAW_NUMBER"
+            echo "✅ Budget plan generated!"
+          else
+            echo "⚠️ Skip budget plan generation (no draw number)"
+          fi
+      
       - name: Commit summary
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add predictions/*.md || true
+          git add predictions/*.md predictions/daily/budget_plan_*.json || true
           
           if git diff --staged --quiet; then
             echo "📝 No summary to commit"
           else
-            git commit -m "📊 Numbers4 daily summary $(date '+%Y-%m-%d')"
+            git commit -m "📊 Numbers4 daily summary & budget plan $(date '+%Y-%m-%d')"
             git push origin main
-            echo "✅ Summary committed and pushed!"
+            echo "✅ Summary & budget plan committed and pushed!"
           fi
       
       - name: Summary
