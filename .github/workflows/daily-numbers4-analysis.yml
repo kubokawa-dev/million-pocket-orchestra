@@ -2,9 +2,9 @@ name: Daily Numbers4 Analysis
 
 on:
   schedule:
-    # 平日（月〜金）JST 23:00 に実行
-    # JST 23:00 = UTC 14:00
-    - cron: '0 14 * * 1-5'
+    # 平日（月〜金）JST 23:30 に実行（楽天ページ更新を待つため遅めに設定）
+    # JST 23:30 = UTC 14:30
+    - cron: '30 14 * * 1-5'
   workflow_dispatch:  # 手動実行も可能
     inputs:
       draw:
@@ -49,10 +49,50 @@ jobs:
       - name: Initialize database
         run: python tools/utils.py
       
-      - name: Scrape latest results
+      - name: Scrape latest results (with retry)
         run: |
           echo "📡 Fetching latest lottery results..."
-          python tools/scrape_numbers4_rakuten.py
+          
+          # 最大3回リトライ（楽天ページの更新遅延に対応）
+          MAX_RETRIES=3
+          RETRY_DELAY=60  # 60秒待機
+          
+          for i in $(seq 1 $MAX_RETRIES); do
+            echo "🔄 Attempt $i of $MAX_RETRIES..."
+            python tools/scrape_numbers4_rakuten.py
+            
+            # 最新の予測ファイルから対象回号を取得
+            LATEST_FILE=$(ls -1 predictions/daily/numbers4_*.json 2>/dev/null | sort -t'_' -k2 -n | tail -1 || true)
+            if [ -n "$LATEST_FILE" ]; then
+              BASENAME=$(basename "$LATEST_FILE" .json)
+              TARGET_DRAW="${BASENAME#numbers4_}"
+              
+              # DBに結果があるか確認
+              RESULT=$(python -c "
+          import sys
+          sys.path.insert(0, '.')
+          from tools.utils import get_db_connection
+          conn = get_db_connection()
+          cur = conn.cursor()
+          cur.execute('SELECT numbers FROM numbers4_draws WHERE draw_number = ?', ($TARGET_DRAW,))
+          row = cur.fetchone()
+          print(row[0] if row else '')
+          conn.close()
+          " 2>/dev/null || true)
+              
+              if [ -n "$RESULT" ]; then
+                echo "✅ Draw #$TARGET_DRAW result found: $RESULT"
+                break
+              else
+                echo "⚠️ Draw #$TARGET_DRAW not yet in DB"
+              fi
+            fi
+            
+            if [ $i -lt $MAX_RETRIES ]; then
+              echo "⏳ Waiting ${RETRY_DELAY}s before retry..."
+              sleep $RETRY_DELAY
+            fi
+          done
       
       - name: Check prediction data and get draw number
         id: check

@@ -2,9 +2,9 @@ name: Daily Numbers4 Summary & Notification
 
 on:
   schedule:
-    # 平日（月〜金）JST 16:00 に実行
-    # JST 16:00 = UTC 07:00
-    - cron: '0 7 * * 1-5'
+    # 平日（月〜金）JST 16:30 に実行（予測完了を確実に待つため）
+    # JST 16:30 = UTC 07:30
+    - cron: '30 7 * * 1-5'
   workflow_dispatch:  # 手動実行も可能
 
 jobs:
@@ -36,6 +36,13 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
+      
+      - name: Initialize database and load CSV data
+        run: |
+          echo "🗄️ Initializing database..."
+          python tools/utils.py
+          echo "📂 Loading historical data from CSV..."
+          python tools/load_csv_to_db.py
       
       - name: Get latest draw number
         id: draw
