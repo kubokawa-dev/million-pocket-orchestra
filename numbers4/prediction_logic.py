@@ -1281,6 +1281,327 @@ def predict_from_cold_number_revival_n4(df: pd.DataFrame, limit: int = 150):
     return [pred for pred, _ in final_predictions[:limit]]
 
 
+def predict_from_even_odd_pattern_n4(df: pd.DataFrame, limit: int = 150):
+    """
+    偶数/奇数パターンモデル v12.0（NEW! 2404問題対策）
+    
+    2404のような「全偶数」パターンを狙う！
+    - 全偶数（0,2,4,6,8のみ）: 約6.25%の確率で出現
+    - 全奇数（1,3,5,7,9のみ）: 約6.25%の確率で出現
+    - 偶数3:奇数1 または 偶数1:奇数3: 約25%ずつ
+    
+    従来のモデルは偶奇バランスを重視しすぎて、極端なパターンを見逃していた！
+    """
+    import random
+    from collections import Counter
+    
+    predictions_dict = {}
+    latest_number = "".join(map(str, df.iloc[-1][['d1', 'd2', 'd3', 'd4']].values))
+    
+    even_digits = [0, 2, 4, 6, 8]
+    odd_digits = [1, 3, 5, 7, 9]
+    
+    # 直近50回の偶奇パターンを分析
+    recent_50 = df.tail(50)
+    even_freq = Counter()
+    odd_freq = Counter()
+    
+    for _, row in recent_50.iterrows():
+        for pos in range(4):
+            d = row[f'd{pos+1}']
+            if d % 2 == 0:
+                even_freq[d] += 1
+            else:
+                odd_freq[d] += 1
+    
+    seen_boxes = set()
+    
+    # === 戦略1: 全偶数パターン（2404のような） ===
+    # 偶数の中で頻出順にソート
+    sorted_evens = sorted(even_digits, key=lambda x: even_freq.get(x, 0), reverse=True)
+    
+    attempts = 0
+    while len(predictions_dict) < limit * 0.4 and attempts < 5000:
+        attempts += 1
+        # 偶数から4つ選ぶ（重複あり）
+        digits = [random.choice(sorted_evens[:4]) for _ in range(4)]
+        num_str = "".join(map(str, digits))
+        box_id = "".join(sorted(num_str))
+        
+        if num_str != latest_number and box_id not in seen_boxes:
+            # スコア = 各数字の頻度の合計 + 全偶数ボーナス
+            score = sum(even_freq.get(d, 1) for d in digits) + 30
+            predictions_dict[num_str] = predictions_dict.get(num_str, 0) + score
+            seen_boxes.add(box_id)
+    
+    # === 戦略2: 全奇数パターン ===
+    sorted_odds = sorted(odd_digits, key=lambda x: odd_freq.get(x, 0), reverse=True)
+    
+    attempts = 0
+    while len(predictions_dict) < limit * 0.6 and attempts < 5000:
+        attempts += 1
+        digits = [random.choice(sorted_odds[:4]) for _ in range(4)]
+        num_str = "".join(map(str, digits))
+        box_id = "".join(sorted(num_str))
+        
+        if num_str != latest_number and box_id not in seen_boxes:
+            score = sum(odd_freq.get(d, 1) for d in digits) + 30
+            predictions_dict[num_str] = predictions_dict.get(num_str, 0) + score
+            seen_boxes.add(box_id)
+    
+    # === 戦略3: 偶数3:奇数1 パターン ===
+    attempts = 0
+    while len(predictions_dict) < limit * 0.8 and attempts < 5000:
+        attempts += 1
+        evens = [random.choice(sorted_evens[:4]) for _ in range(3)]
+        odd = random.choice(sorted_odds[:3])
+        digits = evens + [odd]
+        random.shuffle(digits)
+        
+        num_str = "".join(map(str, digits))
+        box_id = "".join(sorted(num_str))
+        
+        if num_str != latest_number and box_id not in seen_boxes:
+            score = sum(even_freq.get(d, 1) for d in evens) + odd_freq.get(odd, 1) + 15
+            predictions_dict[num_str] = predictions_dict.get(num_str, 0) + score
+            seen_boxes.add(box_id)
+    
+    # === 戦略4: 偶数1:奇数3 パターン ===
+    attempts = 0
+    while len(predictions_dict) < limit and attempts < 5000:
+        attempts += 1
+        odds = [random.choice(sorted_odds[:4]) for _ in range(3)]
+        even = random.choice(sorted_evens[:3])
+        digits = odds + [even]
+        random.shuffle(digits)
+        
+        num_str = "".join(map(str, digits))
+        box_id = "".join(sorted(num_str))
+        
+        if num_str != latest_number and box_id not in seen_boxes:
+            score = sum(odd_freq.get(d, 1) for d in odds) + even_freq.get(even, 1) + 15
+            predictions_dict[num_str] = predictions_dict.get(num_str, 0) + score
+            seen_boxes.add(box_id)
+    
+    final_predictions = sorted(predictions_dict.items(), key=lambda x: -x[1])
+    return [pred for pred, _ in final_predictions[:limit]]
+
+
+def predict_from_low_sum_specialist_n4(df: pd.DataFrame, limit: int = 100):
+    """
+    低合計値特化モデル v12.0（NEW! 2404問題対策）
+    
+    2404の合計値は10！従来モデルは合計値12-24を優遇していたため見逃していた。
+    このモデルは合計値0-12の「低合計値ゾーン」を専門的に狙う。
+    
+    合計値の分布:
+    - 0-8: 約2%（超レア）
+    - 9-12: 約8%（レア）
+    - 13-23: 約80%（普通）
+    - 24-36: 約10%（やや珍しい）
+    """
+    import random
+    from collections import Counter
+    
+    predictions_dict = {}
+    latest_number = "".join(map(str, df.iloc[-1][['d1', 'd2', 'd3', 'd4']].values))
+    
+    # 直近で低合計値が出た番号を分析
+    recent_100 = df.tail(100)
+    low_sum_digits = Counter()
+    
+    for _, row in recent_100.iterrows():
+        num_sum = row['d1'] + row['d2'] + row['d3'] + row['d4']
+        if num_sum <= 12:
+            low_sum_digits[row['d1']] += 1
+            low_sum_digits[row['d2']] += 1
+            low_sum_digits[row['d3']] += 1
+            low_sum_digits[row['d4']] += 1
+    
+    # 低合計値に貢献する数字（0,1,2,3が多い）
+    low_digits = [0, 1, 2, 3, 4]
+    
+    seen_boxes = set()
+    
+    # === 戦略1: 合計値0-6を狙う（超レア狙い） ===
+    for target_sum in range(0, 7):
+        attempts = 0
+        while attempts < 500:
+            attempts += 1
+            # 合計値がtarget_sumになるように4桁を生成
+            digits = []
+            remaining = target_sum
+            for i in range(3):
+                max_d = min(remaining, 4)  # 低い数字を優先
+                d = random.randint(0, max_d)
+                digits.append(d)
+                remaining -= d
+            
+            if 0 <= remaining <= 9:
+                digits.append(remaining)
+                num_str = "".join(map(str, digits))
+                box_id = "".join(sorted(num_str))
+                
+                if num_str != latest_number and box_id not in seen_boxes:
+                    # 超低合計値ボーナス
+                    score = 50 - target_sum * 3  # 合計値が低いほど高スコア
+                    predictions_dict[num_str] = predictions_dict.get(num_str, 0) + score
+                    seen_boxes.add(box_id)
+    
+    # === 戦略2: 合計値7-12を狙う（レア狙い） ===
+    for target_sum in range(7, 13):
+        attempts = 0
+        while len([p for p in predictions_dict.keys() if sum(int(d) for d in p) == target_sum]) < 15 and attempts < 1000:
+            attempts += 1
+            digits = []
+            remaining = target_sum
+            for i in range(3):
+                max_d = min(remaining, 6)
+                d = random.randint(0, max_d)
+                digits.append(d)
+                remaining -= d
+            
+            if 0 <= remaining <= 9:
+                digits.append(remaining)
+                random.shuffle(digits)
+                num_str = "".join(map(str, digits))
+                box_id = "".join(sorted(num_str))
+                
+                if num_str != latest_number and box_id not in seen_boxes:
+                    score = 30 + low_sum_digits.get(digits[0], 0)
+                    predictions_dict[num_str] = predictions_dict.get(num_str, 0) + score
+                    seen_boxes.add(box_id)
+    
+    # === 戦略3: 0を含む低合計値パターン ===
+    # 2404のように0を含むパターンは合計値を下げやすい
+    attempts = 0
+    while len(predictions_dict) < limit and attempts < 3000:
+        attempts += 1
+        # 必ず0を1つ以上含む
+        num_zeros = random.randint(1, 2)
+        digits = [0] * num_zeros
+        
+        # 残りは低い数字から選ぶ
+        for _ in range(4 - num_zeros):
+            digits.append(random.choice(low_digits))
+        
+        random.shuffle(digits)
+        num_str = "".join(map(str, digits))
+        box_id = "".join(sorted(num_str))
+        
+        if num_str != latest_number and box_id not in seen_boxes:
+            num_sum = sum(digits)
+            if num_sum <= 15:  # 合計値15以下のみ
+                score = 25 + (15 - num_sum)  # 合計値が低いほどボーナス
+                predictions_dict[num_str] = predictions_dict.get(num_str, 0) + score
+                seen_boxes.add(box_id)
+    
+    final_predictions = sorted(predictions_dict.items(), key=lambda x: -x[1])
+    return [pred for pred, _ in final_predictions[:limit]]
+
+
+def predict_from_sequential_pattern_n4(df: pd.DataFrame, limit: int = 100):
+    """
+    連続数字パターンモデル v12.0（NEW! 2404問題対策）
+    
+    2404は0,2,4という「偶数の連続」パターン！
+    - 偶数連続: 0,2,4 / 2,4,6 / 4,6,8
+    - 奇数連続: 1,3,5 / 3,5,7 / 5,7,9
+    - 普通の連続: 1,2,3,4 / 2,3,4,5 など
+    
+    これらの「連続性」を持つパターンを狙う
+    """
+    import random
+    from itertools import combinations_with_replacement
+    
+    predictions_dict = {}
+    latest_number = "".join(map(str, df.iloc[-1][['d1', 'd2', 'd3', 'd4']].values))
+    
+    seen_boxes = set()
+    
+    # === 戦略1: 偶数連続パターン（0,2,4型） ===
+    even_sequences = [
+        [0, 2, 4],
+        [2, 4, 6],
+        [4, 6, 8],
+        [0, 2, 4, 6],
+        [2, 4, 6, 8],
+        [0, 4, 8],  # 飛び石偶数
+    ]
+    
+    for seq in even_sequences:
+        # シーケンスから4桁を選ぶ（重複あり）
+        for combo in combinations_with_replacement(seq, 4):
+            digits = list(combo)
+            random.shuffle(digits)
+            num_str = "".join(map(str, digits))
+            box_id = "".join(sorted(num_str))
+            
+            if num_str != latest_number and box_id not in seen_boxes:
+                score = 35  # 偶数連続ボーナス
+                predictions_dict[num_str] = predictions_dict.get(num_str, 0) + score
+                seen_boxes.add(box_id)
+    
+    # === 戦略2: 奇数連続パターン ===
+    odd_sequences = [
+        [1, 3, 5],
+        [3, 5, 7],
+        [5, 7, 9],
+        [1, 3, 5, 7],
+        [3, 5, 7, 9],
+        [1, 5, 9],  # 飛び石奇数
+    ]
+    
+    for seq in odd_sequences:
+        for combo in combinations_with_replacement(seq, 4):
+            digits = list(combo)
+            random.shuffle(digits)
+            num_str = "".join(map(str, digits))
+            box_id = "".join(sorted(num_str))
+            
+            if num_str != latest_number and box_id not in seen_boxes:
+                score = 35
+                predictions_dict[num_str] = predictions_dict.get(num_str, 0) + score
+                seen_boxes.add(box_id)
+    
+    # === 戦略3: 普通の連続パターン（1234型） ===
+    for start in range(7):  # 0-6から開始
+        seq = [start, start+1, start+2, start+3]
+        for combo in combinations_with_replacement(seq, 4):
+            digits = list(combo)
+            random.shuffle(digits)
+            num_str = "".join(map(str, digits))
+            box_id = "".join(sorted(num_str))
+            
+            if num_str != latest_number and box_id not in seen_boxes:
+                score = 30
+                predictions_dict[num_str] = predictions_dict.get(num_str, 0) + score
+                seen_boxes.add(box_id)
+    
+    # === 戦略4: 3桁連続 + 1桁ランダム ===
+    attempts = 0
+    while len(predictions_dict) < limit and attempts < 3000:
+        attempts += 1
+        # 3桁連続を選ぶ
+        start = random.randint(0, 7)
+        seq = [start, start+1, start+2]
+        # 4桁目はランダム
+        fourth = random.randint(0, 9)
+        digits = seq + [fourth]
+        random.shuffle(digits)
+        
+        num_str = "".join(map(str, digits))
+        box_id = "".join(sorted(num_str))
+        
+        if num_str != latest_number and box_id not in seen_boxes:
+            score = 20
+            predictions_dict[num_str] = predictions_dict.get(num_str, 0) + score
+            seen_boxes.add(box_id)
+    
+    final_predictions = sorted(predictions_dict.items(), key=lambda x: -x[1])
+    return [pred for pred, _ in final_predictions[:limit]]
+
+
 def predict_from_digit_frequency_box_n4(df: pd.DataFrame, limit: int = 100):
     """
     数字頻度ベースのボックス生成モデル v10.5

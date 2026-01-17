@@ -202,22 +202,23 @@ jobs:
           
           echo "draw_number=$DRAW_NUMBER" >> $GITHUB_OUTPUT
       
-      - name: Commit analysis report
+      - name: Commit analysis report and CSV data
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           
-          # reportsディレクトリとmodel_weights.jsonをコミット
+          # reportsディレクトリ、model_weights.json、CSVデータをコミット
           git add reports/*.md || true
           git add numbers4/model_weights.json || true
+          git add numbers4/*.csv || true
           
           if git diff --staged --quiet; then
             echo "📝 No changes to commit"
           else
             DRAW_NUMBER="${{ steps.analysis.outputs.draw_number }}"
-            git commit -m "📊 Numbers4 analysis report Draw #${DRAW_NUMBER}"
+            git commit -m "📊 Numbers4 Draw #${DRAW_NUMBER} - Analysis report & CSV data"
             git push origin main
-            echo "✅ Analysis report committed and pushed!"
+            echo "✅ Analysis report and CSV data committed and pushed!"
           fi
       
       - name: Summary
