@@ -1,0 +1,92 @@
+name: Weekly Box Stats Analysis
+
+on:
+  schedule:
+    # 毎週土曜日 JST 10:00 に実行
+    # JST 10:00 = UTC 01:00
+    - cron: '0 1 * * 6'  # 土曜日の01:00 UTC = 土曜日の10:00 JST
+  workflow_dispatch:  # 手動実行も可能
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Pull latest changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git pull origin main --rebase || true
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Initialize database
+        run: python tools/utils.py
+      
+      - name: Load historical data from CSV to DB
+        run: |
+          echo "📂 Loading historical data from CSV files..."
+          python tools/load_csv_to_db.py
+      
+      - name: Run Box Stats Analysis
+        run: |
+          echo "📊 Running weekly box stats analysis..."
+          python numbers4/analyze_box_stats.py | tee analysis_output.txt
+      
+      - name: Generate analysis report
+        run: |
+          # レポートファイルを生成
+          REPORT_DIR="reports/box_stats"
+          mkdir -p "$REPORT_DIR"
+          
+          DATE=$(TZ=Asia/Tokyo date '+%Y%m%d')
+          REPORT_FILE="$REPORT_DIR/box_stats_$DATE.txt"
+          
+          echo "📊 ナンバーズ4 組み合わせ統計レポート" > "$REPORT_FILE"
+          echo "生成日時: $(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M:%S JST')" >> "$REPORT_FILE"
+          echo "" >> "$REPORT_FILE"
+          cat analysis_output.txt >> "$REPORT_FILE"
+          
+          echo "✅ Report saved to $REPORT_FILE"
+      
+      - name: Commit analysis report
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          # レポートをコミット
+          git add reports/box_stats/*.txt || true
+          
+          if git diff --staged --quiet; then
+            echo "📝 No new reports to commit"
+          else
+            TIMESTAMP=$(TZ=Asia/Tokyo date '+%Y-%m-%d')
+            git commit -m "📊 Weekly box stats analysis $TIMESTAMP"
+            git push origin main
+            echo "✅ Analysis report committed and pushed!"
+          fi
+      
+      - name: Summary
+        run: |
+          echo "✅ Weekly box stats analysis completed successfully!"
+          echo "📊 Report saved to reports/box_stats/"
+          echo ""
+          echo "=== Analysis Highlights ==="
+          head -80 analysis_output.txt

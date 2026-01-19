@@ -107,6 +107,17 @@ def main():
     except Exception as e:
         print(f"⚠️  予測結果の確認中にエラーが発生しました: {e}")
 
+    # 4) 組み合わせ（ボックス）統計分析
+    print("\n[Step 4] 組み合わせ統計分析を実行中...")
+    analyze_py = os.path.join(ROOT, 'numbers4', 'analyze_box_stats.py')
+    if os.path.exists(analyze_py):
+        try:
+            run(f'"{PY}" "{analyze_py}"')
+        except SystemExit:
+            print("[warn] 統計分析でエラーが発生しましたが、パイプラインを続行します")
+    else:
+        print('[warn] analyze_box_stats.py not found, skipping analysis step')
+
     print("\n✅ パイプライン完了")
 
 
