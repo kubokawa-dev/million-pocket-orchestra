@@ -153,6 +153,137 @@ def print_analysis_report(results):
     print("\n" + "="*60)
 
 
+def generate_markdown_report(results):
+    """
+    分析結果をMarkdown形式で生成
+    """
+    now = datetime.now()
+    lines = []
+    
+    # ヘッダー
+    lines.append("# 📊 ナンバーズ4 組み合わせ（ボックス）統計分析")
+    lines.append("")
+    lines.append("## 📋 分析情報")
+    lines.append("")
+    lines.append("| 項目 | 内容 |")
+    lines.append("|:---|:---|")
+    lines.append(f"| 分析日時 | {now.strftime('%Y-%m-%d %H:%M')} |")
+    lines.append(f"| 総抽選回数 | {results['total_draws']}回 |")
+    lines.append(f"| 直近データ | {results['recent_draws']}回 ({results['recent_cutoff'].strftime('%Y/%m/%d')}以降) |")
+    lines.append("")
+    
+    # TOP50
+    lines.append("## 🏆 ボックス出現回数 TOP50")
+    lines.append("")
+    lines.append("過去全期間で最も多く出現した組み合わせをランキング！")
+    lines.append("")
+    lines.append("| 順位 | 組み合わせ | タイプ | 出現回数 |")
+    lines.append("|:---:|:---:|:---:|:---:|")
+    
+    for i, (combo, count) in enumerate(results['top_combos'], 1):
+        combo_type = get_combination_type(combo)
+        if i <= 3:
+            medal = ["🥇", "🥈", "🥉"][i-1]
+            lines.append(f"| {medal} {i} | `{combo}` | {combo_type} | {count}回 |")
+        elif i <= 10:
+            lines.append(f"| ⭐ {i} | `{combo}` | {combo_type} | {count}回 |")
+        else:
+            lines.append(f"| {i} | `{combo}` | {combo_type} | {count}回 |")
+    
+    lines.append("")
+    
+    # 直近で熱い組み合わせ
+    lines.append("## 🔥 直近で熱い組み合わせ TOP10")
+    lines.append("")
+    lines.append("直近2年間で複数回出現している注目の組み合わせ！")
+    lines.append("")
+    lines.append("| 順位 | 組み合わせ | 総出現 | 直近出現 | 最新当選日 |")
+    lines.append("|:---:|:---:|:---:|:---:|:---:|")
+    
+    for i, item in enumerate(results['hot_combos'], 1):
+        latest = item['latest_date'].strftime('%Y/%m/%d') if item['latest_date'] else '-'
+        if i <= 3:
+            medal = ["🥇", "🥈", "🥉"][i-1]
+            lines.append(f"| {medal} {i} | `{item['combo']}` | {item['total_count']}回 | {item['recent_count']}回 | {latest} |")
+        else:
+            lines.append(f"| {i} | `{item['combo']}` | {item['total_count']}回 | {item['recent_count']}回 | {latest} |")
+    
+    lines.append("")
+    
+    # 出現回数が少ない組み合わせ
+    lines.append("## ❄️ 出現回数が少ない組み合わせ（シングル）TOP20")
+    lines.append("")
+    lines.append("シングル（4桁全部違う）で最も出現が少ない組み合わせ。")
+    lines.append("そろそろ来るかも...？🤔")
+    lines.append("")
+    lines.append("| 順位 | 組み合わせ | 出現回数 |")
+    lines.append("|:---:|:---:|:---:|")
+    
+    for i, (combo, count) in enumerate(results['rare_combos'], 1):
+        lines.append(f"| {i} | `{combo}` | {count}回 |")
+    
+    lines.append("")
+    
+    # 購入アドバイス
+    lines.append("## 💡 購入アドバイス")
+    lines.append("")
+    lines.append("### 🎯 狙い目の組み合わせ")
+    lines.append("")
+    
+    if results['hot_combos']:
+        top3_hot = results['hot_combos'][:3]
+        hot_list = ", ".join([f"`{item['combo']}`" for item in top3_hot])
+        lines.append(f"**直近で熱い**: {hot_list}")
+        lines.append("")
+    
+    lines.append("### 📝 ボックス買いのコツ")
+    lines.append("")
+    lines.append("1. **シングル（24通り）を優先** - 1口で24パターンカバー")
+    lines.append("2. **ダブル（12通り）も狙い目** - 当選確率と配当のバランス◎")
+    lines.append("3. **直近で熱い組み合わせ**を参考に！")
+    lines.append("")
+    
+    # フッター
+    lines.append("---")
+    lines.append("")
+    lines.append(f"*Generated at {now.strftime('%Y-%m-%d %H:%M:%S')} by Million Pocket 📊*")
+    
+    return "\n".join(lines)
+
+
+def save_markdown_report(results, output_dir=None):
+    """
+    分析結果をMarkdownファイルとして保存
+    
+    Args:
+        results: 分析結果
+        output_dir: 出力ディレクトリ（Noneの場合はreports/box_stats/）
+    
+    Returns:
+        str: 保存したファイルパス
+    """
+    if output_dir is None:
+        output_dir = os.path.join(ROOT, 'reports', 'box_stats')
+    
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # ファイル名: box_stats_YYYYMMDD.md
+    date_str = datetime.now().strftime('%Y%m%d')
+    filename = f"box_stats_{date_str}.md"
+    filepath = os.path.join(output_dir, filename)
+    
+    # Markdown生成
+    markdown_content = generate_markdown_report(results)
+    
+    # ファイル保存
+    with open(filepath, 'w', encoding='utf-8') as f:
+        f.write(markdown_content)
+    
+    print(f"✅ レポートを保存しました: {filepath}")
+    
+    return filepath
+
+
 def save_analysis_to_db(results):
     """
     分析結果をデータベースに保存（オプション）
@@ -162,9 +293,12 @@ def save_analysis_to_db(results):
     pass
 
 
-def main():
+def main(save_report=False):
     """
     メイン処理
+    
+    Args:
+        save_report: Trueの場合、Markdownレポートを保存
     """
     print("📊 組み合わせ統計分析を開始...")
     
@@ -181,8 +315,17 @@ def main():
     # レポート出力
     print_analysis_report(results)
     
+    # Markdownレポート保存
+    if save_report:
+        save_markdown_report(results)
+    
     return results
 
 
 if __name__ == '__main__':
-    main()
+    import argparse
+    parser = argparse.ArgumentParser(description='ナンバーズ4 組み合わせ統計分析')
+    parser.add_argument('--save', action='store_true', help='Markdownレポートを保存')
+    args = parser.parse_args()
+    
+    main(save_report=args.save)

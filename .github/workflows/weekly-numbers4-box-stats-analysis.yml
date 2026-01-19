@@ -1,4 +1,4 @@
-name: Weekly Box Stats Analysis
+name: Weekly Numbers4 Box Stats Analysis
 
 on:
   schedule:
@@ -45,34 +45,18 @@ jobs:
           echo "📂 Loading historical data from CSV files..."
           python tools/load_csv_to_db.py
       
-      - name: Run Box Stats Analysis
+      - name: Run Box Stats Analysis and Save Report
         run: |
           echo "📊 Running weekly box stats analysis..."
-          python numbers4/analyze_box_stats.py | tee analysis_output.txt
-      
-      - name: Generate analysis report
-        run: |
-          # レポートファイルを生成
-          REPORT_DIR="reports/box_stats"
-          mkdir -p "$REPORT_DIR"
-          
-          DATE=$(TZ=Asia/Tokyo date '+%Y%m%d')
-          REPORT_FILE="$REPORT_DIR/box_stats_$DATE.txt"
-          
-          echo "📊 ナンバーズ4 組み合わせ統計レポート" > "$REPORT_FILE"
-          echo "生成日時: $(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M:%S JST')" >> "$REPORT_FILE"
-          echo "" >> "$REPORT_FILE"
-          cat analysis_output.txt >> "$REPORT_FILE"
-          
-          echo "✅ Report saved to $REPORT_FILE"
+          python numbers4/analyze_box_stats.py --save
       
       - name: Commit analysis report
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           
-          # レポートをコミット
-          git add reports/box_stats/*.txt || true
+          # Markdownレポートをコミット
+          git add reports/box_stats/*.md || true
           
           if git diff --staged --quiet; then
             echo "📝 No new reports to commit"
@@ -88,5 +72,9 @@ jobs:
           echo "✅ Weekly box stats analysis completed successfully!"
           echo "📊 Report saved to reports/box_stats/"
           echo ""
-          echo "=== Analysis Highlights ==="
-          head -80 analysis_output.txt
+          echo "=== Latest Report ==="
+          ls -la reports/box_stats/*.md 2>/dev/null || echo "No reports found"
+          echo ""
+          if [ -f reports/box_stats/box_stats_$(TZ=Asia/Tokyo date '+%Y%m%d').md ]; then
+            head -50 reports/box_stats/box_stats_$(TZ=Asia/Tokyo date '+%Y%m%d').md
+          fi
