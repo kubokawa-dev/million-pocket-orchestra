@@ -67,6 +67,18 @@ SUM_IDEAL = 18  # 理想的な合計値
 SUM_TOLERANCE = 8  # 許容範囲（±8で10-26をカバー）← 6→8に拡大
 SUM_BONUS_MAX = 0.25  # 最大ボーナス（25%）← 30%→25%に調整（範囲拡大の代わり）
 
+# 過去出現に基づくボックスタイプ分布（実データから計測）
+DEFAULT_BOX_DISTRIBUTION = {
+    'ABCD': 0.51,
+    'AABC': 0.42,
+    'AABB': 0.025,
+    'AAAB': 0.035,
+    'AAAA': 0.002,
+}
+
+# 保存用に展開する候補数の上限
+MAX_PERMUTATION_CANDIDATES = 400
+
 
 def apply_sum_bonus(
     df: pd.DataFrame,
@@ -126,6 +138,133 @@ def apply_sum_bonus(
     return df
 
 
+# --- ボックス分布バランサー & 順列展開ユーティリティ ---
+
+def compute_box_distribution_from_history(df: pd.DataFrame) -> dict:
+    """過去データからボックスタイプの出現割合を算出"""
+    if df is None or df.empty:
+        return DEFAULT_BOX_DISTRIBUTION.copy()
+
+    counts = Counter()
+    for _, row in df.iterrows():
+        number = f"{row['d1']}{row['d2']}{row['d3']}{row['d4']}"
+        box_type, _ = get_box_type(number)
+        counts[box_type] += 1
+
+    total = sum(counts.values())
+    if total == 0:
+        return DEFAULT_BOX_DISTRIBUTION.copy()
+
+    distribution = {}
+    for box_type, default_ratio in DEFAULT_BOX_DISTRIBUTION.items():
+        ratio = counts.get(box_type, 0) / total
+        if ratio == 0:
+            ratio = default_ratio
+        distribution[box_type] = ratio
+
+    # 正規化（合計が1になるように）
+    norm = sum(distribution.values())
+    return {k: v / norm for k, v in distribution.items() if norm}
+
+
+def annotate_box_metadata(df: pd.DataFrame) -> pd.DataFrame:
+    """予測DFにボックスタイプ情報を付与"""
+    if df.empty:
+        return df
+
+    df = df.copy()
+    box_types = []
+    box_coverages = []
+    for pred in df['prediction']:
+        box_type, coverage = get_box_type(str(pred))
+        box_types.append(box_type)
+        box_coverages.append(coverage)
+
+    df['box_type'] = box_types
+    df['box_coverage'] = box_coverages
+    return df
+
+
+def apply_box_type_balance(
+    df: pd.DataFrame,
+    target_distribution: dict,
+    min_multiplier: float = 0.6,
+    max_multiplier: float = 1.6,
+) -> pd.DataFrame:
+    """予測DFのボックスタイプ比率を実績分布に寄せる"""
+    if df.empty or 'box_type' not in df.columns:
+        return df
+
+    df = df.copy()
+    counts = df['box_type'].value_counts()
+    total = len(df)
+    adjustments = {}
+
+    for box_type, target_ratio in target_distribution.items():
+        current_ratio = counts.get(box_type, 0) / total if total else 0
+        if current_ratio == 0:
+            multiplier = max_multiplier
+        else:
+            multiplier = target_ratio / current_ratio
+        multiplier = max(min(multiplier, max_multiplier), min_multiplier)
+        adjustments[box_type] = multiplier
+
+    df['score'] = df.apply(
+        lambda row: row['score'] * adjustments.get(row['box_type'], 1.0), axis=1
+    )
+    df = df.sort_values(by='score', ascending=False).reset_index(drop=True)
+    return df
+
+
+def expand_predictions_with_permutations(
+    df: pd.DataFrame,
+    max_candidates: int = MAX_PERMUTATION_CANDIDATES,
+) -> pd.DataFrame:
+    """ストレート当て用に各ボックスの順列を展開"""
+    if df.empty:
+        return df
+
+    expanded_rows = []
+    seen_numbers = set()
+
+    for idx, row in df.iterrows():
+        number = str(row['prediction'])
+        base_score = float(row['score'])
+        box_type = row.get('box_type')
+        box_coverage = row.get('box_coverage')
+
+        permutations_set = {"".join(p) for p in set(permutations(number))}
+        # scoreの順位はベース番号に従わせる
+        for perm in sorted(permutations_set):
+            if perm in seen_numbers:
+                continue
+
+            expanded_rows.append({
+                'prediction': perm,
+                'score': base_score,
+                'box_type': box_type,
+                'box_coverage': box_coverage,
+                'source_prediction': number,
+                'source_rank': idx + 1,
+            })
+            seen_numbers.add(perm)
+
+            if len(expanded_rows) >= max_candidates:
+                break
+
+        if len(expanded_rows) >= max_candidates:
+            break
+
+    if not expanded_rows:
+        return df.copy()
+
+    expanded_df = pd.DataFrame(expanded_rows)
+    expanded_df = expanded_df.sort_values(
+        by=['source_rank', 'score'], ascending=[True, False]
+    ).reset_index(drop=True)
+    return expanded_df
+
+
 # --- ボックスタイプ判定関数 (共通ユーティリティからインポート) ---
 from numbers4.box_utils import get_box_type
 
@@ -166,6 +305,7 @@ def generate_ensemble_prediction(progress_callback=None):
 
     report_progress(0.0, "データベースから全抽選データを読み込んでいます...")
     all_draws_df = load_all_draws()
+    target_box_distribution = compute_box_distribution_from_history(all_draws_df)
 
     if all_draws_df.empty:
         # Streamlitにエラーを伝えるために空のDataFrameを返すか、例外を発生させる
@@ -425,17 +565,13 @@ def generate_ensemble_prediction(progress_callback=None):
             box_unique_rows.append(row)
     final_predictions_df = pd.DataFrame(box_unique_rows).reset_index(drop=True)
     
-    # v11.1: ボックス情報を追加（D対策）
+    # v11.1: ボックス情報を追加 & 分布調整
     report_progress(0.98, "ボックス情報を追加中...")
-    box_types = []
-    box_coverages = []
-    for pred in final_predictions_df['prediction']:
-        box_type, coverage = get_box_type(str(pred))
-        box_types.append(box_type)
-        box_coverages.append(coverage)
-    
-    final_predictions_df['box_type'] = box_types
-    final_predictions_df['box_coverage'] = box_coverages
+    final_predictions_df = annotate_box_metadata(final_predictions_df)
+    final_predictions_df = apply_box_type_balance(final_predictions_df, target_box_distribution)
+
+    # 保存用に順列を展開
+    storage_predictions_df = expand_predictions_with_permutations(final_predictions_df)
     
     report_progress(1.0, "予測完了！")
     
@@ -451,7 +587,7 @@ def generate_ensemble_prediction(progress_callback=None):
         
         # 履歴を保存（DB）
         prediction_id = save_ensemble_prediction(
-            predictions_df=final_predictions_df,
+            predictions_df=storage_predictions_df,
             ensemble_weights=ensemble_weights,
             predictions_by_model=predictions_by_model,
             model_state=model_state,
