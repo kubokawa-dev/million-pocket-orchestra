@@ -74,6 +74,122 @@ def aggregate_predictions(daily_data: Dict) -> Dict:
     return dict(number_stats)
 
 
+def load_method_predictions(methods_dir: Optional[str], draw_number: Optional[int]) -> Optional[Dict]:
+    """手法別の予測JSONを読み込み、予測エントリをまとめる"""
+    if not methods_dir or not draw_number:
+        return None
+    if not os.path.isdir(methods_dir):
+        return None
+
+    method_dirs = [
+        d for d in sorted(os.listdir(methods_dir))
+        if os.path.isdir(os.path.join(methods_dir, d))
+    ]
+    if not method_dirs:
+        return None
+
+    available = {}
+    missing = []
+    for method in method_dirs:
+        method_path = os.path.join(methods_dir, method)
+        file_path = os.path.join(method_path, f"numbers4_{draw_number}.json")
+        if not os.path.exists(file_path):
+            missing.append(method)
+            continue
+
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+        except Exception:
+            missing.append(method)
+            continue
+
+        preds = data.get('predictions', [])
+        if not preds:
+            missing.append(method)
+            continue
+        available[method] = {
+            'predictions': preds,
+            'last_updated': data.get('last_updated'),
+            'method': data.get('method', method),
+        }
+
+    return {
+        'methods_dir': methods_dir,
+        'total_methods': len(method_dirs),
+        'available': available,
+        'missing': missing,
+    }
+
+
+def aggregate_method_predictions(method_entries: Dict[str, Dict]) -> Dict:
+    """手法別の予測を集計（手法の出現回数を重視）"""
+    number_stats = defaultdict(lambda: {
+        'appearances': 0,
+        'total_score': 0.0,
+        'best_rank': 999,
+        'methods': set(),
+    })
+
+    total_methods = len(method_entries)
+    if total_methods == 0:
+        return {
+            'stats': {},
+            'total_methods': 0,
+        }
+
+    for method, entry in method_entries.items():
+        preds = entry.get('predictions', [])
+        if not preds:
+            continue
+        latest_entry = preds[-1]
+        for pred in latest_entry.get('top_predictions', []):
+            number = pred.get('number')
+            if not number:
+                continue
+            rank = pred.get('rank', 999)
+            score = pred.get('score', 0.0)
+
+            stats = number_stats[number]
+            if method not in stats['methods']:
+                stats['appearances'] += 1
+                stats['methods'].add(method)
+            stats['total_score'] += score
+            stats['best_rank'] = min(stats['best_rank'], rank)
+
+    for _number, stats in number_stats.items():
+        stats['avg_score'] = stats['total_score'] / max(1, stats['appearances'])
+        stats['appearance_rate'] = stats['appearances'] / total_methods * 100
+        stats['methods'] = sorted(stats['methods'])
+
+    return {
+        'stats': dict(number_stats),
+        'total_methods': total_methods,
+    }
+
+
+def summarize_method_activity(method_entries: Dict[str, Dict]) -> List[Dict]:
+    """手法別の実行状況をまとめる"""
+    summary = []
+    for method, entry in method_entries.items():
+        preds = entry.get('predictions', [])
+        if not preds:
+            continue
+        latest_entry = preds[-1]
+        top1 = "-"
+        top_predictions = latest_entry.get('top_predictions', [])
+        if top_predictions:
+            top1 = str(top_predictions[0].get('number', '-'))
+        summary.append({
+            'method': method,
+            'count': len(preds),
+            'latest_time': latest_entry.get('time_jst', latest_entry.get('time', '')[:16]),
+            'top1': top1,
+        })
+    summary.sort(key=lambda x: (-x['count'], x['method']))
+    return summary
+
+
 def get_box_type(number: str) -> tuple:
     """
     番号のボックスタイプを判定
@@ -258,7 +374,13 @@ def calculate_budget_recommendations(daily_data: Dict, aggregated: Dict, budget:
     return selected
 
 
-def generate_markdown(daily_data: Dict, aggregated: Dict, top_n: int = 20, budget: int = 1000) -> str:
+def generate_markdown(
+    daily_data: Dict,
+    aggregated: Dict,
+    top_n: int = 20,
+    budget: int = 1000,
+    methods_summary: Optional[Dict] = None,
+) -> str:
     """Markdownレポートを生成"""
     
     target_draw_number = daily_data.get('target_draw_number', '???')
@@ -379,6 +501,78 @@ def generate_markdown(daily_data: Dict, aggregated: Dict, top_n: int = 20, budge
     
     md.append("")
     
+    # 手法別サマリー
+    if methods_summary and methods_summary.get('available'):
+        md.append("## 🧭 手法別サマリー")
+        md.append("")
+
+        total_methods = methods_summary.get('total_methods', 0)
+        available = methods_summary.get('available', {})
+        missing = methods_summary.get('missing', [])
+        md.append(f"**手法数**: {len(available)}/{total_methods}（データあり/総数）")
+        md.append("")
+
+        if missing:
+            md.append("**未取得の手法**: " + ", ".join([f"`{m}`" for m in missing]))
+            md.append("")
+
+        aggregated_methods = aggregate_method_predictions(available)
+        method_stats = aggregated_methods.get('stats', {})
+        total_methods_with_data = aggregated_methods.get('total_methods', 0)
+
+        if method_stats and total_methods_with_data > 0:
+            sorted_method_numbers = sorted(
+                method_stats.items(),
+                key=lambda x: (-x[1]['appearances'], -x[1]['avg_score'], x[1]['best_rank'])
+            )
+
+            md.append("### 🔁 複数手法で共通した上位候補 TOP20")
+            md.append("")
+            md.append("| 順位 | 番号 | 出現手法数 | 出現率 | 平均スコア | 最高順位 | 手法 |")
+            md.append("|:---:|:---:|:---:|:---:|:---:|:---:|:---|")
+
+            for rank, (number, stats) in enumerate(sorted_method_numbers[:top_n], 1):
+                methods_list = stats.get('methods', [])
+                methods_preview = methods_list[:4]
+                methods_str = ", ".join([f"`{m}`" for m in methods_preview])
+                if len(methods_list) > 4:
+                    methods_str += f" 他{len(methods_list) - 4}件"
+
+                md.append(
+                    f"| {rank} | `{number}` | {stats['appearances']} | "
+                    f"{stats['appearance_rate']:.0f}% | {stats['avg_score']:.2f} | "
+                    f"{stats['best_rank']}位 | {methods_str} |"
+                )
+
+            md.append("")
+
+        md.append("### 🧪 手法別 TOP3（直近予測）")
+        md.append("")
+        md.append("| 手法 | 1位 | 2位 | 3位 |")
+        md.append("|:---|:---:|:---:|:---:|")
+
+        for method, entry in sorted(available.items()):
+            preds = entry.get('predictions', [])
+            latest_entry = preds[-1] if preds else {}
+            top3 = latest_entry.get('top_predictions', [])[:3]
+            top3_str = [f"`{p.get('number', '-')}`" for p in top3]
+            while len(top3_str) < 3:
+                top3_str.append("-")
+            md.append(f"| `{method}` | {top3_str[0]} | {top3_str[1]} | {top3_str[2]} |")
+
+        md.append("")
+
+        md.append("### 📈 手法別 実行回数（当日）")
+        md.append("")
+        md.append("| 手法 | 実行回数 | 最終予測時刻 | 最新1位 |")
+        md.append("|:---|:---:|:---:|:---:|")
+        for item in summarize_method_activity(available):
+            md.append(
+                f"| `{item['method']}` | {item['count']}回 | "
+                f"{item['latest_time']} | `{item['top1']}` |"
+            )
+        md.append("")
+
     # 類似パターン提案セクション（新規追加）
     md.append("## 💡 上位予測 + 類似パターン")
     md.append("")
@@ -649,6 +843,10 @@ def main():
         '--budget', '-b', type=int, default=1000,
         help='購入予算（円）（デフォルト: 1000）'
     )
+    parser.add_argument(
+        '--methods-dir', type=str,
+        help='手法別予測JSONのディレクトリ（例: predictions/daily/methods）'
+    )
     
     args = parser.parse_args()
     
@@ -669,9 +867,23 @@ def main():
     # 集計
     aggregated = aggregate_predictions(daily_data)
     print(f"   ✅ {len(aggregated)}種類の番号を集計")
+
+    # 手法別の集計
+    methods_summary = None
+    if args.methods_dir:
+        method_draw = args.draw or daily_data.get('target_draw_number') or daily_data.get('draw_number')
+        methods_summary = load_method_predictions(args.methods_dir, method_draw)
+        if methods_summary:
+            print(f"   🔍 手法別データ: {len(methods_summary.get('available', {}))}件")
     
     # Markdown生成
-    markdown = generate_markdown(daily_data, aggregated, args.top, args.budget)
+    markdown = generate_markdown(
+        daily_data,
+        aggregated,
+        args.top,
+        args.budget,
+        methods_summary=methods_summary,
+    )
     
     # 出力
     if args.output:
