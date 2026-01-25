@@ -98,11 +98,16 @@ jobs:
           DRAW_NUMBER="${{ steps.draw.outputs.draw_number }}"
           if [ -n "$DRAW_NUMBER" ]; then
             OUTPUT_FILE="predictions/numbers4_${DRAW_NUMBER}.md"
-            python numbers4/summarize_from_json.py --draw "$DRAW_NUMBER" --output "$OUTPUT_FILE"
+            python numbers4/summarize_from_json.py \
+              --draw "$DRAW_NUMBER" \
+              --output "$OUTPUT_FILE" \
+              --methods-dir "predictions/daily/methods"
           else
             # 回号が取得できない場合は日付ベースで試行
             OUTPUT_FILE="predictions/numbers4_$(date '+%Y%m%d').md"
-            python numbers4/summarize_from_json.py --output "$OUTPUT_FILE"
+            python numbers4/summarize_from_json.py \
+              --output "$OUTPUT_FILE" \
+              --methods-dir "predictions/daily/methods"
           fi
           echo "output_file=$OUTPUT_FILE" >> $GITHUB_OUTPUT
       

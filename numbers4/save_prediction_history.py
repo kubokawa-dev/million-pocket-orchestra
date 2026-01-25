@@ -27,6 +27,9 @@ sys.path.insert(0, project_root)
 from tools.utils import get_db_connection
 
 
+PREDICTION_SAVE_LIMIT = 150
+
+
 def get_latest_draw_info(conn):
     """最新の抽選情報を取得"""
     cur = conn.cursor()
@@ -124,13 +127,14 @@ def save_ensemble_prediction(
         
         ensemble_prediction_id = cur.lastrowid
         
-        # 個別の予測候補を保存（上位50件）
-        for idx, row in predictions_df.head(50).iterrows():
+        # 個別の予測候補を保存（保存上限を拡大）
+        for idx, row in predictions_df.head(PREDICTION_SAVE_LIMIT).iterrows():
             # この番号を予測したモデルを特定
             contributing_models = []
             number = str(row['prediction'])
+            source_number = str(row.get('source_prediction', number))
             for model_name, predictions in predictions_by_model.items():
-                if number in predictions:
+                if number in predictions or source_number in predictions:
                     contributing_models.append(model_name)
             
             cur.execute("""
@@ -154,7 +158,7 @@ def save_ensemble_prediction(
         print(f"   📝 予測ID: {ensemble_prediction_id}")
         print(f"   🎯 対象抽選回: 第{target_draw_number}回" if target_draw_number else "   🎯 対象抽選回: 未設定")
         print(f"   📊 予測候補数: {len(predictions_df)}件")
-        print(f"   💾 保存した候補: {min(50, len(predictions_df))}件")
+        print(f"   💾 保存した候補: {min(PREDICTION_SAVE_LIMIT, len(predictions_df))}件")
         
         return ensemble_prediction_id
         

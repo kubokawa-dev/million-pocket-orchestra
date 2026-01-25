@@ -2,11 +2,11 @@ name: Daily Numbers4 Prediction
 
 on:
   schedule:
-    # 平日（月〜金）JST 6:00〜15:00 の毎時実行（計10回）
-    # JST 06:00〜08:00 = UTC 21:00〜23:00（前日）
-    - cron: '0 21-23 * * 0-4'  # 日〜木の21-23時 UTC = 月〜金の06-08時 JST
-    # JST 09:00〜15:00 = UTC 00:00〜06:00
-    - cron: '0 0-6 * * 1-5'    # 月〜金の00-06時 UTC = 月〜金の09-15時 JST
+    # 平日（月〜金）JST 3:00〜11:30 の30分おき実行（計18回）
+    # JST 03:00〜08:30 = UTC 18:00〜23:30（前日）
+    - cron: '0,30 18-23 * * 0-4'  # 日〜木の18-23時 UTC = 月〜金の03:00〜08:30 JST
+    # JST 09:00〜11:30 = UTC 00:00〜02:30
+    - cron: '0,30 0-2 * * 1-5'    # 月〜金の00-02時 UTC = 月〜金の09:00〜11:30 JST
   workflow_dispatch:  # 手動実行も可能
 
 jobs:
@@ -48,8 +48,113 @@ jobs:
           echo "📂 Loading historical data from CSV files..."
           python tools/load_csv_to_db.py
       
+      - name: Select method batch
+        id: batch
+        run: |
+          NOW_JST=$(TZ=Asia/Tokyo date +%H%M)
+          case "$NOW_JST" in
+            0300) SLOT=0 ;;
+            0330) SLOT=1 ;;
+            0400) SLOT=2 ;;
+            0430) SLOT=3 ;;
+            0500) SLOT=4 ;;
+            0530) SLOT=5 ;;
+            0600) SLOT=6 ;;
+            0630) SLOT=7 ;;
+            0700) SLOT=8 ;;
+            0730) SLOT=9 ;;
+            0800) SLOT=10 ;;
+            0830) SLOT=11 ;;
+            0900) SLOT=12 ;;
+            0930) SLOT=13 ;;
+            1000) SLOT=14 ;;
+            1030) SLOT=15 ;;
+            1100) SLOT=16 ;;
+            1130) SLOT=17 ;;
+            *) SLOT=0 ;;
+          esac
+          
+          case "$SLOT" in
+            0)  METHODS="box_model,ml_neighborhood" ;;
+            1)  METHODS="even_odd_pattern,low_sum_specialist" ;;
+            2)  METHODS="sequential_pattern,cold_revival" ;;
+            3)  METHODS="hot_pair,box_pattern" ;;
+            4)  METHODS="digit_freq_box,global_frequency" ;;
+            5)  METHODS="lightgbm,state_chain" ;;
+            6)  METHODS="box_model,ml_neighborhood" ;;
+            7)  METHODS="even_odd_pattern,low_sum_specialist" ;;
+            8)  METHODS="sequential_pattern,cold_revival" ;;
+            9)  METHODS="hot_pair,box_pattern" ;;
+            10) METHODS="digit_freq_box,global_frequency" ;;
+            11) METHODS="lightgbm,state_chain" ;;
+            12) METHODS="box_model,ml_neighborhood" ;;
+            13) METHODS="even_odd_pattern,low_sum_specialist" ;;
+            14) METHODS="sequential_pattern,cold_revival" ;;
+            15) METHODS="hot_pair,box_pattern" ;;
+            16) METHODS="digit_freq_box,global_frequency" ;;
+            17) METHODS="lightgbm,state_chain" ;;
+          esac
+          
+          if [ "$SLOT" -eq 0 ]; then
+            RUN_ENSEMBLE="true"
+          else
+            RUN_ENSEMBLE="false"
+          fi
+          
+          echo "slot=$SLOT" >> $GITHUB_OUTPUT
+          echo "methods=$METHODS" >> $GITHUB_OUTPUT
+          echo "run_ensemble=$RUN_ENSEMBLE" >> $GITHUB_OUTPUT
+          echo "🧭 Slot: $SLOT"
+          echo "🧪 Methods: $METHODS"
+          echo "🔮 Run ensemble: $RUN_ENSEMBLE"
+      
       - name: Run Numbers4 prediction pipeline
+        if: steps.batch.outputs.run_ensemble == 'true'
         run: python tools/run_numbers4_pipeline.py
+      
+      - name: Run Numbers4 method predictions
+        run: |
+          python tools/run_numbers4_method_predictions.py \
+            --methods "${{ steps.batch.outputs.methods }}" \
+            --limit 200 \
+            --top 20
+      
+      - name: Write prediction methods summary
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          
+          preds_dir = Path("predictions/daily")
+          files = sorted(preds_dir.glob("numbers4_*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+          if not files:
+              print("No prediction JSON found.")
+              raise SystemExit(0)
+          
+          data = json.loads(files[0].read_text(encoding="utf-8"))
+          if not data.get("predictions"):
+              print("No prediction entries in latest JSON.")
+              raise SystemExit(0)
+          
+          latest = data["predictions"][-1]
+          weights = latest.get("ensemble_weights") or {}
+          
+          lines = []
+          lines.append("## 予測手法（アンサンブル重み）")
+          if not weights:
+              lines.append("- 重み情報が見つかりませんでした")
+          else:
+              for name, weight in sorted(weights.items(), key=lambda x: (-x[1], x[0])):
+                  lines.append(f"- `{name}`: {weight}")
+          
+          summary = "\n".join(lines)
+          summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+          if summary_path:
+              with open(summary_path, "a", encoding="utf-8") as f:
+                  f.write(summary + "\n")
+          print(summary)
+          PY
       
       - name: Commit prediction JSON and CSV
         run: |
@@ -59,6 +164,9 @@ jobs:
           # predictions/daily/ ディレクトリのJSONをコミット (新形式: numbers4_*.json)
           git add predictions/daily/numbers4_*.json || true
           git add predictions/daily/*.json || true
+          
+          # 手法別予測JSON
+          git add predictions/daily/methods/**/numbers4_*.json || true
           
           # numbers4/ ディレクトリのCSVもコミット（スクレイピング結果）
           git add numbers4/*.csv || true
