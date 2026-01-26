@@ -4682,8 +4682,1178 @@
           ]
         }
       ]
+    },
+    {
+      "time": "2026-01-26T00:21:04.578429+00:00",
+      "time_jst": "09:21",
+      "ensemble_weights": {
+        "box_model": 45.0,
+        "ml_neighborhood": 30.0,
+        "even_odd_pattern": 40.0,
+        "low_sum_specialist": 35.0,
+        "sequential_pattern": 25.0,
+        "cold_revival": 22.0,
+        "hot_pair": 18.0,
+        "box_pattern": 16.0,
+        "digit_freq_box": 14.0,
+        "state_chain": 10.0,
+        "transition_probability": 12.0,
+        "global_frequency": 18.0,
+        "digit_repetition": 4.0,
+        "digit_continuation": 3.0,
+        "realistic_frequency": 4.0,
+        "large_change": 8.0,
+        "advanced_heuristics": 3.0,
+        "exploratory": 10.0,
+        "extreme_patterns": 3.0,
+        "basic_stats": 2.0,
+        "ml_model_new": 2.0,
+        "lightgbm": 12.0
+      },
+      "top_predictions": [
+        {
+          "rank": 1,
+          "number": "6222",
+          "score": 106.08,
+          "similar_patterns": [
+            {
+              "number": "0522",
+              "description": "ML高確率で2桁変更",
+              "score": -12.0387
+            },
+            {
+              "number": "0212",
+              "description": "ML高確率で2桁変更",
+              "score": -12.1675
+            },
+            {
+              "number": "6512",
+              "description": "ML高確率で2桁変更",
+              "score": -12.4884
+            },
+            {
+              "number": "0225",
+              "description": "ML高確率で2桁変更",
+              "score": -13.1264
+            },
+            {
+              "number": "6525",
+              "description": "ML高確率で2桁変更",
+              "score": -13.3419
+            },
+            {
+              "number": "6215",
+              "description": "ML高確率で2桁変更",
+              "score": -13.5761
+            },
+            {
+              "number": "0222",
+              "description": "ML高確率で1桁目だけ変更",
+              "score": -17.2659
+            },
+            {
+              "number": "0220",
+              "description": "ML高確率で2桁変更",
+              "score": -17.3917
+            },
+            {
+              "number": "0221",
+              "description": "ML高確率で2桁変更",
+              "score": -17.4377
+            },
+            {
+              "number": "6522",
+              "description": "ML高確率で2桁目だけ変更",
+              "score": -17.5594
+            }
+          ]
+        },
+        {
+          "rank": 2,
+          "number": "2224",
+          "score": 101.84,
+          "similar_patterns": [
+            {
+              "number": "0524",
+              "description": "ML分布サンプリング(近傍探索)",
+              "score": -11.8973
+            },
+            {
+              "number": "2514",
+              "description": "ML高確率で2桁変更",
+              "score": -11.9886
+            },
+            {
+              "number": "0214",
+              "description": "ML高確率で2桁変更",
+              "score": -12.1082
+            },
+            {
+              "number": "2525",
+              "description": "ML高確率で2桁変更",
+              "score": -12.9496
+            },
+            {
+              "number": "0225",
+              "description": "ML分布サンプリング(近傍探索)",
+              "score": -13.1264
+            },
+            {
+              "number": "2215",
+              "description": "ML高確率で2桁変更",
+              "score": -13.1962
+            },
+            {
+              "number": "2524",
+              "description": "ML高確率で2桁目だけ変更",
+              "score": -17.058
+            },
+            {
+              "number": "0224",
+              "description": "ML高確率で1桁目だけ変更",
+              "score": -17.2066
+            },
+            {
+              "number": "2214",
+              "description": "ML高確率で3桁目だけ変更",
+              "score": -17.3277
+            },
+            {
+              "number": "1524",
+              "description": "ML高確率で2桁変更",
+              "score": -17.3599
+            }
+          ]
+        },
+        {
+          "rank": 3,
+          "number": "4444",
+          "score": 94.25,
+          "similar_patterns": [
+            {
+              "number": "0544",
+              "description": "ML高確率で2桁変更",
+              "score": -12.129
+            },
+            {
+              "number": "0414",
+              "description": "ML高確率で2桁変更",
+              "score": -12.2641
+            },
+            {
+              "number": "4514",
+              "description": "ML高確率で2桁変更",
+              "score": -12.3413
+            },
+            {
+              "number": "0445",
+              "description": "ML高確率で2桁変更",
+              "score": -13.4319
+            },
+            {
+              "number": "4545",
+              "description": "ML高確率で2桁変更",
+              "score": -13.5446
+            },
+            {
+              "number": "4415",
+              "description": "ML高確率で2桁変更",
+              "score": -13.6442
+            },
+            {
+              "number": "0444",
+              "description": "ML高確率で1桁目だけ変更",
+              "score": -17.5411
+            },
+            {
+              "number": "1544",
+              "description": "ML高確率で2桁変更",
+              "score": -17.5933
+            },
+            {
+              "number": "4544",
+              "description": "ML高確率で2桁目だけ変更",
+              "score": -17.6501
+            },
+            {
+              "number": "1414",
+              "description": "ML高確率で2桁変更",
+              "score": -17.7053
+            }
+          ]
+        },
+        {
+          "rank": 4,
+          "number": "2222",
+          "score": 90.96,
+          "similar_patterns": [
+            {
+              "number": "0522",
+              "description": "ML高確率で2桁変更",
+              "score": -12.0387
+            },
+            {
+              "number": "2512",
+              "description": "ML分布サンプリング(近傍探索)",
+              "score": -12.1085
+            },
+            {
+              "number": "0212",
+              "description": "ML高確率で2桁変更",
+              "score": -12.1675
+            },
+            {
+              "number": "2525",
+              "description": "ML高確率で2桁変更",
+              "score": -12.9496
+            },
+            {
+              "number": "0225",
+              "description": "ML高確率で2桁変更",
+              "score": -13.1264
+            },
+            {
+              "number": "2215",
+              "description": "ML高確率で2桁変更",
+              "score": -13.1962
+            },
+            {
+              "number": "2522",
+              "description": "ML高確率で2桁目だけ変更",
+              "score": -17.1761
+            },
+            {
+              "number": "0222",
+              "description": "ML高確率で1桁目だけ変更",
+              "score": -17.2659
+            },
+            {
+              "number": "2521",
+              "description": "ML高確率で2桁変更",
+              "score": -17.3786
+            },
+            {
+              "number": "2520",
+              "description": "ML高確率で2桁変更",
+              "score": -17.384
+            }
+          ]
+        },
+        {
+          "rank": 5,
+          "number": "3333",
+          "score": 83.51,
+          "similar_patterns": [
+            {
+              "number": "0533",
+              "description": "ML高確率で2桁変更",
+              "score": -11.9975
+            },
+            {
+              "number": "0313",
+              "description": "ML分布サンプリング(近傍探索)",
+              "score": -12.1957
+            },
+            {
+              "number": "3513",
+              "description": "ML高確率で2桁変更",
+              "score": -12.2537
+            },
+            {
+              "number": "0335",
+              "description": "ML分布サンプリング(近傍探索)",
+              "score": -13.2387
+            },
+            {
+              "number": "3535",
+              "description": "ML高確率で2桁変更",
+              "score": -13.2675
+            },
+            {
+              "number": "3315",
+              "description": "ML高確率で2桁変更",
+              "score": -13.4948
+            },
+            {
+              "number": "0333",
+              "description": "ML高確率で1桁目だけ変更",
+              "score": -17.3976
+            },
+            {
+              "number": "3533",
+              "description": "ML高確率で2桁目だけ変更",
+              "score": -17.3984
+            },
+            {
+              "number": "1533",
+              "description": "ML高確率で2桁変更",
+              "score": -17.4601
+            },
+            {
+              "number": "0330",
+              "description": "ML高確率で2桁変更",
+              "score": -17.586
+            }
+          ]
+        },
+        {
+          "rank": 6,
+          "number": "1111",
+          "score": 80.45,
+          "similar_patterns": [
+            {
+              "number": "0511",
+              "description": "ML分布サンプリング(近傍探索)",
+              "score": -5.812
+            },
+            {
+              "number": "1515",
+              "description": "ML高確率で2桁変更",
+              "score": -6.8813
+            },
+            {
+              "number": "0115",
+              "description": "ML分布サンプリング(近傍探索)",
+              "score": -7.479
+            },
+            {
+              "number": "1511",
+              "description": "ML高確率で2桁目だけ変更",
+              "score": -10.6545
+            },
+            {
+              "number": "0111",
+              "description": "ML高確率で1桁目だけ変更",
+              "score": -11.1402
+            },
+            {
+              "number": "1510",
+              "description": "ML高確率で2桁変更",
+              "score": -11.2585
+            },
+            {
+              "number": "1518",
+              "description": "ML分布サンプリング(近傍探索)",
+              "score": -11.5427
+            },
+            {
+              "number": "1517",
+              "description": "ML分布サンプリング(近傍探索)",
+              "score": -11.5626
+            },
+            {
+              "number": "0911",
+              "description": "ML高確率で2桁変更",
+              "score": -11.5726
+            },
+            {
+              "number": "1519",
+              "description": "ML分布サンプリング(近傍探索)",
+              "score": -11.6357
+            }
+          ]
+        },
+        {
+          "rank": 7,
+          "number": "0615",
+          "score": 76.25,
+          "similar_patterns": [
+            {
+              "number": "0515",
+              "description": "ML高確率で2桁目だけ変更",
+              "score": -0.7687
+            },
+            {
+              "number": "0516",
+              "description": "並び替え(ボックス)",
+              "score": -5.5863
+            },
+            {
+              "number": "0510",
+              "description": "ML高確率で2桁変更",
+              "score": -5.7661
+            },
+            {
+              "number": "0511",
+              "description": "ML高確率で2桁変更",
+              "score": -5.812
+            },
+            {
+              "number": "0519",
+              "description": "ML分布サンプリング(近傍探索)",
+              "score": -6.1699
+            },
+            {
+              "number": "0514",
+              "description": "ML高確率で2桁変更",
+              "score": -6.1797
+            },
+            {
+              "number": "0513",
+              "description": "ML高確率で2桁変更",
+              "score": -6.2276
+            },
+            {
+              "number": "0915",
+              "description": "ML高確率で2桁目だけ変更",
+              "score": -6.4969
+            },
+            {
+              "number": "0715",
+              "description": "ML分布サンプリング(近傍探索)",
+              "score": -6.6223
+            },
+            {
+              "number": "0015",
+              "description": "ML高確率で2桁目だけ変更",
+              "score": -6.704
+            }
+          ]
+        },
+        {
+          "rank": 8,
+          "number": "5555",
+          "score": 71.37,
+          "similar_patterns": [
+            {
+              "number": "0515",
+              "description": "ML分布サンプリング(近傍探索)",
+              "score": -1.4187
+            },
+            {
+              "number": "0555",
+              "description": "ML高確率で1桁目だけ変更",
+              "score": -6.3715
+            },
+            {
+              "number": "5515",
+              "description": "ML高確率で3桁目だけ変更",
+              "score": -6.7182
+            },
+            {
+              "number": "1515",
+              "description": "ML高確率で2桁変更",
+              "score": -6.8813
+            },
+            {
+              "number": "0525",
+              "description": "ML高確率で2桁変更",
+              "score": -7.1372
+            },
+            {
+              "number": "0535",
+              "description": "ML高確率で2桁変更",
+              "score": -7.2118
+            },
+            {
+              "number": "2515",
+              "description": "ML高確率で2桁変更",
+              "score": -7.2293
+            },
+            {
+              "number": "0545",
+              "description": "ML高確率で2桁変更",
+              "score": -7.3706
+            },
+            {
+              "number": "3515",
+              "description": "ML高確率で2桁変更",
+              "score": -7.4696
+            },
+            {
+              "number": "4515",
+              "description": "ML分布サンプリング(近傍探索)",
+              "score": -7.5836
+            }
+          ]
+        },
+        {
+          "rank": 9,
+          "number": "6444",
+          "score": 70.75,
+          "similar_patterns": [
+            {
+              "number": "0544",
+              "description": "ML高確率で2桁変更",
+              "score": -12.129
+            },
+            {
+              "number": "0414",
+              "description": "ML高確率で2桁変更",
+              "score": -12.2641
+            },
+            {
+              "number": "6514",
+              "description": "ML高確率で2桁変更",
+              "score": -12.375
+            },
+            {
+              "number": "0445",
+              "description": "ML高確率で2桁変更",
+              "score": -13.4319
+            },
+            {
+              "number": "6415",
+              "description": "ML分布サンプリング(近傍探索)",
+              "score": -13.6779
+            },
+            {
+              "number": "6545",
+              "description": "ML高確率で2桁変更",
+              "score": -13.6837
+            },
+            {
+              "number": "0444",
+              "description": "ML高確率で1桁目だけ変更",
+              "score": -17.5411
+            },
+            {
+              "number": "1544",
+              "description": "ML高確率で2桁変更",
+              "score": -17.5933
+            },
+            {
+              "number": "1414",
+              "description": "ML分布サンプリング(近傍探索)",
+              "score": -17.7053
+            },
+            {
+              "number": "6544",
+              "description": "ML高確率で2桁目だけ変更",
+              "score": -17.7379
+            }
+          ]
+        },
+        {
+          "rank": 10,
+          "number": "6666",
+          "score": 69.12,
+          "similar_patterns": [
+            {
+              "number": "0616",
+              "description": "ML高確率で2桁変更",
+              "score": -12.0594
+            },
+            {
+              "number": "0566",
+              "description": "ML高確率で2桁変更",
+              "score": -12.2105
+            },
+            {
+              "number": "6516",
+              "description": "ML高確率で2桁変更",
+              "score": -12.391
+            },
+            {
+              "number": "0665",
+              "description": "ML高確率で2桁変更",
+              "score": -13.315
+            },
+            {
+              "number": "6615",
+              "description": "ML高確率で2桁変更",
+              "score": -13.4955
+            },
+            {
+              "number": "6565",
+              "description": "ML分布サンプリング(近傍探索)",
+              "score": -13.8602
+            },
+            {
+              "number": "0666",
+              "description": "ML高確率で1桁目だけ変更",
+              "score": -17.4372
+            },
+            {
+              "number": "1616",
+              "description": "ML高確率で2桁変更",
+              "score": -17.5237
+            },
+            {
+              "number": "6616",
+              "description": "ML高確率で3桁目だけ変更",
+              "score": -17.6683
+            },
+            {
+              "number": "0656",
+              "description": "ML高確率で2桁変更",
+              "score": -17.6684
+            }
+          ]
+        },
+        {
+          "rank": 11,
+          "number": "1811",
+          "score": 64.99,
+          "similar_patterns": [
+            {
+              "number": "0511",
+              "description": "ML高確率で2桁変更",
+              "score": -5.812
+            },
+            {
+              "number": "1515",
+              "description": "ML高確率で2桁変更",
+              "score": -6.8813
+            },
+            {
+              "number": "0815",
+              "description": "ML高確率で2桁変更",
+              "score": -7.2479
+            },
+            {
+              "number": "1511",
+              "description": "ML高確率で2桁目だけ変更",
+              "score": -10.6545
+            },
+            {
+              "number": "0811",
+              "description": "ML高確率で1桁目だけ変更",
+              "score": -11.0269
+            },
+            {
+              "number": "1510",
+              "description": "ML高確率で2桁変更",
+              "score": -11.2585
+            },
+            {
+              "number": "1514",
+              "description": "ML高確率で2桁変更",
+              "score": -11.6414
+            },
+            {
+              "number": "0011",
+              "description": "ML高確率で2桁変更",
+              "score": -11.6653
+            },
+            {
+              "number": "1513",
+              "description": "ML高確率で2桁変更",
+              "score": -11.6688
+            },
+            {
+              "number": "2511",
+              "description": "ML高確率で2桁変更",
+              "score": -11.6815
+            }
+          ]
+        },
+        {
+          "rank": 12,
+          "number": "3373",
+          "score": 64.83,
+          "similar_patterns": [
+            {
+              "number": "0313",
+              "description": "ML分布サンプリング(近傍探索)",
+              "score": -12.1957
+            },
+            {
+              "number": "0573",
+              "description": "ML高確率で2桁変更",
+              "score": -12.211
+            },
+            {
+              "number": "3513",
+              "description": "ML高確率で2桁変更",
+              "score": -12.2537
+            },
+            {
+              "number": "0375",
+              "description": "ML分布サンプリング(近傍探索)",
+              "score": -13.4521
+            },
+            {
+              "number": "3315",
+              "description": "ML高確率で2桁変更",
+              "score": -13.4948
+            },
+            {
+              "number": "3575",
+              "description": "ML高確率で2桁変更",
+              "score": -13.5953
+            },
+            {
+              "number": "0373",
+              "description": "ML高確率で1桁目だけ変更",
+              "score": -17.5846
+            },
+            {
+              "number": "3573",
+              "description": "ML高確率で2桁目だけ変更",
+              "score": -17.621
+            },
+            {
+              "number": "3313",
+              "description": "ML高確率で3桁目だけ変更",
+              "score": -17.6324
+            },
+            {
+              "number": "1573",
+              "description": "ML高確率で2桁変更",
+              "score": -17.6768
+            }
+          ]
+        },
+        {
+          "rank": 13,
+          "number": "1141",
+          "score": 63.5,
+          "similar_patterns": [
+            {
+              "number": "1511",
+              "description": "ML高確率で2桁変更",
+              "score": -11.3045
+            },
+            {
+              "number": "0111",
+              "description": "ML高確率で2桁変更",
+              "score": -11.7902
+            },
+            {
+              "number": "0541",
+              "description": "ML高確率で2桁変更",
+              "score": -11.7996
+            },
+            {
+              "number": "1545",
+              "description": "ML高確率で2桁変更",
+              "score": -12.8356
+            },
+            {
+              "number": "1115",
+              "description": "ML高確率で2桁変更",
+              "score": -12.9714
+            },
+            {
+              "number": "0145",
+              "description": "ML高確率で2桁変更",
+              "score": -13.4666
+            },
+            {
+              "number": "1541",
+              "description": "ML高確率で2桁目だけ変更",
+              "score": -16.6113
+            },
+            {
+              "number": "1111",
+              "description": "ML高確率で3桁目だけ変更",
+              "score": -16.6327
+            },
+            {
+              "number": "1411",
+              "description": "並び替え(ボックス)",
+              "score": -16.7376
+            },
+            {
+              "number": "1551",
+              "description": "ML高確率で2桁変更",
+              "score": -16.9098
+            }
+          ]
+        },
+        {
+          "rank": 14,
+          "number": "6622",
+          "score": 57.93,
+          "similar_patterns": [
+            {
+              "number": "0522",
+              "description": "ML高確率で2桁変更",
+              "score": -12.0387
+            },
+            {
+              "number": "0612",
+              "description": "ML分布サンプリング(近傍探索)",
+              "score": -12.1923
+            },
+            {
+              "number": "6512",
+              "description": "ML高確率で2桁変更",
+              "score": -12.4884
+            },
+            {
+              "number": "0625",
+              "description": "ML高確率で2桁変更",
+              "score": -13.0103
+            },
+            {
+              "number": "6525",
+              "description": "ML分布サンプリング(近傍探索)",
+              "score": -13.3419
+            },
+            {
+              "number": "6615",
+              "description": "ML分布サンプリング(近傍探索)",
+              "score": -13.4955
+            },
+            {
+              "number": "0622",
+              "description": "ML高確率で1桁目だけ変更",
+              "score": -17.2394
+            },
+            {
+              "number": "0620",
+              "description": "ML高確率で2桁変更",
+              "score": -17.4165
+            },
+            {
+              "number": "0621",
+              "description": "ML分布サンプリング(近傍探索)",
+              "score": -17.4624
+            },
+            {
+              "number": "1522",
+              "description": "ML高確率で2桁変更",
+              "score": -17.4799
+            }
+          ]
+        },
+        {
+          "rank": 15,
+          "number": "0000",
+          "score": 56.71,
+          "similar_patterns": [
+            {
+              "number": "0510",
+              "description": "ML分布サンプリング(近傍探索)",
+              "score": -5.7661
+            },
+            {
+              "number": "0015",
+              "description": "ML分布サンプリング(近傍探索)",
+              "score": -7.354
+            },
+            {
+              "number": "0505",
+              "description": "ML分布サンプリング(近傍探索)",
+              "score": -7.5542
+            },
+            {
+              "number": "0010",
+              "description": "ML高確率で3桁目だけ変更",
+              "score": -10.9693
+            },
+            {
+              "number": "0500",
+              "description": "ML高確率で2桁目だけ変更",
+              "score": -11.2208
+            },
+            {
+              "number": "0550",
+              "description": "ML高確率で2桁変更",
+              "score": -11.432
+            },
+            {
+              "number": "0520",
+              "description": "ML高確率で2桁変更",
+              "score": -11.5145
+            },
+            {
+              "number": "0910",
+              "description": "ML高確率で2桁変更",
+              "score": -11.5574
+            },
+            {
+              "number": "0530",
+              "description": "ML高確率で2桁変更",
+              "score": -11.618
+            },
+            {
+              "number": "0011",
+              "description": "ML高確率で2桁変更",
+              "score": -11.6653
+            }
+          ]
+        },
+        {
+          "rank": 16,
+          "number": "7557",
+          "score": 49.41,
+          "similar_patterns": [
+            {
+              "number": "0517",
+              "description": "ML高確率で2桁変更",
+              "score": -6.0983
+            },
+            {
+              "number": "0555",
+              "description": "ML高確率で2桁変更",
+              "score": -7.0215
+            },
+            {
+              "number": "7515",
+              "description": "ML高確率で2桁変更",
+              "score": -7.562
+            },
+            {
+              "number": "0557",
+              "description": "ML高確率で1桁目だけ変更",
+              "score": -11.0573
+            },
+            {
+              "number": "0550",
+              "description": "ML高確率で2桁変更",
+              "score": -11.432
+            },
+            {
+              "number": "0551",
+              "description": "ML分布サンプリング(近傍探索)",
+              "score": -11.4472
+            },
+            {
+              "number": "1517",
+              "description": "ML分布サンプリング(近傍探索)",
+              "score": -11.5626
+            },
+            {
+              "number": "0558",
+              "description": "ML分布サンプリング(近傍探索)",
+              "score": -11.6896
+            },
+            {
+              "number": "7517",
+              "description": "ML高確率で3桁目だけ変更",
+              "score": -11.7017
+            },
+            {
+              "number": "0553",
+              "description": "ML高確率で2桁変更",
+              "score": -11.804
+            }
+          ]
+        },
+        {
+          "rank": 17,
+          "number": "4244",
+          "score": 45.31,
+          "similar_patterns": [
+            {
+              "number": "0214",
+              "description": "ML高確率で2桁変更",
+              "score": -12.1082
+            },
+            {
+              "number": "0544",
+              "description": "ML高確率で2桁変更",
+              "score": -12.129
+            },
+            {
+              "number": "4514",
+              "description": "ML高確率で2桁変更",
+              "score": -12.3413
+            },
+            {
+              "number": "0245",
+              "description": "ML高確率で2桁変更",
+              "score": -13.3348
+            },
+            {
+              "number": "4545",
+              "description": "ML高確率で2桁変更",
+              "score": -13.5446
+            },
+            {
+              "number": "4215",
+              "description": "ML分布サンプリング(近傍探索)",
+              "score": -13.5454
+            },
+            {
+              "number": "0244",
+              "description": "ML高確率で1桁目だけ変更",
+              "score": -17.4458
+            },
+            {
+              "number": "1544",
+              "description": "ML高確率で2桁変更",
+              "score": -17.5933
+            },
+            {
+              "number": "4544",
+              "description": "ML高確率で2桁目だけ変更",
+              "score": -17.6501
+            },
+            {
+              "number": "4214",
+              "description": "ML高確率で3桁目だけ変更",
+              "score": -17.6555
+            }
+          ]
+        },
+        {
+          "rank": 18,
+          "number": "1179",
+          "score": 45.0,
+          "similar_patterns": [
+            {
+              "number": "1519",
+              "description": "ML高確率で2桁変更",
+              "score": -11.6357
+            },
+            {
+              "number": "0119",
+              "description": "ML高確率で2桁変更",
+              "score": -12.2626
+            },
+            {
+              "number": "0579",
+              "description": "ML高確率で2桁変更",
+              "score": -12.3497
+            },
+            {
+              "number": "1575",
+              "description": "ML高確率で2桁変更",
+              "score": -12.8986
+            },
+            {
+              "number": "1115",
+              "description": "ML高確率で2桁変更",
+              "score": -12.9714
+            },
+            {
+              "number": "0175",
+              "description": "ML高確率で2桁変更",
+              "score": -13.5179
+            },
+            {
+              "number": "1719",
+              "description": "並び替え(ボックス)",
+              "score": -16.8969
+            },
+            {
+              "number": "1119",
+              "description": "ML高確率で3桁目だけ変更",
+              "score": -17.0752
+            },
+            {
+              "number": "1579",
+              "description": "ML高確率で2桁目だけ変更",
+              "score": -17.2196
+            },
+            {
+              "number": "1110",
+              "description": "ML高確率で2桁変更",
+              "score": -17.2367
+            }
+          ]
+        },
+        {
+          "rank": 19,
+          "number": "4004",
+          "score": 40.23,
+          "similar_patterns": [
+            {
+              "number": "0014",
+              "description": "ML分布サンプリング(近傍探索)",
+              "score": -12.0843
+            },
+            {
+              "number": "0504",
+              "description": "ML分布サンプリング(近傍探索)",
+              "score": -12.3357
+            },
+            {
+              "number": "4514",
+              "description": "ML高確率で2桁変更",
+              "score": -12.3413
+            },
+            {
+              "number": "0005",
+              "description": "ML高確率で2桁変更",
+              "score": -13.4588
+            },
+            {
+              "number": "4015",
+              "description": "ML高確率で2桁変更",
+              "score": -13.5821
+            },
+            {
+              "number": "4505",
+              "description": "ML高確率で2桁変更",
+              "score": -13.7158
+            },
+            {
+              "number": "0044",
+              "description": "並び替え(ボックス)",
+              "score": -17.5232
+            },
+            {
+              "number": "0004",
+              "description": "ML高確率で1桁目だけ変更",
+              "score": -17.539
+            },
+            {
+              "number": "1014",
+              "description": "ML高確率で2桁変更",
+              "score": -17.5767
+            },
+            {
+              "number": "4014",
+              "description": "ML高確率で3桁目だけ変更",
+              "score": -17.7136
+            }
+          ]
+        },
+        {
+          "rank": 20,
+          "number": "1515",
+          "score": 39.35,
+          "similar_patterns": [
+            {
+              "number": "0515",
+              "description": "ML高確率で1桁目だけ変更",
+              "score": -0.7687
+            },
+            {
+              "number": "0510",
+              "description": "ML分布サンプリング(近傍探索)",
+              "score": -5.7661
+            },
+            {
+              "number": "0511",
+              "description": "ML高確率で2桁変更",
+              "score": -5.812
+            },
+            {
+              "number": "0517",
+              "description": "ML分布サンプリング(近傍探索)",
+              "score": -6.0983
+            },
+            {
+              "number": "0514",
+              "description": "ML高確率で2桁変更",
+              "score": -6.1797
+            },
+            {
+              "number": "0516",
+              "description": "ML分布サンプリング(近傍探索)",
+              "score": -6.1863
+            },
+            {
+              "number": "0513",
+              "description": "ML高確率で2桁変更",
+              "score": -6.2276
+            },
+            {
+              "number": "0512",
+              "description": "ML分布サンプリング(近傍探索)",
+              "score": -6.2903
+            },
+            {
+              "number": "2515",
+              "description": "ML高確率で1桁目だけ変更",
+              "score": -6.5793
+            },
+            {
+              "number": "5515",
+              "description": "ML高確率で1桁目だけ変更",
+              "score": -6.7182
+            }
+          ]
+        }
+      ]
     }
   ],
-  "last_updated": "2026-01-25T23:06:46.531669+00:00",
-  "prediction_count": 4
+  "last_updated": "2026-01-26T00:21:04.578429+00:00",
+  "prediction_count": 5
 }
