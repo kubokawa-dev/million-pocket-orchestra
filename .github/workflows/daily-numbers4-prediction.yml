@@ -51,28 +51,20 @@ jobs:
       - name: Select method batch
         id: batch
         run: |
-          NOW_JST=$(TZ=Asia/Tokyo date +%H%M)
-          case "$NOW_JST" in
-            0300) SLOT=0 ;;
-            0330) SLOT=1 ;;
-            0400) SLOT=2 ;;
-            0430) SLOT=3 ;;
-            0500) SLOT=4 ;;
-            0530) SLOT=5 ;;
-            0600) SLOT=6 ;;
-            0630) SLOT=7 ;;
-            0700) SLOT=8 ;;
-            0730) SLOT=9 ;;
-            0800) SLOT=10 ;;
-            0830) SLOT=11 ;;
-            0900) SLOT=12 ;;
-            0930) SLOT=13 ;;
-            1000) SLOT=14 ;;
-            1030) SLOT=15 ;;
-            1100) SLOT=16 ;;
-            1130) SLOT=17 ;;
-            *) SLOT=0 ;;
-          esac
+          NOW_HOUR=$(TZ=Asia/Tokyo date +%H)
+          NOW_MIN=$(TZ=Asia/Tokyo date +%M)
+          HOUR=$((10#$NOW_HOUR))
+          MIN=$((10#$NOW_MIN))
+          
+          if [ "$HOUR" -lt 3 ] || [ "$HOUR" -gt 11 ]; then
+            SLOT=0
+          else
+            HALF=0
+            if [ "$MIN" -ge 30 ]; then
+              HALF=1
+            fi
+            SLOT=$(( (HOUR - 3) * 2 + HALF ))
+          fi
           
           case "$SLOT" in
             0)  METHODS="box_model,ml_neighborhood" ;;
