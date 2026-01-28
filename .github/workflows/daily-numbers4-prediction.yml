@@ -66,25 +66,14 @@ jobs:
             SLOT=$(( (HOUR - 3) * 2 + HALF ))
           fi
           
-          case "$SLOT" in
-            0)  METHODS="box_model,ml_neighborhood" ;;
-            1)  METHODS="even_odd_pattern,low_sum_specialist" ;;
-            2)  METHODS="sequential_pattern,cold_revival" ;;
-            3)  METHODS="hot_pair,box_pattern" ;;
-            4)  METHODS="digit_freq_box,global_frequency" ;;
-            5)  METHODS="lightgbm,state_chain" ;;
-            6)  METHODS="box_model,ml_neighborhood" ;;
-            7)  METHODS="even_odd_pattern,low_sum_specialist" ;;
-            8)  METHODS="sequential_pattern,cold_revival" ;;
-            9)  METHODS="hot_pair,box_pattern" ;;
-            10) METHODS="digit_freq_box,global_frequency" ;;
-            11) METHODS="lightgbm,state_chain" ;;
-            12) METHODS="box_model,ml_neighborhood" ;;
-            13) METHODS="even_odd_pattern,low_sum_specialist" ;;
-            14) METHODS="sequential_pattern,cold_revival" ;;
-            15) METHODS="hot_pair,box_pattern" ;;
-            16) METHODS="digit_freq_box,global_frequency" ;;
-            17) METHODS="lightgbm,state_chain" ;;
+          # 3グループ × 4メソッド = 12メソッド
+          # 18スロット ÷ 3グループ = 各メソッド6回ずつ実行
+          GROUP=$(( SLOT % 3 ))
+          
+          case "$GROUP" in
+            0) METHODS="box_model,ml_neighborhood,even_odd_pattern,low_sum_specialist" ;;
+            1) METHODS="sequential_pattern,cold_revival,hot_pair,box_pattern" ;;
+            2) METHODS="digit_freq_box,global_frequency,lightgbm,state_chain" ;;
           esac
           
           if [ "$SLOT" -eq 0 ]; then
@@ -94,9 +83,10 @@ jobs:
           fi
           
           echo "slot=$SLOT" >> $GITHUB_OUTPUT
+          echo "group=$GROUP" >> $GITHUB_OUTPUT
           echo "methods=$METHODS" >> $GITHUB_OUTPUT
           echo "run_ensemble=$RUN_ENSEMBLE" >> $GITHUB_OUTPUT
-          echo "🧭 Slot: $SLOT"
+          echo "🧭 Slot: $SLOT (Group: $GROUP)"
           echo "🧪 Methods: $METHODS"
           echo "🔮 Run ensemble: $RUN_ENSEMBLE"
       
