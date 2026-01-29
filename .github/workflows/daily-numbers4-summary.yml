@@ -2,9 +2,9 @@ name: Daily Numbers4 Summary & Notification
 
 on:
   schedule:
-    # 平日（月〜金）JST 16:30 に実行（予測完了を確実に待つため）
-    # JST 16:30 = UTC 07:30
-    - cron: '30 7 * * 1-5'
+    # 平日（月〜金）JST 12:00 に実行（予測完了後すぐ！）
+    # JST 12:00 = UTC 03:00
+    - cron: '0 3 * * 1-5'
   workflow_dispatch:  # 手動実行も可能
 
 jobs:
@@ -92,7 +92,56 @@ jobs:
             fi
           fi
       
+      - name: Check all methods completed
+        id: check_methods
+        run: |
+          DRAW_NUMBER="${{ steps.draw.outputs.draw_number }}"
+          if [ -z "$DRAW_NUMBER" ]; then
+            echo "⚠️ No draw number found, skipping method check"
+            echo "all_methods_ready=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          METHODS_DIR="predictions/daily/methods"
+          EXPECTED_METHODS="box_model ml_neighborhood even_odd_pattern low_sum_specialist sequential_pattern cold_revival hot_pair box_pattern digit_freq_box global_frequency lightgbm state_chain"
+          
+          MISSING=""
+          FOUND=0
+          TOTAL=0
+          
+          for METHOD in $EXPECTED_METHODS; do
+            TOTAL=$((TOTAL + 1))
+            FILE="${METHODS_DIR}/${METHOD}/numbers4_${DRAW_NUMBER}.json"
+            if [ -f "$FILE" ]; then
+              FOUND=$((FOUND + 1))
+              echo "✅ $METHOD - OK"
+            else
+              MISSING="${MISSING} ${METHOD}"
+              echo "❌ $METHOD - NOT FOUND"
+            fi
+          done
+          
+          echo "📊 メソッド状況: ${FOUND}/${TOTAL} 完了"
+          
+          if [ -n "$MISSING" ]; then
+            echo "⚠️ 未完了メソッド:${MISSING}"
+            # 8/12以上あればOKとする（一部失敗してもサマリー生成）
+            if [ $FOUND -ge 8 ]; then
+              echo "✅ ${FOUND}件完了しているのでサマリー生成を続行"
+              echo "all_methods_ready=true" >> $GITHUB_OUTPUT
+            else
+              echo "❌ 完了メソッドが少なすぎます（${FOUND}/12）"
+              echo "all_methods_ready=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "🎉 全メソッド完了！"
+            echo "all_methods_ready=true" >> $GITHUB_OUTPUT
+          fi
+          echo "found_count=$FOUND" >> $GITHUB_OUTPUT
+          echo "total_count=$TOTAL" >> $GITHUB_OUTPUT
+      
       - name: Generate summary from JSON
+        if: steps.check_methods.outputs.all_methods_ready == 'true'
         id: summary
         run: |
           DRAW_NUMBER="${{ steps.draw.outputs.draw_number }}"
@@ -112,6 +161,7 @@ jobs:
           echo "output_file=$OUTPUT_FILE" >> $GITHUB_OUTPUT
       
       - name: Generate budget plan (5-slot & 10-slot)
+        if: steps.check_methods.outputs.all_methods_ready == 'true'
         id: budget
         run: |
           DRAW_NUMBER="${{ steps.draw.outputs.draw_number }}"
@@ -124,6 +174,7 @@ jobs:
           fi
       
       - name: Commit summary
+        if: steps.check_methods.outputs.all_methods_ready == 'true'
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
@@ -139,8 +190,14 @@ jobs:
       
       - name: Summary
         run: |
-          echo "✅ Summary generation completed!"
-          echo "📄 Output: ${{ steps.summary.outputs.output_file }}"
+          if [ "${{ steps.check_methods.outputs.all_methods_ready }}" == "true" ]; then
+            echo "✅ Summary generation completed!"
+            echo "📄 Output: ${{ steps.summary.outputs.output_file }}"
+            echo "📊 Methods: ${{ steps.check_methods.outputs.found_count }}/${{ steps.check_methods.outputs.total_count }}"
+          else
+            echo "⚠️ Summary generation skipped (not enough methods completed)"
+            echo "📊 Methods: ${{ steps.check_methods.outputs.found_count }}/${{ steps.check_methods.outputs.total_count }}"
+          fi
       
       # ========================================
       # 通知設定（使いたいものをコメント解除してね！）
