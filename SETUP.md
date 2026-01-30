@@ -70,6 +70,18 @@ cp apps/mobile/.env.example apps/mobile/.env
 docker-compose up -d
 ```
 
+#### SQLiteを最新化（PostgreSQL → SQLite）
+
+```bash
+bash scripts/update_sqlite_from_docker.sh
+```
+
+#### Numbers4当選結果CSVの取り込み（任意）
+
+```bash
+bash scripts/import_numbers4_draws_csv.sh /path/to/numbers4_draws.csv
+```
+
 #### ローカルPostgreSQLを使用する場合
 
 DATABASE_URLを適切に設定してください。

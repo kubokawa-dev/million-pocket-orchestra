@@ -18,6 +18,9 @@ from typing import Dict, List, Optional
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
 
+# 攻めモード設定ファイル
+AGGRESSIVE_CONFIG_PATH = os.path.join(project_root, 'numbers4', 'aggressive_config.json')
+
 # 共通ユーティリティからインポート
 from numbers4.prediction_utils import (
     get_predictions_dir,
@@ -219,6 +222,220 @@ def get_box_type(number: str) -> tuple:
     else:
         # シングル: 1234
         return ("シングル", 24, "24通り")
+
+
+def get_digit_signature(number: str) -> str:
+    """同じ数字構成を判定するためのシグネチャ（並び替え同一判定）"""
+    return ''.join(sorted(number))
+
+
+def build_hit_priority_recommendations(aggregated: Dict, top_n: int = 10) -> List[Dict]:
+    """
+    当たり優先（カバー重視）の候補を作成
+    - ボックス通り数を最優先
+    - 安定度（出現率/順位/スコア）も加味
+    - 並び替えの重複を避けてカバーを広げる
+    """
+    candidates = []
+    for number, stats in aggregated.items():
+        box_type, box_count, box_desc = get_box_type(number)
+        coverage_score = box_count * 10
+        stability_score = (
+            stats['appearance_rate'] * 0.6 +
+            (21 - stats['best_rank']) * 1.5 +
+            stats['avg_score'] * 0.2
+        )
+        candidates.append({
+            'number': number,
+            'box_type': box_type,
+            'box_count': box_count,
+            'box_desc': box_desc,
+            'appearance_rate': stats['appearance_rate'],
+            'avg_score': stats['avg_score'],
+            'best_rank': stats['best_rank'],
+            'score': coverage_score + stability_score,
+            'signature': get_digit_signature(number),
+        })
+
+    candidates.sort(key=lambda x: (-x['score'], -x['box_count'], x['best_rank']))
+
+    selected = []
+    used_signatures = set()
+    for candidate in candidates:
+        if len(selected) >= top_n:
+            break
+        if candidate['signature'] in used_signatures:
+            continue
+        selected.append(candidate)
+        used_signatures.add(candidate['signature'])
+
+    if len(selected) < top_n:
+        for candidate in candidates:
+            if len(selected) >= top_n:
+                break
+            if candidate in selected:
+                continue
+            selected.append(candidate)
+
+    return selected
+
+
+def collect_similar_pattern_stats(predictions: List[Dict]) -> Dict[str, Dict]:
+    """類似パターンの出現回数などを集計"""
+    stats = defaultdict(lambda: {
+        'count': 0,
+        'min_score': None,
+        'descriptions': set(),
+        'parent_ranks': [],
+    })
+
+    for pred_entry in predictions:
+        for pred in pred_entry.get('top_predictions', []):
+            parent_rank = pred.get('rank', 999)
+            for sp in pred.get('similar_patterns', []):
+                num = sp.get('number')
+                if not num:
+                    continue
+                data = stats[num]
+                data['count'] += 1
+                data['parent_ranks'].append(parent_rank)
+                desc = sp.get('description') or ''
+                if desc:
+                    data['descriptions'].add(desc)
+                score = sp.get('score')
+                if score is not None:
+                    data['min_score'] = score if data['min_score'] is None else min(data['min_score'], score)
+
+    return dict(stats)
+
+
+def build_aggressive_recommendations(
+    daily_data: Dict,
+    aggregated: Dict,
+    top_n: int = 20,
+    config_override: Optional[Dict] = None,
+) -> List[Dict]:
+    """
+    攻めモード: 当たり最優先でカバーを最大化
+    - ボックス通り数を強く優先
+    - 類似パターンの出現回数を加点
+    - 並び替えの重複を避けてカバーを広げる
+    """
+    predictions = daily_data.get('predictions', [])
+    similar_stats = collect_similar_pattern_stats(predictions)
+    config = {
+        'coverage_weight_main': 12,
+        'coverage_weight_similar': 12,
+        'appearance_weight': 0.5,
+        'best_rank_weight': 1.2,
+        'avg_score_weight': 0.2,
+        'similar_bonus_main': 5,
+        'similar_bonus_similar': 6,
+        'both_bonus': 10,
+        'ml_bonus': 8,
+        'parent_rank_weight': 0.6,
+    }
+
+    # 外部設定があれば上書き
+    try:
+        if os.path.exists(AGGRESSIVE_CONFIG_PATH):
+            with open(AGGRESSIVE_CONFIG_PATH, 'r', encoding='utf-8') as f:
+                loaded = json.load(f)
+                if isinstance(loaded, dict):
+                    config.update(loaded)
+    except Exception:
+        pass
+    if isinstance(config_override, dict):
+        config.update(config_override)
+
+    candidates = []
+
+    # メイン予測候補
+    for number, stats in aggregated.items():
+        box_type, box_count, box_desc = get_box_type(number)
+        coverage_score = box_count * config['coverage_weight_main']
+        stability_score = (
+            stats['appearance_rate'] * config['appearance_weight'] +
+            (21 - stats['best_rank']) * config['best_rank_weight'] +
+            stats['avg_score'] * config['avg_score_weight']
+        )
+        similar = similar_stats.get(number, {})
+        similar_bonus = (similar.get('count', 0) * config['similar_bonus_main'])
+        both_bonus = config['both_bonus'] if number in similar_stats else 0
+        ml_bonus = config['ml_bonus'] if any('ML分布サンプリング' in d for d in similar.get('descriptions', [])) else 0
+
+        candidates.append({
+            'number': number,
+            'box_type': box_type,
+            'box_count': box_count,
+            'box_desc': box_desc,
+            'appearance_rate': stats['appearance_rate'],
+            'best_rank': stats['best_rank'],
+            'avg_score': stats['avg_score'],
+            'similar_count': similar.get('count', 0),
+            'source': 'both' if number in similar_stats else 'main',
+            'score': coverage_score + stability_score + similar_bonus + both_bonus + ml_bonus,
+            'signature': get_digit_signature(number),
+        })
+
+    # 類似パターン候補（メインにないもの）
+    for number, s in similar_stats.items():
+        if number in aggregated:
+            continue
+        box_type, box_count, box_desc = get_box_type(number)
+        coverage_score = box_count * config['coverage_weight_similar']
+        stability_score = (21 - min(s['parent_ranks'] or [999], default=999)) * config['parent_rank_weight']
+        similar_bonus = s.get('count', 0) * config['similar_bonus_similar']
+        ml_bonus = config['ml_bonus'] if any('ML分布サンプリング' in d for d in s.get('descriptions', [])) else 0
+
+        candidates.append({
+            'number': number,
+            'box_type': box_type,
+            'box_count': box_count,
+            'box_desc': box_desc,
+            'appearance_rate': 0,
+            'best_rank': min(s['parent_ranks']) if s['parent_ranks'] else 999,
+            'avg_score': s.get('min_score') or 0,
+            'similar_count': s.get('count', 0),
+            'source': 'similar',
+            'score': coverage_score + stability_score + similar_bonus + ml_bonus,
+            'signature': get_digit_signature(number),
+        })
+
+    candidates.sort(key=lambda x: (-x['score'], -x['box_count'], x['best_rank']))
+
+    selected = []
+    used_signatures = set()
+    for candidate in candidates:
+        if len(selected) >= top_n:
+            break
+        if candidate['signature'] in used_signatures:
+            continue
+        selected.append(candidate)
+        used_signatures.add(candidate['signature'])
+
+    if len(selected) < top_n:
+        for candidate in candidates:
+            if len(selected) >= top_n:
+                break
+            if candidate in selected:
+                continue
+            selected.append(candidate)
+
+    return selected
+
+
+def load_aggressive_config() -> Dict:
+    """攻めモード設定を読み込む（なければ空）"""
+    try:
+        if os.path.exists(AGGRESSIVE_CONFIG_PATH):
+            with open(AGGRESSIVE_CONFIG_PATH, 'r', encoding='utf-8') as f:
+                loaded = json.load(f)
+                if isinstance(loaded, dict):
+                    return loaded
+    except Exception:
+        pass
+    return {}
 
 
 def calculate_budget_recommendations(daily_data: Dict, aggregated: Dict, budget: int = 1000) -> List[Dict]:
@@ -441,6 +658,52 @@ def generate_markdown(
         
         md.append(f"| {rank_emoji} {rank} | `{number}` | {appearance_rate:.0f}% ({stats['appearances']}/{len(predictions)}) | {avg_score:.2f} | {best_rank}位 | {stability:.1f} |")
     
+    md.append("")
+
+    # 当たり優先（カバー重視）ランキング
+    hit_priority = build_hit_priority_recommendations(aggregated, top_n=10)
+    md.append("## 🎯 当たり優先（カバー重視）TOP10")
+    md.append("")
+    md.append("ボックス前提でカバー数を最大化。並び替えの重複を避けて選定。")
+    md.append("")
+    md.append("| 順位 | 番号 | タイプ | カバー | 出現率 | 最高順位 | 目安スコア |")
+    md.append("|:---:|:---:|:---:|:---:|:---:|:---:|:---:|")
+    for rank, item in enumerate(hit_priority, 1):
+        md.append(
+            f"| {rank} | `{item['number']}` | {item['box_type']} | "
+            f"{item['box_count']}通り | {item['appearance_rate']:.0f}% | "
+            f"{item['best_rank']}位 | {item['score']:.1f} |"
+        )
+    md.append("")
+
+    # 攻めモード（当たり最優先）
+    aggressive_config = load_aggressive_config()
+    aggressive_top_n = aggressive_config.get('top_n', 20)
+    try:
+        aggressive_top_n = int(aggressive_top_n)
+    except (TypeError, ValueError):
+        aggressive_top_n = 20
+    aggressive = build_aggressive_recommendations(
+        daily_data,
+        aggregated,
+        top_n=aggressive_top_n,
+        config_override=aggressive_config,
+    )
+    md.append(f"## 🔥 攻めモード（当たり最優先）TOP{aggressive_top_n}")
+    md.append("")
+    config_note = ""
+    if os.path.exists(AGGRESSIVE_CONFIG_PATH):
+        config_note = "（調整済み設定を適用）"
+    md.append("カバー数を最優先し、類似パターンも総動員。まず1回当てにいくための攻め構成。" + config_note)
+    md.append("")
+    md.append("| 順位 | 番号 | タイプ | カバー | 由来 | 類似回数 | 最高順位 | 目安スコア |")
+    md.append("|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|")
+    for rank, item in enumerate(aggressive, 1):
+        md.append(
+            f"| {rank} | `{item['number']}` | {item['box_type']} | "
+            f"{item['box_count']}通り | {item['source']} | "
+            f"{item['similar_count']} | {item['best_rank']}位 | {item['score']:.1f} |"
+        )
     md.append("")
     
     # 予測時刻別の上位番号

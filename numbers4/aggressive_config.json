@@ -1,0 +1,13 @@
+{
+  "coverage_weight_main": 10,
+  "coverage_weight_similar": 10,
+  "similar_bonus_main": 4,
+  "similar_bonus_similar": 9,
+  "both_bonus": 8,
+  "ml_bonus": 6,
+  "best_rank_weight": 1.0,
+  "appearance_weight": 0.4,
+  "avg_score_weight": 0.1,
+  "parent_rank_weight": 0.5,
+  "top_n": 20
+}
