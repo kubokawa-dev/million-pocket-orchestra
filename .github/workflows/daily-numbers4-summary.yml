@@ -125,12 +125,12 @@ jobs:
           
           if [ -n "$MISSING" ]; then
             echo "⚠️ 未完了メソッド:${MISSING}"
-            # 8/12以上あればOKとする（一部失敗してもサマリー生成）
-            if [ $FOUND -ge 8 ]; then
+            # 1件以上あればサマリーを生成（不足分は可能な範囲で集計）
+            if [ $FOUND -ge 1 ]; then
               echo "✅ ${FOUND}件完了しているのでサマリー生成を続行"
               echo "all_methods_ready=true" >> $GITHUB_OUTPUT
             else
-              echo "❌ 完了メソッドが少なすぎます（${FOUND}/12）"
+              echo "❌ 完了メソッドがありません（${FOUND}/12）"
               echo "all_methods_ready=false" >> $GITHUB_OUTPUT
             fi
           else

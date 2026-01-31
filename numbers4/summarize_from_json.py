@@ -193,6 +193,55 @@ def summarize_method_activity(method_entries: Dict[str, Dict]) -> List[Dict]:
     return summary
 
 
+def summarize_method_box_combinations(method_entries: Dict[str, Dict], top_n: int = 10) -> List[Dict]:
+    """
+    手法別予測から「同じ数字構成（ボックス）」が多いものを抽出
+    - 各手法の直近予測内で、同じ構成は1カウント
+    - どの手法で出たかを記録
+    """
+    combo_stats = defaultdict(lambda: {
+        'methods': set(),
+        'examples': set(),
+        'box_type': '',
+        'box_count': 0,
+    })
+
+    for method, entry in method_entries.items():
+        preds = entry.get('predictions', [])
+        if not preds:
+            continue
+        latest_entry = preds[-1]
+        seen_signatures = set()
+        for pred in latest_entry.get('top_predictions', []):
+            number = pred.get('number')
+            if not number:
+                continue
+            signature = get_digit_signature(number)
+            if signature in seen_signatures:
+                continue
+            seen_signatures.add(signature)
+            box_type, box_count, _ = get_box_type(number)
+            stats = combo_stats[signature]
+            stats['methods'].add(method)
+            stats['examples'].add(number)
+            stats['box_type'] = box_type
+            stats['box_count'] = box_count
+
+    results = []
+    for signature, stats in combo_stats.items():
+        results.append({
+            'signature': signature,
+            'methods_count': len(stats['methods']),
+            'methods': sorted(stats['methods']),
+            'examples': sorted(stats['examples'])[:3],
+            'box_type': stats['box_type'],
+            'box_count': stats['box_count'],
+        })
+
+    results.sort(key=lambda x: (-x['methods_count'], -x['box_count'], x['signature']))
+    return results[:top_n]
+
+
 def get_box_type(number: str) -> tuple:
     """
     番号のボックスタイプを判定
@@ -790,6 +839,25 @@ def generate_markdown(
             )
 
             md.append("### 🔁 複数手法で共通した上位候補 TOP20")
+            md.append("")
+
+        # 手法別の組み合わせ（ボックス）上位
+        box_combos = summarize_method_box_combinations(available, top_n=10)
+        if box_combos:
+            md.append("### 🎯 複数手法で多かった組み合わせ（ボックス）TOP10")
+            md.append("")
+            md.append("| 順位 | 組み合わせ | タイプ | 出現手法数 | 例 | 手法 |")
+            md.append("|:---:|:---:|:---:|:---:|:---:|:---|")
+            for rank, item in enumerate(box_combos, 1):
+                examples = ", ".join([f"`{n}`" for n in item['examples']]) or "-"
+                methods_str = ", ".join([f"`{m}`" for m in item['methods'][:4]])
+                if len(item['methods']) > 4:
+                    methods_str += f" 他{len(item['methods']) - 4}件"
+                md.append(
+                    f"| {rank} | `{item['signature']}` | "
+                    f"{item['box_type']}({item['box_count']}通り) | "
+                    f"{item['methods_count']} | {examples} | {methods_str} |"
+                )
             md.append("")
             md.append("| 順位 | 番号 | 出現手法数 | 出現率 | 平均スコア | 最高順位 | 手法 |")
             md.append("|:---:|:---:|:---:|:---:|:---:|:---:|:---|")
