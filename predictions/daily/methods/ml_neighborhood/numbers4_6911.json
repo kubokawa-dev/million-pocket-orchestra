@@ -13,8 +13,18 @@
         "limit": 200,
         "total_predictions": 0
       }
+    },
+    {
+      "time": "2026-02-03T00:06:32.689455+00:00",
+      "time_jst": "09:06",
+      "method": "ml_neighborhood",
+      "top_predictions": [],
+      "metadata": {
+        "limit": 200,
+        "total_predictions": 0
+      }
     }
   ],
-  "last_updated": "2026-02-02T18:11:19.686688+00:00",
-  "prediction_count": 1
+  "last_updated": "2026-02-03T00:06:32.689455+00:00",
+  "prediction_count": 2
 }
