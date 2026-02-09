@@ -1,17 +1,17 @@
 {
   "weights": {
     "advanced_heuristics": 10.211446514305262,
-    "exploratory": 12.12688403017804,
-    "extreme_patterns": 4.917472119486884,
+    "exploratory": 13.12688403017804,
+    "extreme_patterns": 5.417472119486884,
     "basic_stats": 1.8919429942892294,
     "ml_model_new": 0.8522543417405867,
-    "digit_repetition": 26.0,
+    "digit_repetition": 25.0,
     "digit_continuation": 25.0,
     "realistic_frequency": 20.0,
     "large_change": 15.0,
     "lightgbm": 30.0
   },
-  "last_updated": "2026-02-06T14:47:41.128178+00:00",
+  "last_updated": "2026-02-09T14:49:49.239727+00:00",
   "adjustments_history": {
     "exploratory": 1.0,
     "extreme_patterns": 0.5,
