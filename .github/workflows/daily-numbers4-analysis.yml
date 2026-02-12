@@ -202,30 +202,80 @@ jobs:
           
           echo "draw_number=$DRAW_NUMBER" >> $GITHUB_OUTPUT
       
-      - name: Commit analysis report and CSV data
+      - name: Run model learning (update weights & probabilities)
+        id: learning
+        run: |
+          DRAW_NUMBER="${{ steps.analysis.outputs.draw_number }}"
+          
+          echo "🧠 Running model learning for Draw #${DRAW_NUMBER}..."
+          
+          # 1. 確率分布モデル + アンサンブル重みの更新
+          echo "📊 Updating probability model and ensemble weights..."
+          python numbers4/update_model.py --auto || {
+            echo "⚠️ update_model.py failed, trying learn_from_predictions.py..."
+            # フォールバック: 直接学習スクリプトを実行
+            ACTUAL_NUMBER=$(python -c "
+          import sys
+          sys.path.insert(0, '.')
+          from tools.utils import get_db_connection
+          conn = get_db_connection()
+          cur = conn.cursor()
+          cur.execute('SELECT numbers FROM numbers4_draws WHERE draw_number = ?', ($DRAW_NUMBER,))
+          row = cur.fetchone()
+          print(row[0] if row else '')
+          conn.close()
+          " 2>/dev/null || true)
+            
+            if [ -n "$ACTUAL_NUMBER" ]; then
+              python numbers4/learn_from_predictions.py "$ACTUAL_NUMBER" || true
+            fi
+          }
+          
+          # 2. 手法別予測の精度評価と重み更新
+          echo "📈 Evaluating method-specific predictions..."
+          python numbers4/evaluate_methods.py --draw "$DRAW_NUMBER" || {
+            echo "⚠️ Method evaluation script not found or failed, skipping..."
+          }
+          
+          echo "✅ Model learning completed!"
+      
+      - name: Commit analysis report, learning results & CSV data
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           
-          # reportsディレクトリ、model_weights.json、CSVデータをコミット
+          # reportsディレクトリ、モデルファイル、CSVデータをコミット
           git add reports/*.md || true
           git add numbers4/model_weights.json || true
+          git add numbers4/model_state.json || true
+          git add numbers4/box_model_state.json || true
+          git add numbers4/method_weights.json || true
           git add numbers4/*.csv || true
           
           if git diff --staged --quiet; then
             echo "📝 No changes to commit"
           else
             DRAW_NUMBER="${{ steps.analysis.outputs.draw_number }}"
-            git commit -m "📊 Numbers4 Draw #${DRAW_NUMBER} - Analysis report & CSV data"
+            git commit -m "📊 Numbers4 Draw #${DRAW_NUMBER} - Analysis & Learning update"
             git push origin main
-            echo "✅ Analysis report and CSV data committed and pushed!"
+            echo "✅ Analysis report, learning results and CSV data committed and pushed!"
           fi
       
       - name: Summary
         run: |
           DRAW_NUMBER="${{ steps.analysis.outputs.draw_number }}"
-          echo "✅ Numbers4 analysis completed!"
-          echo "📊 Report saved to: reports/analysis_${DRAW_NUMBER}.md"
+          echo ""
+          echo "=========================================="
+          echo "✅ Numbers4 分析 & 学習 完了！"
+          echo "=========================================="
+          echo "📊 分析レポート: reports/analysis_${DRAW_NUMBER}.md"
+          echo "🧠 更新されたモデル:"
+          echo "   - numbers4/model_state.json (確率分布)"
+          echo "   - numbers4/model_weights.json (アンサンブル重み)"
+          echo "   - numbers4/method_weights.json (手法別重み)"
+          echo ""
+          echo "💡 翌日の予測には最新の学習結果が反映されます！"
+          echo "=========================================="
       
       # ========================================
       # 通知設定（使いたいものをコメント解除してね！）
