@@ -1602,6 +1602,155 @@ def predict_from_sequential_pattern_n4(df: pd.DataFrame, limit: int = 100):
     return [pred for pred, _ in final_predictions[:limit]]
 
 
+def predict_from_adjacent_digit_pattern_n4(df: pd.DataFrame, limit: int = 150):
+    """
+    隣接数字パターンモデル v13.0（NEW! 6376問題対策）
+    
+    6376は「6と7が隣り合う」パターン！
+    - 隣接ペア: (6,7), (3,6) など、差が1-2の数字ペア
+    - 対角ペア: (3,6), (3,7) など、差が3-4の数字ペア
+    - 繰り返しパターン: 6376のように同じ数字が2回出る
+    
+    これらの「隣接性」と「繰り返し」を持つパターンを狙う
+    """
+    import random
+    from itertools import combinations, permutations
+    
+    predictions_dict = {}
+    latest_number = "".join(map(str, df.iloc[-1][['d1', 'd2', 'd3', 'd4']].values))
+    
+    seen_boxes = set()
+    
+    # 直近30回の隣接ペア頻度を分析
+    recent = df.tail(30)
+    adjacent_pairs = Counter()  # 差が1のペア
+    near_pairs = Counter()      # 差が2-3のペア
+    repeat_digits = Counter()   # 繰り返し数字
+    
+    for _, row in recent.iterrows():
+        digits = [row['d1'], row['d2'], row['d3'], row['d4']]
+        sorted_digits = sorted(digits)
+        
+        # 隣接ペアをカウント
+        for i in range(len(sorted_digits) - 1):
+            diff = sorted_digits[i+1] - sorted_digits[i]
+            pair = (sorted_digits[i], sorted_digits[i+1])
+            if diff == 1:
+                adjacent_pairs[pair] += 1
+            elif diff in [2, 3]:
+                near_pairs[pair] += 1
+        
+        # 繰り返し数字をカウント
+        digit_counts = Counter(digits)
+        for d, count in digit_counts.items():
+            if count >= 2:
+                repeat_digits[d] += count
+    
+    # === 戦略1: 頻出隣接ペア × 2 ===
+    top_adjacent = adjacent_pairs.most_common(15)
+    for (d1, d2), freq1 in top_adjacent:
+        for (d3, d4), freq2 in top_adjacent:
+            if (d1, d2) != (d3, d4):
+                digits = [d1, d2, d3, d4]
+                for perm in set(permutations(digits)):
+                    num_str = "".join(map(str, perm))
+                    box_id = "".join(sorted(num_str))
+                    
+                    if num_str != latest_number and box_id not in seen_boxes:
+                        score = (freq1 + freq2) * 15
+                        predictions_dict[num_str] = predictions_dict.get(num_str, 0) + score
+                        seen_boxes.add(box_id)
+                        break  # 1つの順列だけ追加
+    
+    # === 戦略2: 隣接ペア + 繰り返し数字（6376パターン） ===
+    top_repeats = repeat_digits.most_common(10)
+    for (d1, d2), freq1 in top_adjacent[:10]:
+        for repeat_d, freq2 in top_repeats:
+            # 隣接ペア + 繰り返し数字 × 2
+            digits = [d1, d2, repeat_d, repeat_d]
+            for perm in set(permutations(digits)):
+                num_str = "".join(map(str, perm))
+                box_id = "".join(sorted(num_str))
+                
+                if num_str != latest_number and box_id not in seen_boxes:
+                    score = freq1 * 10 + freq2 * 8
+                    predictions_dict[num_str] = predictions_dict.get(num_str, 0) + score
+                    seen_boxes.add(box_id)
+                    break
+    
+    # === 戦略3: 近接ペア（差2-3）+ 隣接ペア ===
+    top_near = near_pairs.most_common(10)
+    for (d1, d2), freq1 in top_near:
+        for (d3, d4), freq2 in top_adjacent[:10]:
+            digits = [d1, d2, d3, d4]
+            unique_digits = len(set(digits))
+            
+            # 3-4種類の数字を含む組み合わせを優先
+            if unique_digits >= 3:
+                for perm in set(permutations(digits)):
+                    num_str = "".join(map(str, perm))
+                    box_id = "".join(sorted(num_str))
+                    
+                    if num_str != latest_number and box_id not in seen_boxes:
+                        score = (freq1 + freq2) * 12
+                        predictions_dict[num_str] = predictions_dict.get(num_str, 0) + score
+                        seen_boxes.add(box_id)
+                        break
+    
+    # === 戦略4: 全隣接パターン（0-1-2-3, 5-6-7-8 など）===
+    for start in range(7):
+        # 4連続の中から3つ選んで、1つを繰り返し
+        seq = list(range(start, start + 4))
+        for repeat_idx in range(4):
+            repeat_d = seq[repeat_idx]
+            other_digits = [d for i, d in enumerate(seq) if i != repeat_idx]
+            digits = other_digits + [repeat_d, repeat_d]
+            
+            for perm in set(permutations(digits)):
+                num_str = "".join(map(str, perm))
+                box_id = "".join(sorted(num_str))
+                
+                if num_str != latest_number and box_id not in seen_boxes:
+                    score = 25
+                    predictions_dict[num_str] = predictions_dict.get(num_str, 0) + score
+                    seen_boxes.add(box_id)
+                    break
+    
+    # === 戦略5: ランダム探索（隣接性を保ちつつ） ===
+    attempts = 0
+    while len(predictions_dict) < limit and attempts < 3000:
+        attempts += 1
+        
+        # 基準となる数字を選ぶ
+        base = random.randint(1, 8)
+        
+        # 隣接数字を2-3個選ぶ
+        adjacent_count = random.choice([2, 3])
+        adjacent_digits = [base + i for i in range(adjacent_count) if base + i <= 9]
+        
+        # 残りはランダムまたは繰り返し
+        remaining = 4 - len(adjacent_digits)
+        if random.random() < 0.6:
+            # 繰り返し
+            repeat_d = random.choice(adjacent_digits)
+            digits = adjacent_digits + [repeat_d] * remaining
+        else:
+            # ランダム
+            digits = adjacent_digits + [random.randint(0, 9) for _ in range(remaining)]
+        
+        random.shuffle(digits)
+        num_str = "".join(map(str, digits))
+        box_id = "".join(sorted(num_str))
+        
+        if num_str != latest_number and box_id not in seen_boxes:
+            score = 15
+            predictions_dict[num_str] = predictions_dict.get(num_str, 0) + score
+            seen_boxes.add(box_id)
+    
+    final_predictions = sorted(predictions_dict.items(), key=lambda x: -x[1])
+    return [pred for pred, _ in final_predictions[:limit]]
+
+
 def predict_from_digit_frequency_box_n4(df: pd.DataFrame, limit: int = 100):
     """
     数字頻度ベースのボックス生成モデル v10.5

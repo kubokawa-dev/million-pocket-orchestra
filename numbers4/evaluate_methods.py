@@ -42,6 +42,7 @@ ALL_METHODS = [
     'global_frequency',
     'lightgbm',
     'state_chain',
+    'adjacent_digit',  # v13.0 NEW! 隣接数字パターン
 ]
 
 
@@ -60,6 +61,7 @@ def get_default_method_weights() -> Dict[str, float]:
         'global_frequency': 9.0,
         'lightgbm': 20.0,
         'state_chain': 8.0,
+        'adjacent_digit': 10.0,  # v13.0 NEW! 隣接数字パターン
     }
 
 
@@ -148,7 +150,12 @@ def count_position_matches(pred: str, actual: str) -> int:
 
 def evaluate_method(predictions: List[str], actual: str, top_k: int = 100) -> Dict:
     """
-    手法の予測精度を評価
+    手法の予測精度を評価（v2.0 改善版）
+    
+    改善点:
+    - 順位ボーナス: 上位で当たるほど高評価
+    - 複合スコア: 位置一致と数字一致を組み合わせ
+    - 連続性ボーナス: 複数の良い予測があれば加点
     
     Returns:
         {
@@ -156,6 +163,7 @@ def evaluate_method(predictions: List[str], actual: str, top_k: int = 100) -> Di
             'box_rank': ボックス一致の順位（なければNone）,
             'best_position_hits': 最大位置一致数,
             'best_digit_hits': 最大数字一致数,
+            'good_predictions_count': 3桁以上一致の予測数,
             'score': 総合スコア（0-100）
         }
     """
@@ -164,11 +172,14 @@ def evaluate_method(predictions: List[str], actual: str, top_k: int = 100) -> Di
         'box_rank': None,
         'best_position_hits': 0,
         'best_digit_hits': 0,
+        'good_predictions_count': 0,  # NEW: 良い予測の数
         'score': 0.0
     }
     
     if not predictions:
         return result
+    
+    good_preds = []  # 3桁以上一致した予測を記録
     
     for i, pred in enumerate(predictions[:top_k]):
         rank = i + 1
@@ -190,68 +201,114 @@ def evaluate_method(predictions: List[str], actual: str, top_k: int = 100) -> Di
         digit_hits = count_digit_matches(pred, actual)
         if digit_hits > result['best_digit_hits']:
             result['best_digit_hits'] = digit_hits
+        
+        # 良い予測をカウント（3桁以上一致）
+        if pos_hits >= 3 or digit_hits >= 3:
+            good_preds.append((rank, pos_hits, digit_hits))
     
-    # スコア計算
+    result['good_predictions_count'] = len(good_preds)
+    
+    # スコア計算（v2.0 改善版）
     score = 0.0
     
     if result['straight_rank']:
         # ストレート一致: 高スコア（順位が高いほど良い）
-        score = 100.0 * (top_k - result['straight_rank'] + 1) / top_k
+        rank_bonus = (top_k - result['straight_rank'] + 1) / top_k
+        score = 100.0 * rank_bonus
     elif result['box_rank']:
-        # ボックス一致: 70%のスコア
-        score = 70.0 * (top_k - result['box_rank'] + 1) / top_k
+        # ボックス一致: 75%のスコア（70→75に改善）
+        rank_bonus = (top_k - result['box_rank'] + 1) / top_k
+        score = 75.0 * rank_bonus
     elif result['best_position_hits'] >= 3:
-        # 3桁位置一致: 40%のスコア
-        score = 40.0
+        # 3桁位置一致: 45%のスコア（40→45に改善）
+        score = 45.0
     elif result['best_digit_hits'] >= 3:
-        # 3桁数字一致: 30%のスコア
-        score = 30.0
+        # 3桁数字一致: 35%のスコア（30→35に改善）
+        score = 35.0
     elif result['best_position_hits'] >= 2:
-        # 2桁位置一致: 15%のスコア
-        score = 15.0
+        # 2桁位置一致: 18%のスコア（15→18に改善）
+        score = 18.0
     elif result['best_digit_hits'] >= 2:
-        # 2桁数字一致: 10%のスコア
-        score = 10.0
+        # 2桁数字一致: 12%のスコア（10→12に改善）
+        score = 12.0
     
-    result['score'] = score
+    # NEW: 連続性ボーナス（複数の良い予測があれば加点）
+    if len(good_preds) >= 3:
+        score *= 1.15  # 3つ以上の良い予測: 15%ボーナス
+    elif len(good_preds) >= 2:
+        score *= 1.08  # 2つの良い予測: 8%ボーナス
+    
+    # スコアの上限を100に
+    result['score'] = min(100.0, score)
     return result
 
 
 def update_method_weights(
     current_weights: Dict[str, float],
     evaluations: Dict[str, Dict],
-    learning_rate: float = 0.08
+    learning_rate: float = 0.10  # 0.08→0.10に増加（より敏感に反応）
 ) -> Dict[str, float]:
     """
-    評価結果に基づいて手法別重みを更新
+    評価結果に基づいて手法別重みを更新（v2.0 改善版）
     
-    良い予測をした手法の重みを上げ、悪い予測をした手法の重みを下げる
+    改善点:
+    - 適応的学習率: 成績に応じて学習率を調整
+    - 相対評価: 他の手法との比較で重みを決定
+    - ストレート/ボックス一致には特別ボーナス
+    - 連続して良い成績の手法にはモメンタムボーナス
     """
     new_weights = current_weights.copy()
     
-    # 平均スコアを計算
+    # 統計情報を計算
     scores = [e['score'] for e in evaluations.values() if e['score'] > 0]
     avg_score = sum(scores) / len(scores) if scores else 0
+    max_score = max(scores) if scores else 0
+    
+    # ストレート/ボックス一致があった手法を特定
+    straight_methods = [m for m, e in evaluations.items() if e.get('straight_rank')]
+    box_methods = [m for m, e in evaluations.items() if e.get('box_rank') and not e.get('straight_rank')]
     
     for method, evaluation in evaluations.items():
         if method not in new_weights:
             new_weights[method] = 10.0  # デフォルト値
         
         score = evaluation['score']
+        good_count = evaluation.get('good_predictions_count', 0)
+        
+        # 適応的学習率: スコアが高いほど学習率を上げる
+        adaptive_lr = learning_rate * (1.0 + score / 100.0)
         
         # スコアに基づいて重みを調整
-        if score > avg_score:
+        if method in straight_methods:
+            # ストレート一致: 大幅ボーナス！
+            delta = adaptive_lr * 3.0
+            new_weights[method] = min(60.0, new_weights[method] + delta)
+        elif method in box_methods:
+            # ボックス一致: 中程度のボーナス
+            delta = adaptive_lr * 2.0
+            new_weights[method] = min(55.0, new_weights[method] + delta)
+        elif score >= max_score * 0.8 and max_score > 0:
+            # トップクラスの成績（最高スコアの80%以上）
+            delta = adaptive_lr * (score / 100.0) * 2.5
+            new_weights[method] = min(50.0, new_weights[method] + delta)
+        elif score > avg_score:
             # 平均以上: 重みを増加
-            delta = learning_rate * (score / 100.0) * 2.0
+            delta = adaptive_lr * (score / 100.0) * 1.8
             new_weights[method] = min(50.0, new_weights[method] + delta)
         elif score > 0:
             # 平均以下だが何かしら当たった: 微増
-            delta = learning_rate * (score / 100.0) * 0.5
+            delta = adaptive_lr * (score / 100.0) * 0.6
             new_weights[method] = min(50.0, new_weights[method] + delta)
         else:
-            # 全く当たらなかった: ペナルティ
-            penalty = learning_rate * 0.5
+            # 全く当たらなかった: ペナルティ（ただし緩やか）
+            # 重みが高い手法ほどペナルティを軽く（実績があるため）
+            weight_factor = min(1.0, new_weights[method] / 20.0)
+            penalty = learning_rate * 0.4 * (1.0 - weight_factor * 0.3)
             new_weights[method] = max(1.0, new_weights[method] - penalty)
+        
+        # 連続性ボーナス: 良い予測が複数あれば追加ボーナス
+        if good_count >= 3:
+            new_weights[method] *= 1.05  # 5%追加
     
     # 正規化（合計を元の合計に近づける）
     total_old = sum(current_weights.values())

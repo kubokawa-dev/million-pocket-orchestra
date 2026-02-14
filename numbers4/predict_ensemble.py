@@ -43,6 +43,8 @@ from numbers4.prediction_logic import (
     predict_from_even_odd_pattern_n4,         # 偶数/奇数パターン
     predict_from_low_sum_specialist_n4,       # 低合計値特化
     predict_from_sequential_pattern_n4,       # 連続数字パターン
+    # v13.0 6376問題対策モデル（NEW!）
+    predict_from_adjacent_digit_pattern_n4,   # 隣接数字パターン
     aggregate_predictions,
     apply_diversity_penalty
 )
@@ -453,58 +455,90 @@ def generate_ensemble_prediction(progress_callback=None):
     report_progress(0.988, f"- [v12.0] 低合計値特化モデル完了: {len(predictions_low_sum)}件")
     
     # 21. 連続数字パターンモデル（0,2,4のような連続を狙う）
-    report_progress(0.989, "- [v12.0] 連続数字パターンモデルで予測中...")
+    report_progress(0.985, "- [v12.0] 連続数字パターンモデルで予測中...")
     predictions_sequential = predict_from_sequential_pattern_n4(all_draws_df, limit=100)
-    report_progress(0.992, f"- [v12.0] 連続数字パターンモデル完了: {len(predictions_sequential)}件")
+    report_progress(0.988, f"- [v12.0] 連続数字パターンモデル完了: {len(predictions_sequential)}件")
+    
+    # 22. 隣接数字パターンモデル（v13.0 NEW! 6376問題対策）
+    report_progress(0.989, "- [v13.0] 隣接数字パターンモデルで予測中...")
+    predictions_adjacent = predict_from_adjacent_digit_pattern_n4(all_draws_df, limit=150)
+    report_progress(0.992, f"- [v13.0] 隣接数字パターンモデル完了: {len(predictions_adjacent)}件")
 
     # --- アンサンブル集計 ---
     report_progress(0.993, "全モデルの予測を統合・集計中...")
     
-    ensemble_weights = {
+    # v13.0: 学習済み重みを動的に読み込み、デフォルト重みとマージ
+    from numbers4.evaluate_methods import load_method_weights
+    
+    # デフォルト重み（ベースライン）
+    default_weights = {
         # v11.0 ボックス特化型モデル（最重要！未出現ボックスを狙う）
-        'box_model': 45.0,                # ボックス特化型モデル（50→45に調整）
+        'box_model': 45.0,                # ボックス特化型モデル
         
-        # v11.1 ML近傍探索モデル（NEW! 2827問題対策）
-        'ml_neighborhood': 30.0,          # ML近傍探索（35→30に調整）
+        # v11.1 ML近傍探索モデル（2827問題対策）
+        'ml_neighborhood': 30.0,          # ML近傍探索
         
-        # v12.0 2404問題対策モデル（NEW! 偶奇・低合計値・連続パターン）
-        'even_odd_pattern': 40.0,         # 偶数/奇数パターン（高重み！全偶数2404を捕捉）
-        'low_sum_specialist': 35.0,       # 低合計値特化（高重み！合計10の2404を捕捉）
-        'sequential_pattern': 25.0,       # 連続数字パターン（0,2,4連続を捕捉）
+        # v12.0 2404問題対策モデル（偶奇・低合計値・連続パターン）
+        'even_odd_pattern': 40.0,         # 偶数/奇数パターン
+        'low_sum_specialist': 35.0,       # 低合計値特化
+        'sequential_pattern': 25.0,       # 連続数字パターン
+        
+        # v13.0 6376問題対策モデル（隣接数字パターン）
+        'adjacent_digit': 35.0,           # 隣接数字パターン（NEW!）
         
         # v10.7 コールドナンバー復活モデル
-        'cold_revival': 22.0,             # コールドナンバー復活（25→22に調整）
+        'cold_revival': 22.0,             # コールドナンバー復活
         
         # v10.5 ボックス/セット特化モデル
-        'hot_pair': 18.0,                 # ホットペア組み合わせ（20→18に調整）
-        'box_pattern': 16.0,              # ボックスパターン分析（18→16に調整）
-        'digit_freq_box': 14.0,           # 数字頻度ボックス（15→14に調整）
+        'hot_pair': 18.0,                 # ホットペア組み合わせ
+        'box_pattern': 16.0,              # ボックスパターン分析
+        'digit_freq_box': 14.0,           # 数字頻度ボックス
         
         # model_stateチェーンモデル（桁間相関）
-        'state_chain': 10.0,              # model_state.json のpair_probsを活用（12→10）
+        'state_chain': 10.0,              # model_state.json のpair_probsを活用
         
         # v10.3 過去パターン学習モデル（全履歴ベース）
-        'transition_probability': 12.0,   # 遷移確率（15→12に調整）
-        'global_frequency': 18.0,         # 全体頻度（20→18に調整）
+        'transition_probability': 12.0,   # 遷移確率
+        'global_frequency': 18.0,         # 全体頻度
         
         # v10.0 モデル（直近依存 - 低重み維持）
-        'digit_repetition': 4.0,          # 数字再出現（5→4）
-        'digit_continuation': 3.0,        # 桁継続（4→3）
-        'realistic_frequency': 4.0,       # 現実的頻度（5→4）
+        'digit_repetition': 4.0,          # 数字再出現
+        'digit_continuation': 3.0,        # 桁継続
+        'realistic_frequency': 4.0,       # 現実的頻度
         
         # 変化パターンモデル
-        'large_change': 8.0,              # 大変化（10→8）
+        'large_change': 8.0,              # 大変化
         
         # 多様性モデル
-        'advanced_heuristics': 3.0,       # 統計分析（4→3）
-        'exploratory': 10.0,              # 探索的分析（12→10）
-        'extreme_patterns': 3.0,          # 極端パターン（4→3）
+        'advanced_heuristics': 3.0,       # 統計分析
+        'exploratory': 10.0,              # 探索的分析
+        'extreme_patterns': 3.0,          # 極端パターン
         
         # 補助モデル
         'basic_stats': 2.0,               # 基本統計
         'ml_model_new': 2.0,              # 機械学習
-        'lightgbm': 12.0,                 # LightGBM（15→12）
+        'lightgbm': 12.0,                 # LightGBM
     }
+    
+    # 学習済み重みを読み込み（method_weights.json から）
+    learned_weights = load_method_weights()
+    
+    # v13.0: デフォルト重みと学習済み重みをスマートにマージ
+    # 学習済み重みがある手法は、デフォルトと学習済みの加重平均を使用
+    # これにより、学習の効果を反映しつつ、極端な重みの変動を防ぐ
+    ensemble_weights = default_weights.copy()
+    
+    LEARNING_BLEND_RATIO = 0.6  # 学習済み重みの反映率（60%）
+    
+    for method, default_w in default_weights.items():
+        if method in learned_weights:
+            learned_w = learned_weights[method]
+            # 加重平均: デフォルト40% + 学習済み60%
+            blended_w = default_w * (1 - LEARNING_BLEND_RATIO) + learned_w * LEARNING_BLEND_RATIO
+            # 極端な値を防ぐためにクリップ
+            ensemble_weights[method] = max(1.0, min(60.0, blended_w))
+    
+    report_progress(0.994, f"学習済み重みを反映（ブレンド率: {LEARNING_BLEND_RATIO*100:.0f}%）")
     
     predictions_by_model = {
         'basic_stats': predictions_basic,
@@ -534,6 +568,8 @@ def generate_ensemble_prediction(progress_callback=None):
         'even_odd_pattern': predictions_even_odd,
         'low_sum_specialist': predictions_low_sum,
         'sequential_pattern': predictions_sequential,
+        # v13.0 6376問題対策モデル（NEW!）
+        'adjacent_digit': predictions_adjacent,
         # ML
         'lightgbm': predictions_lgbm,
         # model_state

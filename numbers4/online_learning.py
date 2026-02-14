@@ -68,27 +68,40 @@ def count_digit_matches(pred: str, actual: str) -> int:
     return matches
 
 
+def count_position_matches(pred: str, actual: str) -> int:
+    """位置一致数をカウント"""
+    return sum(1 for a, p in zip(actual, pred) if a == p)
+
+
 def update_weights_online(
     current_weights: Dict[str, float],
     predictions_by_model: Dict[str, List[str]],
     actual_number: str,
-    learning_rate: float = 0.05,
+    learning_rate: float = 0.08,  # 0.05→0.08に増加
     top_k: int = 50
 ) -> Dict[str, float]:
     """
-    オンライン学習で重みを更新
+    オンライン学習で重みを更新（v3.0 大幅改善版）
     
-    改善版v2.0: ボックス一致と部分一致も評価に追加！
-    - ストレート一致: 最大報酬
-    - ボックス一致: 70%の報酬
-    - 3桁一致: 40%の報酬
-    - 2桁一致: 10%の報酬
+    改善点:
+    - 位置一致も評価に追加（ストレートに近い予測を評価）
+    - 累積報酬: 複数の良い予測があれば加点
+    - 適応的ペナルティ: 重みが高いモデルはペナルティ軽減
+    - 順位ボーナス: 上位で当たるほど高評価
+    
+    報酬体系:
+    - ストレート一致: 100%報酬
+    - ボックス一致: 75%報酬（70→75に改善）
+    - 3桁位置一致: 50%報酬（NEW!）
+    - 3桁数字一致: 40%報酬
+    - 2桁位置一致: 20%報酬（NEW!）
+    - 2桁数字一致: 12%報酬（10→12に改善）
     
     Args:
         current_weights: 現在の重み
         predictions_by_model: 各モデルの予測リスト
         actual_number: 実際の当選番号
-        learning_rate: 学習率（0.0-1.0、デフォルト: 0.05）
+        learning_rate: 学習率（0.0-1.0、デフォルト: 0.08）
         top_k: 評価対象のTop-K（デフォルト: 50）
     
     Returns:
@@ -96,45 +109,93 @@ def update_weights_online(
     """
     new_weights = current_weights.copy()
     
+    # 全モデルの報酬を計算して相対評価に使用
+    model_rewards = {}
+    
     for model_name, predictions in predictions_by_model.items():
         if model_name not in new_weights:
             continue
         
         best_reward = 0.0
+        good_predictions = 0  # 良い予測の数（累積ボーナス用）
         
         for i, pred in enumerate(predictions[:top_k]):
             rank = i + 1
-            base_reward = (top_k - rank + 1) / top_k
+            # 順位ボーナス: 上位ほど高評価（指数減衰）
+            rank_bonus = ((top_k - rank + 1) / top_k) ** 0.8
             
             # 1. ストレート一致（完全一致）
             if pred == actual_number:
-                reward = base_reward * 1.0  # 100%報酬
+                reward = rank_bonus * 1.0  # 100%報酬
                 best_reward = max(best_reward, reward)
+                good_predictions += 3  # 大きくカウント
                 break  # 完全一致が見つかったらループ終了
             
             # 2. ボックス一致（順不同で4桁全て一致）
             elif is_box_match(pred, actual_number):
-                reward = base_reward * 0.7  # 70%報酬
+                reward = rank_bonus * 0.75  # 75%報酬
                 best_reward = max(best_reward, reward)
+                good_predictions += 2
                 # 続けて探索（もっと良い一致があるかも）
             
-            # 3. 部分一致（3桁または2桁が一致）
+            # 3. 位置一致と数字一致を両方評価
             else:
+                pos_matches = count_position_matches(pred, actual_number)
                 digit_matches = count_digit_matches(pred, actual_number)
-                if digit_matches >= 3:
-                    reward = base_reward * 0.4  # 3桁一致: 40%報酬
+                
+                # 位置一致を優先評価（ストレートに近い）
+                if pos_matches >= 3:
+                    reward = rank_bonus * 0.50  # 3桁位置一致: 50%報酬
+                    best_reward = max(best_reward, reward)
+                    good_predictions += 1
+                elif digit_matches >= 3:
+                    reward = rank_bonus * 0.40  # 3桁数字一致: 40%報酬
+                    best_reward = max(best_reward, reward)
+                    good_predictions += 1
+                elif pos_matches >= 2:
+                    reward = rank_bonus * 0.20  # 2桁位置一致: 20%報酬
                     best_reward = max(best_reward, reward)
                 elif digit_matches >= 2:
-                    reward = base_reward * 0.1  # 2桁一致: 10%報酬
+                    reward = rank_bonus * 0.12  # 2桁数字一致: 12%報酬
                     best_reward = max(best_reward, reward)
         
-        # 報酬に基づいて重みを更新
+        # 累積ボーナス: 良い予測が複数あれば加点
+        if good_predictions >= 3:
+            best_reward *= 1.15  # 15%ボーナス
+        elif good_predictions >= 2:
+            best_reward *= 1.08  # 8%ボーナス
+        
+        model_rewards[model_name] = best_reward
+    
+    # 相対評価用の統計
+    rewards = list(model_rewards.values())
+    avg_reward = sum(rewards) / len(rewards) if rewards else 0
+    max_reward = max(rewards) if rewards else 0
+    
+    # 重みを更新
+    for model_name, best_reward in model_rewards.items():
+        # 適応的学習率: 報酬が高いほど学習率を上げる
+        adaptive_lr = learning_rate * (1.0 + best_reward)
+        
         if best_reward > 0:
-            new_weights[model_name] += learning_rate * best_reward
+            # 報酬に基づいて重みを増加
+            if best_reward >= max_reward * 0.9 and max_reward > 0:
+                # トップクラスの成績: 大幅増加
+                delta = adaptive_lr * best_reward * 1.5
+            elif best_reward > avg_reward:
+                # 平均以上: 増加
+                delta = adaptive_lr * best_reward * 1.2
+            else:
+                # 平均以下だが報酬あり: 微増
+                delta = adaptive_lr * best_reward * 0.8
+            
+            new_weights[model_name] += delta
         else:
-            # 全く当たらなかった場合、ペナルティ
-            penalty = learning_rate * 0.3  # ペナルティを少し軽減
-            new_weights[model_name] = max(0.1, new_weights[model_name] - penalty)
+            # 全く当たらなかった場合、適応的ペナルティ
+            # 重みが高いモデルはペナルティを軽減（過去の実績を考慮）
+            weight_ratio = new_weights[model_name] / max(current_weights.values())
+            penalty = learning_rate * 0.25 * (1.0 - weight_ratio * 0.4)
+            new_weights[model_name] = max(0.5, new_weights[model_name] - penalty)
     
     # 正規化（合計を元の合計に保つ）
     total_old = sum(current_weights.values())
