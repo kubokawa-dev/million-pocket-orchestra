@@ -1,0 +1,20 @@
+{
+  "draw_number": 6922,
+  "target_draw_number": 6922,
+  "date": "20260217",
+  "method": "lightgbm",
+  "predictions": [
+    {
+      "time": "2026-02-17T19:18:37.542590+00:00",
+      "time_jst": "04:18",
+      "method": "lightgbm",
+      "top_predictions": [],
+      "metadata": {
+        "limit": 200,
+        "total_predictions": 0
+      }
+    }
+  ],
+  "last_updated": "2026-02-17T19:18:37.542590+00:00",
+  "prediction_count": 1
+}
