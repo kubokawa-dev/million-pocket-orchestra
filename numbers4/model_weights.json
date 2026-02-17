@@ -1,49 +1,49 @@
 {
   "weights": {
-    "advanced_heuristics": 10.231870733749231,
-    "exploratory": 13.164735509507654,
-    "extreme_patterns": 5.4439611340790535,
-    "basic_stats": 1.984197800345189,
-    "ml_model_new": 0.9600074686251557,
-    "digit_repetition": 24.93809290297689,
-    "digit_continuation": 24.93809290297689,
-    "realistic_frequency": 19.950474322381513,
-    "large_change": 14.962855741786134,
-    "lightgbm": 29.925711483572268
+    "advanced_heuristics": 10.22649731998797,
+    "exploratory": 13.18332632131545,
+    "extreme_patterns": 5.468526298897193,
+    "basic_stats": 2.0098298636141525,
+    "ml_model_new": 0.9853597498698762,
+    "digit_repetition": 24.91879574919899,
+    "digit_continuation": 24.91879574919899,
+    "realistic_frequency": 19.935036599359194,
+    "large_change": 14.951277449519393,
+    "lightgbm": 29.902554899038787
   },
-  "updated_at": "2026-02-16T14:48:09.915320",
+  "updated_at": "2026-02-17T14:48:39.827182",
   "metadata": {
-    "actual_number": "6978",
+    "actual_number": "0505",
     "model_results": {
       "basic_stats": {
         "straight_rank": null,
         "box_rank": null,
-        "partial_rank": 4,
-        "partial_count": 3
+        "partial_rank": null,
+        "partial_count": 0
       },
       "advanced_heuristics": {
         "straight_rank": null,
         "box_rank": null,
-        "partial_rank": 14,
-        "partial_count": 3
+        "partial_rank": null,
+        "partial_count": 0
       },
       "ml_model_new": {
         "straight_rank": null,
         "box_rank": null,
-        "partial_rank": 2,
-        "partial_count": 3
+        "partial_rank": null,
+        "partial_count": 0
       },
       "exploratory": {
         "straight_rank": null,
         "box_rank": null,
-        "partial_rank": 8,
+        "partial_rank": 46,
         "partial_count": 3
       },
       "extreme_patterns": {
         "straight_rank": null,
         "box_rank": null,
-        "partial_rank": 16,
-        "partial_count": 3
+        "partial_rank": null,
+        "partial_count": 0
       }
     }
   }
