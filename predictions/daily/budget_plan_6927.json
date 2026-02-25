@@ -1,0 +1,141 @@
+{
+  "target_draw_number": 6927,
+  "created_at": "2026-02-25T03:49:07.958055",
+  "source_file": "/home/runner/work/million-pocket/million-pocket/predictions/daily/numbers4_6927.json",
+  "plan_5": {
+    "budget": "1,000円",
+    "slots": 5,
+    "total_coverage": 56,
+    "probability": "0.56%",
+    "recommendations": [
+      {
+        "priority": "🥇 1",
+        "number": "4444",
+        "buy_method": "ボックス",
+        "box_type": "クアッド(AAAA)",
+        "coverage": 1,
+        "reason": "第1位の最有力候補 / 超高スコア"
+      },
+      {
+        "priority": "🥈 2",
+        "number": "4422",
+        "buy_method": "ボックス",
+        "box_type": "ダブルダブル(AABB)",
+        "coverage": 6,
+        "reason": "第2位の最有力候補 / 高スコア / 6通りカバー"
+      },
+      {
+        "priority": "🥉 3",
+        "number": "2176",
+        "buy_method": "ボックス",
+        "box_type": "シングル(ABCD)",
+        "coverage": 24,
+        "reason": "第3位の最有力候補 / 高スコア / 24通りの広カバー"
+      },
+      {
+        "priority": "4️⃣",
+        "number": "9548",
+        "buy_method": "ボックス",
+        "box_type": "シングル(ABCD)",
+        "coverage": 24,
+        "reason": "上位4位 / 高スコア / 24通りの広カバー"
+      },
+      {
+        "priority": "5️⃣",
+        "number": "2222",
+        "buy_method": "ボックス",
+        "box_type": "クアッド(AAAA)",
+        "coverage": 1,
+        "reason": "上位5位"
+      }
+    ]
+  },
+  "plan_10": {
+    "budget": "2,000円",
+    "slots": 10,
+    "total_coverage": 92,
+    "probability": "0.92%",
+    "recommendations": [
+      {
+        "priority": "🥇 1",
+        "number": "4444",
+        "buy_method": "ボックス",
+        "box_type": "クアッド(AAAA)",
+        "coverage": 1,
+        "reason": "第1位の最有力候補 / 超高スコア"
+      },
+      {
+        "priority": "🥈 2",
+        "number": "4422",
+        "buy_method": "ボックス",
+        "box_type": "ダブルダブル(AABB)",
+        "coverage": 6,
+        "reason": "第2位の最有力候補 / 高スコア / 6通りカバー"
+      },
+      {
+        "priority": "🥉 3",
+        "number": "2176",
+        "buy_method": "ボックス",
+        "box_type": "シングル(ABCD)",
+        "coverage": 24,
+        "reason": "第3位の最有力候補 / 高スコア / 24通りの広カバー"
+      },
+      {
+        "priority": "4️⃣",
+        "number": "9548",
+        "buy_method": "ボックス",
+        "box_type": "シングル(ABCD)",
+        "coverage": 24,
+        "reason": "上位4位 / 高スコア / 24通りの広カバー"
+      },
+      {
+        "priority": "5️⃣",
+        "number": "2222",
+        "buy_method": "ボックス",
+        "box_type": "クアッド(AAAA)",
+        "coverage": 1,
+        "reason": "上位5位"
+      },
+      {
+        "priority": "6",
+        "number": "4983",
+        "buy_method": "ボックス",
+        "box_type": "シングル(ABCD)",
+        "coverage": 24,
+        "reason": "19位にランクイン / 24通りの広カバー"
+      },
+      {
+        "priority": "7",
+        "number": "4466",
+        "buy_method": "ボックス",
+        "box_type": "ダブルダブル(AABB)",
+        "coverage": 6,
+        "reason": "上位8位 / 6通りカバー"
+      },
+      {
+        "priority": "8",
+        "number": "6666",
+        "buy_method": "ボックス",
+        "box_type": "クアッド(AAAA)",
+        "coverage": 1,
+        "reason": "上位6位"
+      },
+      {
+        "priority": "9",
+        "number": "5555",
+        "buy_method": "ボックス",
+        "box_type": "クアッド(AAAA)",
+        "coverage": 1,
+        "reason": "上位7位"
+      },
+      {
+        "priority": "10",
+        "number": "2000",
+        "buy_method": "ボックス",
+        "box_type": "トリプル(AAAB)",
+        "coverage": 4,
+        "reason": "上位9位"
+      }
+    ]
+  }
+}
