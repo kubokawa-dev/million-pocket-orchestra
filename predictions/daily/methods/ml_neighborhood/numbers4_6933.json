@@ -1,0 +1,20 @@
+{
+  "draw_number": 6933,
+  "target_draw_number": 6933,
+  "date": "20260304",
+  "method": "ml_neighborhood",
+  "predictions": [
+    {
+      "time": "2026-03-04T18:10:50.548606+00:00",
+      "time_jst": "03:10",
+      "method": "ml_neighborhood",
+      "top_predictions": [],
+      "metadata": {
+        "limit": 200,
+        "total_predictions": 0
+      }
+    }
+  ],
+  "last_updated": "2026-03-04T18:10:50.548606+00:00",
+  "prediction_count": 1
+}
