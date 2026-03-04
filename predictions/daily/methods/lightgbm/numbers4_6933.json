@@ -13,8 +13,18 @@
         "limit": 200,
         "total_predictions": 0
       }
+    },
+    {
+      "time": "2026-03-04T20:42:14.965467+00:00",
+      "time_jst": "05:42",
+      "method": "lightgbm",
+      "top_predictions": [],
+      "metadata": {
+        "limit": 200,
+        "total_predictions": 0
+      }
     }
   ],
-  "last_updated": "2026-03-04T19:13:53.254751+00:00",
-  "prediction_count": 1
+  "last_updated": "2026-03-04T20:42:14.965467+00:00",
+  "prediction_count": 2
 }
