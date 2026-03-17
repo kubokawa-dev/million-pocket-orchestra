@@ -1,22 +1,22 @@
 {
   "weights": {
-    "box_model": 15.356525146765936,
-    "ml_neighborhood": 7.164812784433875,
-    "even_odd_pattern": 7.083059706000772,
-    "low_sum_specialist": 7.817920092239838,
-    "sequential_pattern": 8.913091997389865,
-    "cold_revival": 9.496774386258357,
-    "hot_pair": 8.0492489451989,
-    "box_pattern": 12.728596756596476,
-    "digit_freq_box": 7.115889889628591,
-    "global_frequency": 15.885435499400122,
-    "lightgbm": 11.94135464072312,
-    "state_chain": 6.447290155364194
+    "box_model": 15.02381633468533,
+    "ml_neighborhood": 7.0037703366259665,
+    "even_odd_pattern": 6.936312365143764,
+    "low_sum_specialist": 8.225817186522779,
+    "sequential_pattern": 8.725211288692025,
+    "cold_revival": 9.851776205900078,
+    "hot_pair": 7.880784710292103,
+    "box_pattern": 12.454955506132587,
+    "digit_freq_box": 7.408038016245054,
+    "global_frequency": 16.50630938344165,
+    "lightgbm": 11.672950561043272,
+    "state_chain": 6.310258105275435
   },
-  "updated_at": "2026-03-16T14:52:13.605515+00:00",
+  "updated_at": "2026-03-17T14:50:19.662975+00:00",
   "metadata": {
-    "draw_number": 6940,
-    "actual_number": "3421",
+    "draw_number": 6941,
+    "actual_number": "2295",
     "evaluations": {
       "box_model": {
         "straight_rank": null,
@@ -36,11 +36,11 @@
       },
       "low_sum_specialist": {
         "straight_rank": null,
-        "box_rank": 75,
+        "box_rank": null,
         "best_position_hits": 3,
-        "best_digit_hits": 4,
-        "good_predictions_count": 24,
-        "score": 22.424999999999997
+        "best_digit_hits": 3,
+        "good_predictions_count": 7,
+        "score": 51.74999999999999
       },
       "sequential_pattern": {
         "straight_rank": null,
@@ -55,7 +55,7 @@
         "box_rank": null,
         "best_position_hits": 2,
         "best_digit_hits": 3,
-        "good_predictions_count": 10,
+        "good_predictions_count": 4,
         "score": 40.25
       },
       "hot_pair": {
@@ -78,25 +78,25 @@
         "straight_rank": null,
         "box_rank": null,
         "best_position_hits": 2,
-        "best_digit_hits": 2,
-        "good_predictions_count": 0,
-        "score": 18.0
+        "best_digit_hits": 3,
+        "good_predictions_count": 10,
+        "score": 40.25
       },
       "global_frequency": {
         "straight_rank": null,
         "box_rank": null,
-        "best_position_hits": 2,
+        "best_position_hits": 3,
         "best_digit_hits": 3,
-        "good_predictions_count": 9,
-        "score": 40.25
+        "good_predictions_count": 5,
+        "score": 51.74999999999999
       },
       "state_chain": {
         "straight_rank": null,
         "box_rank": null,
         "best_position_hits": 1,
-        "best_digit_hits": 3,
-        "good_predictions_count": 3,
-        "score": 40.25
+        "best_digit_hits": 2,
+        "good_predictions_count": 0,
+        "score": 12.0
       }
     }
   }
