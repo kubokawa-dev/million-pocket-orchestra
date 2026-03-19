@@ -1,36 +1,36 @@
 {
   "weights": {
-    "advanced_heuristics": 10.441302357721165,
-    "exploratory": 20.90683120301492,
-    "extreme_patterns": 8.992045817394906,
-    "basic_stats": 2.811866424254528,
-    "ml_model_new": 1.915716389968992,
-    "digit_repetition": 17.403559211414063,
-    "digit_continuation": 24.313521832286487,
-    "realistic_frequency": 19.450817465829196,
-    "large_change": 14.588113099371892,
-    "lightgbm": 29.176226198743784
+    "advanced_heuristics": 10.465260346005952,
+    "exploratory": 20.902232544229097,
+    "extreme_patterns": 8.968847357805254,
+    "basic_stats": 2.833011162505844,
+    "ml_model_new": 1.964636171791034,
+    "digit_repetition": 17.392575384899512,
+    "digit_continuation": 24.298176953545337,
+    "realistic_frequency": 19.438541562836278,
+    "large_change": 14.578906172127203,
+    "lightgbm": 29.157812344254406
   },
-  "updated_at": "2026-03-18T14:53:30.548099",
+  "updated_at": "2026-03-19T14:48:40.158324",
   "metadata": {
-    "actual_number": "6449",
+    "actual_number": "6454",
     "model_results": {
       "basic_stats": {
         "straight_rank": null,
         "box_rank": null,
-        "partial_rank": 17,
+        "partial_rank": 32,
         "partial_count": 3
       },
       "advanced_heuristics": {
         "straight_rank": null,
         "box_rank": null,
-        "partial_rank": 21,
+        "partial_rank": 33,
         "partial_count": 3
       },
       "ml_model_new": {
         "straight_rank": null,
         "box_rank": null,
-        "partial_rank": 19,
+        "partial_rank": 17,
         "partial_count": 3
       },
       "exploratory": {
