@@ -1,24 +1,32 @@
 {
   "weights": {
-    "box_model": 16.126999576787256,
-    "ml_neighborhood": 6.283806056773441,
-    "even_odd_pattern": 7.0702367287418335,
-    "low_sum_specialist": 7.499416302412869,
-    "sequential_pattern": 8.62983776681595,
-    "cold_revival": 10.331074794404254,
-    "hot_pair": 7.4882553774947995,
-    "box_pattern": 12.407003430289965,
-    "digit_freq_box": 7.579216766705972,
-    "global_frequency": 17.832055239852746,
-    "lightgbm": 10.4730100946224,
-    "state_chain": 6.279087865098618
+    "box_model": 16.473082258891104,
+    "ml_neighborhood": 6.059889537497807,
+    "even_odd_pattern": 6.8305864987883655,
+    "low_sum_specialist": 7.197947514422481,
+    "sequential_pattern": 8.2887417370153,
+    "cold_revival": 10.831286077471011,
+    "hot_pair": 7.725624607698568,
+    "box_pattern": 12.706272175922141,
+    "digit_freq_box": 7.321429592764734,
+    "global_frequency": 18.402207982076597,
+    "lightgbm": 10.099815895829675,
+    "state_chain": 6.063116121622306
   },
-  "updated_at": "2026-03-23T14:50:27.017291+00:00",
+  "updated_at": "2026-03-24T14:50:52.064788+00:00",
   "metadata": {
-    "draw_number": 6945,
-    "actual_number": "3851",
+    "draw_number": 6946,
+    "actual_number": "9577",
     "evaluations": {
       "box_model": {
+        "straight_rank": null,
+        "box_rank": null,
+        "best_position_hits": 3,
+        "best_digit_hits": 3,
+        "good_predictions_count": 6,
+        "score": 51.74999999999999
+      },
+      "even_odd_pattern": {
         "straight_rank": null,
         "box_rank": null,
         "best_position_hits": 2,
@@ -26,21 +34,13 @@
         "good_predictions_count": 0,
         "score": 18.0
       },
-      "even_odd_pattern": {
-        "straight_rank": null,
-        "box_rank": null,
-        "best_position_hits": 0,
-        "best_digit_hits": 0,
-        "good_predictions_count": 0,
-        "score": 0.0
-      },
       "low_sum_specialist": {
         "straight_rank": null,
         "box_rank": null,
-        "best_position_hits": 2,
-        "best_digit_hits": 3,
-        "good_predictions_count": 2,
-        "score": 37.800000000000004
+        "best_position_hits": 1,
+        "best_digit_hits": 1,
+        "good_predictions_count": 0,
+        "score": 0.0
       },
       "sequential_pattern": {
         "straight_rank": null,
@@ -52,43 +52,43 @@
       },
       "cold_revival": {
         "straight_rank": null,
-        "box_rank": null,
-        "best_position_hits": 3,
-        "best_digit_hits": 3,
-        "good_predictions_count": 9,
-        "score": 51.74999999999999
+        "box_rank": 5,
+        "best_position_hits": 1,
+        "best_digit_hits": 4,
+        "good_predictions_count": 5,
+        "score": 82.8
       },
       "hot_pair": {
         "straight_rank": null,
         "box_rank": null,
-        "best_position_hits": 1,
-        "best_digit_hits": 2,
-        "good_predictions_count": 0,
-        "score": 12.0
+        "best_position_hits": 3,
+        "best_digit_hits": 3,
+        "good_predictions_count": 5,
+        "score": 51.74999999999999
       },
       "box_pattern": {
         "straight_rank": null,
         "box_rank": null,
-        "best_position_hits": 1,
-        "best_digit_hits": 2,
-        "good_predictions_count": 0,
-        "score": 12.0
+        "best_position_hits": 3,
+        "best_digit_hits": 3,
+        "good_predictions_count": 5,
+        "score": 51.74999999999999
       },
       "digit_freq_box": {
         "straight_rank": null,
         "box_rank": null,
-        "best_position_hits": 1,
-        "best_digit_hits": 1,
+        "best_position_hits": 2,
+        "best_digit_hits": 2,
         "good_predictions_count": 0,
-        "score": 0.0
+        "score": 18.0
       },
       "global_frequency": {
         "straight_rank": null,
-        "box_rank": null,
-        "best_position_hits": 2,
-        "best_digit_hits": 3,
-        "good_predictions_count": 7,
-        "score": 40.25
+        "box_rank": 19,
+        "best_position_hits": 3,
+        "best_digit_hits": 4,
+        "good_predictions_count": 8,
+        "score": 70.72499999999998
       },
       "state_chain": {
         "straight_rank": null,
