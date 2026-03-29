@@ -1,0 +1,28 @@
+{
+  "cli_version": "0.4.4",
+  "checkpoint_id": "79624898ff97",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "apps/web/app/globals.css",
+    "apps/web/app/layout.tsx",
+    "apps/web/app/numbers4/numbers4-predictions-hub.tsx"
+  ],
+  "sessions": [
+    {
+      "metadata": "/79/624898ff97/0/metadata.json",
+      "transcript": "/79/624898ff97/0/full.jsonl",
+      "context": "/79/624898ff97/0/context.md",
+      "content_hash": "/79/624898ff97/0/content_hash.txt",
+      "prompt": "/79/624898ff97/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 50,
+    "cache_creation_tokens": 47334,
+    "cache_read_tokens": 1656082,
+    "output_tokens": 13593,
+    "api_call_count": 42
+  }
+}

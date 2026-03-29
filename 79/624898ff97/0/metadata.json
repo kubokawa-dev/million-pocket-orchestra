@@ -1,0 +1,32 @@
+{
+  "cli_version": "0.4.4",
+  "checkpoint_id": "79624898ff97",
+  "session_id": "81c4e7a2-35b5-455d-8bc1-7db35ffcc980",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-29T14:01:17.92909869Z",
+  "branch": "main",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "apps/web/app/globals.css",
+    "apps/web/app/layout.tsx",
+    "apps/web/app/numbers4/numbers4-predictions-hub.tsx"
+  ],
+  "agent": "Claude Code",
+  "token_usage": {
+    "input_tokens": 50,
+    "cache_creation_tokens": 47334,
+    "cache_read_tokens": 1656082,
+    "output_tokens": 13593,
+    "api_call_count": 42
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-29T14:01:17.583161736Z",
+    "agent_lines": 168,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 168,
+    "agent_percentage": 100
+  },
+  "transcript_path": ".claude/projects/-home-kbkkbk-Develop-kubocchi-million-pocket/81c4e7a2-35b5-455d-8bc1-7db35ffcc980.jsonl"
+}
