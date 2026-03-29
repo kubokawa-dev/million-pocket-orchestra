@@ -11,10 +11,19 @@ CREATE TABLE IF NOT EXISTS numbers3_draws (
     numbers TEXT NOT NULL
 );
 
+-- numbers4 月次CSV列に対応: 当選番号の次から 口数・払戻金額 が4等級分（ストレート/ボックス/セットストレート/セットボックス）
 CREATE TABLE IF NOT EXISTS numbers4_draws (
     draw_number INTEGER PRIMARY KEY,
     draw_date TEXT NOT NULL,
-    numbers TEXT NOT NULL
+    numbers TEXT NOT NULL,
+    tier1_winners INTEGER,
+    tier1_payout_yen INTEGER,
+    tier2_winners INTEGER,
+    tier2_payout_yen INTEGER,
+    tier3_winners INTEGER,
+    tier3_payout_yen INTEGER,
+    tier4_winners INTEGER,
+    tier4_payout_yen INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS loto6_draws (
@@ -135,6 +144,27 @@ CREATE TABLE IF NOT EXISTS numbers4_prediction_candidates (
 );
 CREATE INDEX IF NOT EXISTS idx_numbers4_candidates_ensemble ON numbers4_prediction_candidates(ensemble_prediction_id);
 CREATE INDEX IF NOT EXISTS idx_numbers4_candidates_number ON numbers4_prediction_candidates(number);
+
+-- predictions/daily/*.json の正本（アンサンブル / 手法別 / 予算プランを1行に丸ごと保持）
+-- method_slug: ensemble・budget_plan は '' 固定、method のみ手法ディレクトリ名
+CREATE TABLE IF NOT EXISTS numbers4_daily_prediction_documents (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    target_draw_number INTEGER NOT NULL,
+    doc_kind TEXT NOT NULL CHECK (doc_kind IN ('ensemble', 'method', 'budget_plan')),
+    method_slug TEXT NOT NULL DEFAULT '',
+    relative_path TEXT NOT NULL,
+    payload TEXT NOT NULL,
+    payload_sha256 TEXT,
+    file_mtime TEXT,
+    ingested_at TEXT DEFAULT (datetime('now')),
+    CHECK (
+        (doc_kind = 'method' AND method_slug != '')
+        OR (doc_kind IN ('ensemble', 'budget_plan') AND method_slug = '')
+    ),
+    UNIQUE (target_draw_number, doc_kind, method_slug)
+);
+CREATE INDEX IF NOT EXISTS idx_numbers4_daily_docs_draw ON numbers4_daily_prediction_documents(target_draw_number);
+CREATE INDEX IF NOT EXISTS idx_numbers4_daily_docs_kind ON numbers4_daily_prediction_documents(doc_kind);
 
 -- Loto6
 CREATE TABLE IF NOT EXISTS loto6_model_events (

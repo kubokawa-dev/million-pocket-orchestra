@@ -1,6 +1,8 @@
 """
 データベースユーティリティ（SQLite版）
 """
+from __future__ import annotations
+
 import sqlite3
 import pandas as pd
 import os
@@ -10,6 +12,47 @@ ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # SQLiteデータベースファイルのパス
 DB_PATH = os.path.join(ROOT_DIR, 'lottery.db')
+
+# numbers4_draws に後から追加する払戻列（既存DBは ALTER で追補）
+NUMBERS4_PRIZE_COLUMN_DEFS: list[tuple[str, str]] = [
+    ("tier1_winners", "INTEGER"),
+    ("tier1_payout_yen", "INTEGER"),
+    ("tier2_winners", "INTEGER"),
+    ("tier2_payout_yen", "INTEGER"),
+    ("tier3_winners", "INTEGER"),
+    ("tier3_payout_yen", "INTEGER"),
+    ("tier4_winners", "INTEGER"),
+    ("tier4_payout_yen", "INTEGER"),
+]
+
+
+def parse_numbers4_int_cell(raw) -> int | None:
+    """月次CSVの口数・金額セルを整数化（クォート・カンマ・円を除去）。"""
+    if raw is None or raw == "":
+        return None
+    s = str(raw).strip().strip('"').replace('"', "").replace(",", "").replace("円", "").strip()
+    if not s:
+        return None
+    try:
+        return int(s)
+    except ValueError:
+        return None
+
+
+def ensure_numbers4_draws_columns(conn: sqlite3.Connection) -> None:
+    """numbers4_draws に案Aの払戻カラムが無ければ ALTER TABLE で追加する。"""
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='numbers4_draws'"
+    )
+    if cur.fetchone() is None:
+        return
+    cur.execute("PRAGMA table_info(numbers4_draws)")
+    existing = {row[1] for row in cur.fetchall()}
+    for name, coltype in NUMBERS4_PRIZE_COLUMN_DEFS:
+        if name not in existing:
+            cur.execute(f"ALTER TABLE numbers4_draws ADD COLUMN {name} {coltype}")
+    conn.commit()
 
 
 def get_db_connection():
@@ -36,6 +79,7 @@ def init_database():
         with open(schema_path, 'r', encoding='utf-8') as f:
             schema_sql = f.read()
         conn.executescript(schema_sql)
+        ensure_numbers4_draws_columns(conn)
         conn.commit()
         print(f"✅ Database initialized: {DB_PATH}")
     finally:

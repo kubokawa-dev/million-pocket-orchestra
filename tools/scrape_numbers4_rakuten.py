@@ -13,7 +13,12 @@ from urllib.request import urlopen, Request
 ROOT = os.path.dirname(os.path.dirname(__file__))
 sys.path.insert(0, ROOT)
 
-from tools.utils import get_db_connection, DB_PATH
+from tools.utils import (
+    get_db_connection,
+    DB_PATH,
+    ensure_numbers4_draws_columns,
+    parse_numbers4_int_cell,
+)
 
 CSV_DIR = os.path.join(ROOT, 'numbers4')
 
@@ -169,15 +174,16 @@ def upsert_csv(month: str, rows):
 def ensure_db(conn):
     cur = conn.cursor()
     cur.execute(
-        '''
+        """
         CREATE TABLE IF NOT EXISTS numbers4_draws (
             draw_number INTEGER PRIMARY KEY,
             draw_date TEXT NOT NULL,
             numbers TEXT NOT NULL
         );
-        '''
+        """
     )
     conn.commit()
+    ensure_numbers4_draws_columns(conn)
 
 
 def upsert_sqlite(rows):
@@ -189,12 +195,32 @@ def upsert_sqlite(rows):
         kai = r['kai']
         if kai is None:
             continue
-        cur.execute('SELECT 1 FROM numbers4_draws WHERE draw_number = ?', (kai,))
+        cur.execute("SELECT 1 FROM numbers4_draws WHERE draw_number = ?", (kai,))
         if cur.fetchone():
             continue
         cur.execute(
-            'INSERT INTO numbers4_draws(draw_number, draw_date, numbers) VALUES (?,?,?)',
-            (kai, r['date'], r['number'])
+            """
+            INSERT INTO numbers4_draws(
+                draw_number, draw_date, numbers,
+                tier1_winners, tier1_payout_yen,
+                tier2_winners, tier2_payout_yen,
+                tier3_winners, tier3_payout_yen,
+                tier4_winners, tier4_payout_yen
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?)
+            """,
+            (
+                kai,
+                r["date"],
+                r["number"],
+                parse_numbers4_int_cell(r["s_kuchi"]),
+                parse_numbers4_int_cell(r["s_kingaku"]),
+                parse_numbers4_int_cell(r["b_kuchi"]),
+                parse_numbers4_int_cell(r["b_kingaku"]),
+                parse_numbers4_int_cell(r["set_s_kuchi"]),
+                parse_numbers4_int_cell(r["set_s_kingaku"]),
+                parse_numbers4_int_cell(r["set_b_kuchi"]),
+                parse_numbers4_int_cell(r["set_b_kingaku"]),
+            ),
         )
         inserted += 1
     conn.commit()

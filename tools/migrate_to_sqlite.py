@@ -112,7 +112,13 @@ def main():
     
     tables = {
         'numbers3_draws': ['draw_number', 'draw_date', 'numbers'],
-        'numbers4_draws': ['draw_number', 'draw_date', 'numbers'],
+        'numbers4_draws': [
+            'draw_number', 'draw_date', 'numbers',
+            'tier1_winners', 'tier1_payout_yen',
+            'tier2_winners', 'tier2_payout_yen',
+            'tier3_winners', 'tier3_payout_yen',
+            'tier4_winners', 'tier4_payout_yen',
+        ],
         'loto6_draws': ['draw_number', 'draw_date', 'numbers', 'bonus_number'],
         'numbers3_model_events': ['id', 'event_ts', 'actual_number', 'predictions', 'hit_exact', 'top_match', 'max_position_hits', 'notes'],
         'numbers4_model_events': ['id', 'event_ts', 'actual_number', 'predictions', 'hit_exact', 'top_match', 'max_position_hits', 'notes'],
@@ -131,6 +137,10 @@ def main():
                                        'actual_draw_number', 'actual_numbers', 'actual_bonus_number', 'hit_status', 'hit_count', 'bonus_hit', 'notes'],
         'numbers3_prediction_candidates': ['id', 'ensemble_prediction_id', 'rank', 'number', 'score', 'contributing_models', 'created_at'],
         'numbers4_prediction_candidates': ['id', 'ensemble_prediction_id', 'rank', 'number', 'score', 'contributing_models', 'created_at'],
+        'numbers4_daily_prediction_documents': [
+            'id', 'target_draw_number', 'doc_kind', 'method_slug', 'relative_path',
+            'payload', 'payload_sha256', 'file_mtime', 'ingested_at',
+        ],
         'loto6_prediction_candidates': ['id', 'ensemble_prediction_id', 'rank', 'number', 'score', 'contributing_models', 'created_at'],
     }
     
