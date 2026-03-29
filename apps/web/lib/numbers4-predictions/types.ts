@@ -46,17 +46,29 @@ export type BudgetPlanPayload = {
   plan_10?: BudgetPlanSlice;
 };
 
-export type MethodSummaryRow = {
-  slug: string;
-  runs: number;
-  topNumber: string | null;
-  lastTimeJst: string | null;
+export type MethodTopPrediction = {
+  rank?: number;
+  number: string;
+  score: number | null;
 };
 
-export type PredictionBundle6949 = {
+/** doc_kind=method に相当する行（UI・合意集計用） */
+export type MethodPredictionRow = {
+  slug: string;
+  relativePath: string | null;
+  runs: number;
+  lastTimeJst: string | null;
+  topNumber: string | null;
+  topPredictions: MethodTopPrediction[];
+};
+
+export type Numbers4PredictionBundle = {
   source: "database" | "repository_files" | "embedded";
-  targetDrawNumber: 6949;
+  targetDrawNumber: number;
   ensemble: EnsemblePayload | null;
   budgetPlan: BudgetPlanPayload | null;
-  methodRows: MethodSummaryRow[];
+  methodRows: MethodPredictionRow[];
 };
+
+/** @deprecated 互換名 */
+export type PredictionBundle6949 = Numbers4PredictionBundle;

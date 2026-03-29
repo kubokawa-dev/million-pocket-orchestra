@@ -1,8 +1,10 @@
 import type {
   BudgetPlanPayload,
   EnsemblePayload,
-  MethodSummaryRow,
+  MethodPredictionRow,
 } from "./types";
+
+export const FALLBACK_TARGET_DRAW = 6949;
 
 /** DB / リポジトリ JSON が無い環境用の最小データ */
 export const FALLBACK_ENSEMBLE_6949: EnsemblePayload = {
@@ -39,4 +41,4 @@ export const FALLBACK_BUDGET_6949: BudgetPlanPayload = {
   },
 };
 
-export const FALLBACK_METHOD_ROWS: MethodSummaryRow[] = [];
+export const FALLBACK_METHOD_ROWS: MethodPredictionRow[] = [];

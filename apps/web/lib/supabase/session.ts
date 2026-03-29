@@ -1,6 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
+import { resolvePublicSupabaseConfig } from "@/lib/env";
+
 /**
  * Auth セッションの Cookie をリフレッシュする（ローカル・リモートどちらの URL でも同じ）。
  * getUser() を呼ぶまでの間に他処理を挟まないこと（公式推奨）。
@@ -10,11 +12,17 @@ export async function updateSession(request: NextRequest) {
     request,
   });
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !anonKey) {
+  let publicConfig: ReturnType<typeof resolvePublicSupabaseConfig>;
+  try {
+    publicConfig = resolvePublicSupabaseConfig();
+  } catch {
     return supabaseResponse;
   }
+  if (!publicConfig) {
+    return supabaseResponse;
+  }
+
+  const { url, anonKey } = publicConfig;
 
   const supabase = createServerClient(url, anonKey, {
     cookies: {

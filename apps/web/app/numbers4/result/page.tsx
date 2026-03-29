@@ -15,6 +15,8 @@ import { NUMBERS4_PAGE_SIZE, type Numbers4DrawRow } from "@/lib/numbers4";
 import { Numbers4DrawsTable } from "./numbers4-draws-table";
 import { Numbers4Pagination } from "./numbers4-pagination";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "ナンバーズ4 当選番号一覧",
   description:
@@ -92,11 +94,17 @@ export default async function Numbers4ResultPage({ searchParams }: PageProps) {
           </CardHeader>
           <CardContent className="px-0 pb-0">
             <div className="bg-muted/40 border-border/60 border-b px-4 py-3 sm:px-6">
-              <Numbers4Pagination totalCount={totalCount} />
+              <Numbers4Pagination
+                totalCount={totalCount}
+                currentPage={page}
+              />
             </div>
             <Numbers4DrawsTable rows={rows} />
             <div className="bg-muted/40 border-border/60 rounded-b-xl border-t px-4 py-3 sm:px-6">
-              <Numbers4Pagination totalCount={totalCount} />
+              <Numbers4Pagination
+                totalCount={totalCount}
+                currentPage={page}
+              />
             </div>
           </CardContent>
         </Card>

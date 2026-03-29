@@ -139,6 +139,14 @@ jobs:
           print(summary)
           PY
       
+      # predictions/daily の JSON を PostgREST で UPSERT（スキーマは apps/web/supabase/migrations 参照）
+      - name: Upsert numbers4_daily_prediction_documents (Supabase)
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          python tools/load_numbers4_daily_json_to_postgres.py --skip-if-unconfigured --chunk-size 12
+      
       - name: Commit prediction JSON and CSV
         run: |
           git config --local user.email "action@github.com"
