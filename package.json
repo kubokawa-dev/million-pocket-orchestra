@@ -2,6 +2,9 @@
   "name": "million-pocket",
   "private": true,
   "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
