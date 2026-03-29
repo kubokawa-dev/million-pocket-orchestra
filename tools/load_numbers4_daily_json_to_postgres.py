@@ -1,7 +1,11 @@
 """
 predictions/daily の JSON を Supabase（PostgREST）の numbers4_daily_prediction_documents に UPSERT。
 
-  python tools/load_numbers4_daily_json_to_postgres.py --use-cli-login
+  ローカル（CLI）:
+    python tools/load_numbers4_daily_json_to_postgres.py --use-cli-login
+
+  CI / .env（NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY）:
+    python tools/load_numbers4_daily_json_to_postgres.py --skip-if-unconfigured
 
   ※ ペイロードが大きいのでデフォルト chunk は小さめ（--chunk-size で調整）
 """
@@ -97,21 +101,38 @@ def parse_args() -> argparse.Namespace:
         help="1リクエストあたりの行数（大きいと 413 / タイムアウトしやすい）",
     )
     p.add_argument("--dry-run", action="store_true")
+    p.add_argument(
+        "--skip-if-unconfigured",
+        action="store_true",
+        help="NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY が無いときは成功終了（CI）",
+    )
     return p.parse_args()
 
 
 def main() -> None:
     args = parse_args()
 
-    if not args.use_cli_login:
-        print("❌ --use-cli-login を付けて実行してください（リモート投入用）")
-        sys.exit(1)
-
-    ref = resolve_supabase_project_ref(args.project_ref)
-    inject_service_role_from_supabase_cli(ref)
-    print(
-        "🔑 Supabase CLI で service_role を取得しました（メモリ内のみ）"
-    )
+    if args.use_cli_login:
+        ref = resolve_supabase_project_ref(args.project_ref)
+        inject_service_role_from_supabase_cli(ref)
+        print("🔑 Supabase CLI で service_role を取得しました（メモリ内のみ）")
+    else:
+        base = _supabase_rest_base()
+        key = _service_role_for_rest()
+        if not base or not key:
+            if args.skip_if_unconfigured:
+                print(
+                    "⚠️ Supabase URL / service_role が無いため "
+                    "numbers4_daily_prediction_documents UPSERT をスキップ"
+                )
+                return
+            print(
+                "❌ PostgREST 用の認証がありません。次のいずれかで実行してください:\n"
+                "   --use-cli-login … supabase login 済みローカル\n"
+                "   または NEXT_PUBLIC_SUPABASE_URL と SUPABASE_SERVICE_ROLE_KEY を設定"
+            )
+            sys.exit(1)
+        print("🔑 環境変数（NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY）を使用します")
 
     records, skipped = collect_daily_prediction_records()
     print(f"📂 対象 {len(records)} 件（パターン外スキップ {skipped}）")

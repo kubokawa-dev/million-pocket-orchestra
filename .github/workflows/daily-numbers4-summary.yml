@@ -173,6 +173,14 @@ jobs:
             echo "⚠️ Skip budget plan generation (no draw number)"
           fi
       
+      - name: Upsert numbers4_daily_prediction_documents (Supabase)
+        if: steps.check_methods.outputs.all_methods_ready == 'true'
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          python tools/load_numbers4_daily_json_to_postgres.py --skip-if-unconfigured --chunk-size 12
+      
       - name: Commit summary
         if: steps.check_methods.outputs.all_methods_ready == 'true'
         run: |

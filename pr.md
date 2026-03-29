@@ -1,116 +1,129 @@
 # 概要
-
-リポジトリルートに **pnpm ワークスペース** と **Turborepo** を導入し、`build` / `dev` / `lint` をルートから `turbo run` で回せる基盤を追加する。あわせて `packages/config` にプレースホルダパッケージを置き、Turbo のタスク定義（成果物なしビルドの扱い）を検証できるようにした。
-
-なお、現在の `origin/main`（`f4c347c`）より手前のコミット（`37cf57b`）から分岐しているため、**本 PR の差分には `predictions/daily/methods/**/numbers4_6947.json` の更新差分も含まれる**（メイン側にのみ入っている直近の予測コミットとのツリー差分）。意図する変更はモノレポ基盤まわりなので、マージ前に **`main` を取り込むか rebase して予測 JSON のノイズを消す**ことを強く推奨する。
+`apps/web` を Git のサブモジュール（gitlink）として扱うのをやめ、Next.js アプリ一式を親リポジトリの通常ディレクトリとして管理できるようにする。クローン・CI・コードレビューを単一リポジトリで完結させ、ツール連携の摩擦を減らすのが目的。
 
 ## 変更内容
-
-- ルートに `package.json` を追加し、`private`・`packageManager`（pnpm 固定）・`turbo` を devDependency として宣言。スクリプトは `turbo run build|dev|lint` に集約した。
-- `pnpm-workspace.yaml` で `apps/*` と `packages/*` をワークスペース化し、`pnpm-lock.yaml` で依存解決を固定した（ロックには Next.js / React / Tailwind / ESLint / shadcn / `@base-ui/react` などが `apps/web` 向けに記録されている）。
-- `turbo.json` で `build`（上位 `build` 依存、`dist` / `.next` 出力想定）、`lint`、`dev`（キャッシュ無効・永続）を定義した。
-- `packages/config` に no-op の `build` / `lint` スクリプトを持つパッケージを追加し、同梱の `turbo.json` で `build` の `outputs` を空にして Turbo の警告を避けた。
-- `apps/web` を **git サブモジュール（gitlink）** として登録している。単一リポジトリ内に Next アプリのソースを置く運用なら、サブモジュールが意図と一致するか要確認。
-- （上記分岐の結果として）`predictions/daily/methods/**/numbers4_6947.json` が `main` とのツリー差分として表示される。
+- `apps/web` の gitlink（mode `160000`）を index から外し、ネストしていた `apps/web/.git` を削除して通常ツリーとして再登録した。
+- Next.js 16 ベースの Web アプリ全体（約 55 ファイル）をリポジトリに含める。shadcn（Base UI 系）の Button / Card / Table / Badge などと Tailwind の共通スタイルを利用。
+- サイト全体のシェル（sticky ヘッダー、`/` と `/numbers4` 系のアクティブなピルナビ）とホームの CTA を追加・整理した。
+- ナンバーズ4: `/numbers4` に予測ダッシュボード（第6949回固定のデバッグ表示、データは Supabase → `predictions/daily` の JSON → 内蔵フォールバックの優先順）、`/numbers4/result` に当選番号一覧（nuqs + ページネーション）、`/numbers4/result/[draw_number]` に詳細、旧 URL 用のリダイレクトを配置した。
+- Supabase 用のクライアント（server / browser）と、`numbers4_draws`・`numbers4_daily_prediction_documents` のマイグレーションを `apps/web/supabase` に含めた。
+- `buttonVariants` を `button-variants.ts` に分離し、Server Component からもスタイルを参照できるようにした。
+- レポート用の読み込みヘルパ（`lib/reports/load-numbers4-report.ts`）および Markdown 表示用コンポーネント（`numbers4-report-markdown.tsx`）を同梱した。
 
 ## 背景 / 目的
-
-ブランチ名（`feature/add-turborepo-with-web-app`）およびコミット本文から、**Python 中心の既存リポジトリにフロントエンド用のモノレポ基盤を足し、以降 `apps/web` で Web を育てる**ことが目的と読み取れる。Turborepo によりタスクのキャッシュ・依存関係（`^build`）を明示し、パッケージが増えた後のビルドや CI 運用をしやすくする。
+- サブモジュール運用をやめ、モノレポとして `apps/web` を他パッケージと同様に扱いたい。
+- `.gitmodules` が無い不完全な gitlink 状態を解消し、`git submodule` まわりのエラーを防ぎたい。
 
 ## 動作確認 / テスト
-
-- [ ] ローカルで動作確認（**未実施**: コミット本文でも merge 前の `pnpm install` / `pnpm build` / `pnpm lint` 再実行が推奨とされていたため、マージ前に実施予定）
-- [ ] 自動テスト（Unit/E2E）: 対象なし（本変更は主に Node ツールチェーン追加）
-- [ ] 手動テスト: サブモジュールとしての `apps/web` が clone 後に意図どおり取得できるか、`pnpm install` 後にルートから `pnpm build` が通るかを確認する
+- [ ] ローカルで動作確認（`cd apps/web && npm install && npm run dev` で `/`・`/numbers4`・`/numbers4/result` を開く）
+- [ ] 自動テスト（Unit/E2E）: 未実施（本 PR では `npm run build` / `npm run lint` の実行は PR 作成フロー外。マージ前に `apps/web` で実行推奨）
+- [ ] 手動テスト: 未実施（上記 URL の表示・Supabase 未設定時のフォールバック挙動を確認推奨）
 
 ## スクリーンショット / 動画（UI変更がある場合）
-
-UI の見た目の変更はない（ツールチェーン・リポジトリ構成の変更）。
+UI 変更あり（新規アプリ取り込み）。スクショは未添付。マージ前に主要画面のキャプチャ添付を推奨。
 
 ## 影響範囲
-
-- **開発者**: ルートで `pnpm` / `turbo` を使う前提が増える。既存の Python ワークフローとは独立だが、CI や README に追記が必要になる可能性がある。
-- **`apps/web`**: サブモジュール参照のため、clone 時に `--recurse-submodules` 等が必要になる場合がある。
-- **`pnpm-lock.yaml`**: 大きな追加があり、レビューは差分より「何がロックされたか」の要約で十分なことが多い。
-- **予測 JSON**: 上記のとおり `main` との分岐により差分に含まれる。実質的な意図した変更ではない可能性が高い。
+- リポジトリ利用者: `apps/web` が独立リポジトリではなくなるため、以前サブツリーで運用していた場合は clone / 更新手順が変わる。
+- CI / デプロイ: ビルドルートが `apps/web` のままなら設定変更は不要なことが多いが、リモートの設定を一度確認した方がよい。
+- 履歴: `apps/web` 単体リポジトリにしか無かったコミット履歴は、このクローンからは参照できなくなる（別リモートに残しているか要確認）。
 
 ## リスクと対策
-
-- **サブモジュール運用のミスマッチ**: 単一リポジトリで管理したい場合、gitlink のままだと期待と異なる。対策: 方針に合わせて通常ディレクトリに差し替えるか、サブモジュール運用をドキュメント化する。
-- **`main` との分岐によるノイズ差分**: レビュー負荷と誤マージリスク。対策: **`main` を取り込み（merge または rebase）**してから PR を更新する。
-- **ロックファイルの肥大化**: 依存の追加・更新時にコンフリクトしやすい。対策: コンフリクト時は `pnpm install` で再生成を基本とする。
+- **巨大 diff**: レビュー負荷が高い。まず「サブモジュール解除 + ファイル追加」の機械的変更と、アプリ固有ロジックを分けて見る。
+- **秘密情報**: `.env*` は `.gitignore` 対象。`.env.example` のみ追加。マージ前に本番キーが含まれていないか再確認する。
+- **依存**: `package-lock.json` 同梱。lockfile の整合は `npm ci` で検証可能。
 
 ## ロールアウト / リリース手順（必要なら）
-
 - [ ] 段階リリース
 - [ ] フラグで切替
-- [ ] リリース後の確認項目: 本 PR はライブラリ配布ではなくリポジトリ構成変更のため、デプロイ対象があれば `apps/web` 側のパイプラインで `pnpm build` が通ることを確認する
+- [ ] リリース後の確認項目: 本番デプロイ後、トップ・Numbers4 各ページの 200 応答と Supabase 接続エラーがないか
 
 ## レビュー観点
-
-- `apps/web` をサブモジュールにした意図がプロジェクト方針と一致するか。
-- `turbo.json` の `outputs` / `dev` の `persistent` 設定が、今後追加するアプリ（Next 等）と整合するか。
-- `origin/main` との分岐による `predictions/**` の差分を、**意図した変更として扱うか、rebase して除去するか**の判断。
-- ルート `.gitignore` と Node 成果物（`node_modules` / `.turbo` 等）の扱いが既に十分か（既存設定を踏襲している想定）。
+- `apps/web` 以下に `node_modules` や `.env.local` が紛れ込んでいないか。
+- マイグレーション SQL と RLS ポリシーが意図どおりか（anon の select 範囲など）。
+- 旧 URL リダイレクト（`/numbers4` → `/numbers4/result` 廃止、`/numbers4/[draw_number]` → `/numbers4/result/...`）の挙動がプロダクト要件と合うか。
 
 ## チェックリスト
-
-- [x] 目的に沿った最小変更になっている（意図はモノレポ基盤。分岐による JSON 差分は別途整理推奨）
-- [x] 不要なログ/デバッグコードを削除した（該当なし）
-- [ ] 仕様/ドキュメントの更新が必要なら反映した（README への `pnpm install` 手順追記は未対応の可能性 — 必要なら別コミット）
-- [ ] 破壊的変更がある場合、影響/移行手順を書いた（サブモジュール化はクローン手順に影響しうるため、チーム合意とドキュメント化を推奨）
+- [x] 目的に沿った最小変更になっている（サブモジュール解除が主目的で、そのためにツリー全体を取り込む形）
+- [x] 不要なログ/デバッグコードを削除した（コミットメッセージの `Made-with: Cursor` はメタ情報のみ）
+- [ ] 仕様/ドキュメントの更新が必要なら反映した（README / 開発手順は別 PR でも可）
+- [ ] 破壊的変更がある場合、影響/移行手順を書いた（clone 手順の変更は上記「影響範囲」に記載）
 
 ---
 
 ## 自動情報（参考）
 
-### diffstat（`origin/main..HEAD`）
-
+### diffstat
 ```
- apps/web                                           |    1 +
- package.json                                       |   13 +
- packages/config/package.json                       |    9 +
- packages/config/turbo.json                         |   8 +
- pnpm-lock.yaml                                     | 6174 ++++++++++++++++++++
- pnpm-workspace.yaml                                |    3 +
- .../daily/methods/box_pattern/numbers4_6947.json   |  115 +-
- .../daily/methods/cold_revival/numbers4_6947.json  |  115 +-
- .../daily/methods/hot_pair/numbers4_6947.json      |  115 +-
- .../methods/sequential_pattern/numbers4_6947.json  |  115 +-
- turbo.json                                         |   14 +
- 11 files changed, 6230 insertions(+), 452 deletions(-)
+ apps/web                                           |    1 -
+ apps/web/.env.example                              |   23 +
+ apps/web/.gitignore                                |   42 +
+ ... (略: 55 files changed, 5655 insertions(+), 1 deletion(-))
 ```
 
-### changed files（`origin/main..HEAD`）
-
+### changed files
 ```
 apps/web
-package.json
-packages/config/package.json
-packages/config/turbo.json
-pnpm-lock.yaml
-pnpm-workspace.yaml
-predictions/daily/methods/box_pattern/numbers4_6947.json
-predictions/daily/methods/cold_revival/numbers4_6947.json
-predictions/daily/methods/hot_pair/numbers4_6947.json
-predictions/daily/methods/sequential_pattern/numbers4_6947.json
-turbo.json
+apps/web/.env.example
+apps/web/.gitignore
+apps/web/AGENTS.md
+apps/web/CLAUDE.md
+apps/web/README.md
+apps/web/app/favicon.ico
+apps/web/app/globals.css
+apps/web/app/layout.tsx
+apps/web/app/numbers4/[draw_number]/page.tsx
+apps/web/app/numbers4/numbers4-predictions-hub.tsx
+apps/web/app/numbers4/page.tsx
+apps/web/app/numbers4/result/[draw_number]/numbers4-report-markdown.tsx
+apps/web/app/numbers4/result/[draw_number]/page.tsx
+apps/web/app/numbers4/result/numbers4-draws-table.tsx
+apps/web/app/numbers4/result/numbers4-pagination.tsx
+apps/web/app/numbers4/result/page.tsx
+apps/web/app/page.tsx
+apps/web/components.json
+apps/web/components/site-header.tsx
+apps/web/components/site-nav.tsx
+apps/web/components/ui/badge.tsx
+apps/web/components/ui/button-variants.ts
+apps/web/components/ui/button.tsx
+apps/web/components/ui/card.tsx
+apps/web/components/ui/pagination.tsx
+apps/web/components/ui/separator.tsx
+apps/web/components/ui/table.tsx
+apps/web/eslint.config.mjs
+apps/web/lib/numbers4-predictions/fallback-6949.ts
+apps/web/lib/numbers4-predictions/load-6949.ts
+apps/web/lib/numbers4-predictions/summarize-method.ts
+apps/web/lib/numbers4-predictions/types.ts
+apps/web/lib/numbers4.ts
+apps/web/lib/reports/load-numbers4-report.ts
+apps/web/lib/supabase/admin.ts
+apps/web/lib/supabase/client.ts
+apps/web/lib/supabase/server.ts
+apps/web/lib/supabase/session.ts
+apps/web/lib/utils.ts
+apps/web/next.config.ts
+apps/web/package-lock.json
+apps/web/package.json
+apps/web/postcss.config.mjs
+apps/web/proxy.ts
+apps/web/public/file.svg
+apps/web/public/globe.svg
+apps/web/public/next.svg
+apps/web/public/vercel.svg
+apps/web/public/window.svg
+apps/web/supabase/.gitignore
+apps/web/supabase/config.toml
+apps/web/supabase/migrations/20260329120000_numbers4_draws.sql
+apps/web/supabase/migrations/20260330120000_numbers4_daily_prediction_documents.sql
+apps/web/tsconfig.json
 ```
 
-### commits（subject+body, `origin/main..HEAD`, `--reverse`）
+### commits (subject+body)
+```
+- be3ea7b chore: inline apps/web as normal tree (remove submodule gitlink)
 
-- aab0f36 build: ルートにpnpmワークスペースとTurborepoを導入する
-
-ブランチ名からチケット形式のIDは抽出できなかったため、タイトルにはIDを付けていない。
-
-リポジトリルートに package.json を追加し、private かつ packageManager に pnpm を固定したうえで、build・dev・lint を turbo run 経由で実行できるようにした。開発用依存として Turborepo（turbo）を宣言し、モノレポ全体のタスク実行の入口をルートに集約している。
-
-pnpm-workspace.yaml で apps/* と packages/* をワークスペース対象にし、pnpm-lock.yaml で依存関係を確定させた。ロックファイル上は apps/web 向けに Next.js・React・Tailwind・ESLint、shadcn 関連、@base-ui/react などが解決済みとして記録されており、フロントエンドアプリをワークスペースの一員として扱う前提が読み取れる。
-
-turbo.json では build に上位パッケージの build への依存と、dist や .next を想定した outputs を定義し、lint・dev もパイプライン対象に含めた。dev はキャッシュを無効化しつつ永続プロセスとして扱う設定にしている。packages/config にはビルド・lint が実質 no-op のプレースホルダパッケージを置き、同ディレクトリの turbo.json で build の outputs を空にして、成果物のないタスクでも Turbo 側の警告が出にくいようにしている。
-
-apps/web はディレクトリツリーとしての一括追加ではなく、gitlink（サブモジュール）として特定コミットを指す形でステージされている。意図が「単一リポジトリ内に Next アプリのソースを置く」ことであれば、サブモジュール登録が本当に望ましいかを確認した方がよい。
-
-動作確認としては、ここではステージ済み差分のコミットのみ実施し、merge 前にルートで pnpm install および pnpm build / pnpm lint を改めて流すことを推奨する。
+Drop nested .git under apps/web and track all web app files in the parent repo.
 
 Made-with: Cursor
+```

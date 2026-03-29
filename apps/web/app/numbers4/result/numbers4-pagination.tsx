@@ -1,24 +1,32 @@
-"use client";
-
+import Link from "next/link";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
-import { parseAsInteger, useQueryState } from "nuqs";
 
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { NUMBERS4_PAGE_SIZE } from "@/lib/numbers4";
 import { cn } from "@/lib/utils";
 
 type Numbers4PaginationProps = {
   totalCount: number;
+  /** サーバーが searchParams から解決した現在ページ（1 始まり） */
+  currentPage: number;
 };
 
-export function Numbers4Pagination({ totalCount }: Numbers4PaginationProps) {
-  const [page, setPage] = useQueryState(
-    "page",
-    parseAsInteger.withDefault(1).withOptions({ history: "push" }),
-  );
-
+export function Numbers4Pagination({
+  totalCount,
+  currentPage,
+}: Numbers4PaginationProps) {
   const totalPages = Math.max(1, Math.ceil(totalCount / NUMBERS4_PAGE_SIZE));
-  const current = Math.min(Math.max(1, page ?? 1), totalPages);
+  const page = Math.min(Math.max(1, currentPage), totalPages);
+
+  const prevHref =
+    page <= 1 ? null : `/numbers4/result?page=${page - 1}`;
+  const nextHref =
+    page >= totalPages ? null : `/numbers4/result?page=${page + 1}`;
+
+  const btnClass = cn(
+    buttonVariants({ variant: "outline", size: "sm" }),
+    "inline-flex min-w-[5.5rem] justify-center no-underline",
+  );
 
   return (
     <div
@@ -35,36 +43,50 @@ export function Numbers4Pagination({ totalCount }: Numbers4PaginationProps) {
         <span className="tabular-nums">{NUMBERS4_PAGE_SIZE}</span> 件
       </p>
       <div className="flex items-center justify-center gap-2 sm:justify-end">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={current <= 1}
-          onClick={() => void setPage(current - 1)}
-          aria-label="前のページ"
-          className="min-w-[5.5rem]"
-        >
-          <ChevronLeftIcon data-icon="inline-start" />
-          前へ
-        </Button>
+        {prevHref ? (
+          <Link
+            href={prevHref}
+            className={btnClass}
+            aria-label="前のページ"
+            scroll={true}
+          >
+            <ChevronLeftIcon data-icon="inline-start" />
+            前へ
+          </Link>
+        ) : (
+          <span
+            className={cn(btnClass, "pointer-events-none opacity-50")}
+            aria-disabled
+          >
+            <ChevronLeftIcon data-icon="inline-start" />
+            前へ
+          </span>
+        )}
         <span
           className="bg-background border-border text-foreground inline-flex min-w-[7.5rem] items-center justify-center rounded-lg border px-3 py-1.5 text-sm font-medium tabular-nums shadow-sm"
           aria-live="polite"
         >
-          {current} / {totalPages}
+          {page} / {totalPages}
         </span>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={current >= totalPages}
-          onClick={() => void setPage(current + 1)}
-          aria-label="次のページ"
-          className="min-w-[5.5rem]"
-        >
-          次へ
-          <ChevronRightIcon data-icon="inline-end" />
-        </Button>
+        {nextHref ? (
+          <Link
+            href={nextHref}
+            className={btnClass}
+            aria-label="次のページ"
+            scroll={true}
+          >
+            次へ
+            <ChevronRightIcon data-icon="inline-end" />
+          </Link>
+        ) : (
+          <span
+            className={cn(btnClass, "pointer-events-none opacity-50")}
+            aria-disabled
+          >
+            次へ
+            <ChevronRightIcon data-icon="inline-end" />
+          </span>
+        )}
       </div>
     </div>
   );
