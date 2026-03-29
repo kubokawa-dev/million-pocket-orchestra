@@ -1,129 +1,88 @@
 # 概要
-`apps/web` を Git のサブモジュール（gitlink）として扱うのをやめ、Next.js アプリ一式を親リポジトリの通常ディレクトリとして管理できるようにする。クローン・CI・コードレビューを単一リポジトリで完結させ、ツール連携の摩擦を減らすのが目的。
+
+ナンバーズ4 予測ハブのアンサンブル表で、「寄与モデル」列を `<details>` 展開から Base UI のツールチップ表示に切り替えた。行の高さがクリックで変わってテーブルが崩れる問題を解消しつつ、一致／ボックスのモデル内訳はホバーやキーボードフォーカスで確認できるようにする。
 
 ## 変更内容
-- `apps/web` の gitlink（mode `160000`）を index から外し、ネストしていた `apps/web/.git` を削除して通常ツリーとして再登録した。
-- Next.js 16 ベースの Web アプリ全体（約 55 ファイル）をリポジトリに含める。shadcn（Base UI 系）の Button / Card / Table / Badge などと Tailwind の共通スタイルを利用。
-- サイト全体のシェル（sticky ヘッダー、`/` と `/numbers4` 系のアクティブなピルナビ）とホームの CTA を追加・整理した。
-- ナンバーズ4: `/numbers4` に予測ダッシュボード（第6949回固定のデバッグ表示、データは Supabase → `predictions/daily` の JSON → 内蔵フォールバックの優先順）、`/numbers4/result` に当選番号一覧（nuqs + ページネーション）、`/numbers4/result/[draw_number]` に詳細、旧 URL 用のリダイレクトを配置した。
-- Supabase 用のクライアント（server / browser）と、`numbers4_draws`・`numbers4_daily_prediction_documents` のマイグレーションを `apps/web/supabase` に含めた。
-- `buttonVariants` を `button-variants.ts` に分離し、Server Component からもスタイルを参照できるようにした。
-- レポート用の読み込みヘルパ（`lib/reports/load-numbers4-report.ts`）および Markdown 表示用コンポーネント（`numbers4-report-markdown.tsx`）を同梱した。
+
+- アンサンブル表の寄与モデル表示から `<details>` を廃止し、セルは常に1行（「一致 N」「ボックス N」）に固定した。
+- 「一致」「ボックス」それぞれをツールチップのトリガーとし、モデル名一覧と説明をポップアップ（Portal）で表示する。一覧が長い場合はツールチップ内のみスクロールする。
+- `EnsembleContributorCell` を `apps/web/app/numbers4/ensemble-contributor-cell.tsx` に切り出し、クライアントコンポーネントとして Base UI `Tooltip` と連携させた。
+- 共通の `HelpTooltip` / `HelpTooltipProvider` を `apps/web/components/ui/help-tooltip.tsx` に追加した（`closeDelay` など一覧閲覧向けの調整を含む）。
+- 予測ハブの注釈テキストおよび「寄与モデル」列見出しの `title` を、ツールチップ操作に合わせて更新した。
 
 ## 背景 / 目的
-- サブモジュール運用をやめ、モノレポとして `apps/web` を他パッケージと同様に扱いたい。
-- `.gitmodules` が無い不完全な gitlink 状態を解消し、`git submodule` まわりのエラーを防ぎたい。
+
+寄与モデル列で内訳を開くと行高が伸び、アンサンブル表のレイアウトが崩れるという利用上の課題があった。詳細は見せつつ表の見た目を安定させるため、インライン展開ではなくオーバーレイ型のツールチップに変更する。
 
 ## 動作確認 / テスト
-- [ ] ローカルで動作確認（`cd apps/web && npm install && npm run dev` で `/`・`/numbers4`・`/numbers4/result` を開く）
-- [ ] 自動テスト（Unit/E2E）: 未実施（本 PR では `npm run build` / `npm run lint` の実行は PR 作成フロー外。マージ前に `apps/web` で実行推奨）
-- [ ] 手動テスト: 未実施（上記 URL の表示・Supabase 未設定時のフォールバック挙動を確認推奨）
+
+- [x] ローカルで動作確認（コミット時点で `pnpm run build` 成功を確認済み）
+- [ ] 自動テスト（Unit/E2E）: 本変更では未実行。CI の `lint` / `build` に任せる。
+- [ ] 手動テスト: 予測ハブのアンサンブル表で「一致」「ボックス」にカーソルを載せ／Tab でフォーカスし、ツールチップとキーボード操作を確認することを推奨。
 
 ## スクリーンショット / 動画（UI変更がある場合）
-UI 変更あり（新規アプリ取り込み）。スクショは未添付。マージ前に主要画面のキャプチャ添付を推奨。
+
+未添付。マージ前に Before（展開で行が伸びる）/ After（1行＋ツールチップ）のキャプチャを足すとレビューがしやすい。
 
 ## 影響範囲
-- リポジトリ利用者: `apps/web` が独立リポジトリではなくなるため、以前サブツリーで運用していた場合は clone / 更新手順が変わる。
-- CI / デプロイ: ビルドルートが `apps/web` のままなら設定変更は不要なことが多いが、リモートの設定を一度確認した方がよい。
-- 履歴: `apps/web` 単体リポジトリにしか無かったコミット履歴は、このクローンからは参照できなくなる（別リモートに残しているか要確認）。
+
+- `apps/web` のナンバーズ4 予測ハブ（`numbers4-predictions-hub.tsx`）のアンサンブル表のみ。
+- 新規 UI プリミティブ `help-tooltip.tsx` は他画面からも import 可能だが、本 PR では当該寄与列のみで使用。
 
 ## リスクと対策
-- **巨大 diff**: レビュー負荷が高い。まず「サブモジュール解除 + ファイル追加」の機械的変更と、アプリ固有ロジックを分けて見る。
-- **秘密情報**: `.env*` は `.gitignore` 対象。`.env.example` のみ追加。マージ前に本番キーが含まれていないか再確認する。
-- **依存**: `package-lock.json` 同梱。lockfile の整合は `npm ci` で検証可能。
+
+- **タッチデバイス**: ホバーが使えない環境ではフォーカス操作が必要になる。必要なら将来ポップオーバー化やタップ対応を検討する。
+- **Base UI / Portal**: z-index は `z-50` を指定。極端に重なり順の高いモーダルと干渉する場合は調整が必要。
+- **クライアント境界**: 寄与セル周りのバンドルがわずかに増えるが、表示箇所は限定的。
 
 ## ロールアウト / リリース手順（必要なら）
+
 - [ ] 段階リリース
 - [ ] フラグで切替
-- [ ] リリース後の確認項目: 本番デプロイ後、トップ・Numbers4 各ページの 200 応答と Supabase 接続エラーがないか
+- [x] リリース後の確認項目: Web デプロイ後、予測ハブのアンサンブル表で寄与列のツールチップが期待どおり開くかを確認。
 
 ## レビュー観点
-- `apps/web` 以下に `node_modules` や `.env.local` が紛れ込んでいないか。
-- マイグレーション SQL と RLS ポリシーが意図どおりか（anon の select 範囲など）。
-- 旧 URL リダイレクト（`/numbers4` → `/numbers4/result` 廃止、`/numbers4/[draw_number]` → `/numbers4/result/...`）の挙動がプロダクト要件と合うか。
+
+- ツールチップの開閉・`closeDelay` が長い一覧でも読みやすいか。
+- アクセシビリティ（フォーカスリング、意味のある `title`）が十分か。
+- `help-tooltip.tsx` の API（`contentClassName` 等）が今後の再利用に耐えるか。
 
 ## チェックリスト
-- [x] 目的に沿った最小変更になっている（サブモジュール解除が主目的で、そのためにツリー全体を取り込む形）
-- [x] 不要なログ/デバッグコードを削除した（コミットメッセージの `Made-with: Cursor` はメタ情報のみ）
-- [ ] 仕様/ドキュメントの更新が必要なら反映した（README / 開発手順は別 PR でも可）
-- [ ] 破壊的変更がある場合、影響/移行手順を書いた（clone 手順の変更は上記「影響範囲」に記載）
+
+- [x] 目的に沿った最小変更になっている
+- [x] 不要なログ/デバッグコードを削除した
+- [x] 仕様/ドキュメントの更新が必要なら反映した（画面上の注釈を更新）
+- [x] 破壊的変更がある場合、影響/移行手順を書いた（利用者向け操作が「展開」から「ホバー／フォーカス」に変わる旨を本文に記載）
 
 ---
 
 ## 自動情報（参考）
 
-### diffstat
+### diffstat（origin/main...HEAD）
+
 ```
- apps/web                                           |    1 -
- apps/web/.env.example                              |   23 +
- apps/web/.gitignore                                |   42 +
- ... (略: 55 files changed, 5655 insertions(+), 1 deletion(-))
+ .../web/app/numbers4/ensemble-contributor-cell.tsx | 123 +++++++++++++++++++++
+ apps/web/app/numbers4/numbers4-predictions-hub.tsx |  80 ++------------
+ apps/web/components/ui/help-tooltip.tsx            |  80 ++++++++++++++
+ 3 files changed, 211 insertions(+), 72 deletions(-)
 ```
 
 ### changed files
-```
-apps/web
-apps/web/.env.example
-apps/web/.gitignore
-apps/web/AGENTS.md
-apps/web/CLAUDE.md
-apps/web/README.md
-apps/web/app/favicon.ico
-apps/web/app/globals.css
-apps/web/app/layout.tsx
-apps/web/app/numbers4/[draw_number]/page.tsx
-apps/web/app/numbers4/numbers4-predictions-hub.tsx
-apps/web/app/numbers4/page.tsx
-apps/web/app/numbers4/result/[draw_number]/numbers4-report-markdown.tsx
-apps/web/app/numbers4/result/[draw_number]/page.tsx
-apps/web/app/numbers4/result/numbers4-draws-table.tsx
-apps/web/app/numbers4/result/numbers4-pagination.tsx
-apps/web/app/numbers4/result/page.tsx
-apps/web/app/page.tsx
-apps/web/components.json
-apps/web/components/site-header.tsx
-apps/web/components/site-nav.tsx
-apps/web/components/ui/badge.tsx
-apps/web/components/ui/button-variants.ts
-apps/web/components/ui/button.tsx
-apps/web/components/ui/card.tsx
-apps/web/components/ui/pagination.tsx
-apps/web/components/ui/separator.tsx
-apps/web/components/ui/table.tsx
-apps/web/eslint.config.mjs
-apps/web/lib/numbers4-predictions/fallback-6949.ts
-apps/web/lib/numbers4-predictions/load-6949.ts
-apps/web/lib/numbers4-predictions/summarize-method.ts
-apps/web/lib/numbers4-predictions/types.ts
-apps/web/lib/numbers4.ts
-apps/web/lib/reports/load-numbers4-report.ts
-apps/web/lib/supabase/admin.ts
-apps/web/lib/supabase/client.ts
-apps/web/lib/supabase/server.ts
-apps/web/lib/supabase/session.ts
-apps/web/lib/utils.ts
-apps/web/next.config.ts
-apps/web/package-lock.json
-apps/web/package.json
-apps/web/postcss.config.mjs
-apps/web/proxy.ts
-apps/web/public/file.svg
-apps/web/public/globe.svg
-apps/web/public/next.svg
-apps/web/public/vercel.svg
-apps/web/public/window.svg
-apps/web/supabase/.gitignore
-apps/web/supabase/config.toml
-apps/web/supabase/migrations/20260329120000_numbers4_draws.sql
-apps/web/supabase/migrations/20260330120000_numbers4_daily_prediction_documents.sql
-apps/web/tsconfig.json
-```
 
-### commits (subject+body)
-```
-- be3ea7b chore: inline apps/web as normal tree (remove submodule gitlink)
+- `apps/web/app/numbers4/ensemble-contributor-cell.tsx`
+- `apps/web/app/numbers4/numbers4-predictions-hub.tsx`
+- `apps/web/components/ui/help-tooltip.tsx`
 
-Drop nested .git under apps/web and track all web app files in the parent repo.
+### commits（subject + body）
+
+- `4a052cc` feat(web): ナンバーズ4アンサンブル表の寄与モデル列をツールチップ化してレイアウト崩れを解消
+
+アンサンブル表の「寄与モデル」列では、これまで `<details>` で「一致」「ボックス」の内訳を展開しており、クリックで行の高さが変わってテーブルレイアウトが崩れる問題があった。利用者からも同様の指摘があったため、行の高さを一定に保ちつつ詳細を見られる UI に切り替えた。
+
+`EnsembleContributorCell` をクライアントコンポーネントとして `apps/web/app/numbers4/ensemble-contributor-cell.tsx` に切り出し、「一致 N」「ボックス N」をそれぞれ Base UI の `Tooltip` トリガーにした。説明文とモデル一覧はポータル経由のポップアップに表示し、長い場合はツールチップ内だけスクロールする。ホバーに加え、キーボードフォーカスでも開くよう `focus-visible` のリングを付与している。
+
+再利用のため `@/components/ui/help-tooltip.tsx` を新設し、`HelpTooltip` と複数ツールチップ向けの `HelpTooltipProvider` を定義した。予測ハブ側では列見出しの `title` と注釈テキストを、ツールチップ操作に合わせて更新した。
+
+影響範囲はナンバーズ4予測ハブのアンサンブル表および新規 UI コンポーネントに限定される。`pnpm run build` でビルドが通ることを確認済み。
 
 Made-with: Cursor
-```

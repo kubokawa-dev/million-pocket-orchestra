@@ -215,23 +215,81 @@ function BudgetPlanCard({
         </CardDescription>
       </CardHeader>
       <CardContent className="px-0 pb-4 pt-0">
-        <div className="max-h-[28rem] overflow-y-auto sm:max-h-none">
+        {/* Mobile card layout */}
+        <div className="max-h-[28rem] space-y-2 overflow-y-auto px-3 pt-3 sm:hidden">
+          {recs.map((r: BudgetRecommendation, i: number) => {
+            const num = r.number ?? "";
+            const hit = classifyHit(num, winningRaw);
+            return (
+              <div
+                key={`${r.number}-${i}`}
+                className={cn(
+                  "border-border/60 rounded-lg border p-3",
+                  numberCellClass(hit),
+                )}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground text-xs tabular-nums">
+                      #{r.priority ?? "—"}
+                    </span>
+                    <PredictionNumberHighlight
+                      value={r.number}
+                      winningRaw={winningRaw}
+                      className="font-mono text-base font-semibold"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <HitBadge kind={hit} className="text-[0.65rem]" />
+                    {hit === "none" && winningRaw && (
+                      <span className="text-muted-foreground text-xs">—</span>
+                    )}
+                  </div>
+                </div>
+                {(r.buy_method || r.reason) && (
+                  <div className="mt-2 space-y-1 text-xs">
+                    {r.buy_method && (
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-muted-foreground shrink-0">買い方:</span>
+                        <span className="text-foreground">
+                          {r.buy_method}
+                          {r.box_type && (
+                            <span className="text-muted-foreground ml-1 text-[0.65rem]">
+                              ({r.box_type})
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    )}
+                    {r.reason && (
+                      <p className="text-muted-foreground leading-snug">
+                        {r.reason}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        {/* Desktop table layout */}
+        <div className="hidden sm:block">
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className="text-muted-foreground w-14 px-3 text-xs sm:px-4">
+                <TableHead className="text-muted-foreground w-14 px-4 text-xs">
                   順
                 </TableHead>
-                <TableHead className="text-muted-foreground px-3 text-xs sm:px-4">
+                <TableHead className="text-muted-foreground px-4 text-xs">
                   番号
                 </TableHead>
-                <TableHead className="text-muted-foreground px-3 text-xs sm:px-4">
+                <TableHead className="text-muted-foreground px-4 text-xs">
                   あたり
                 </TableHead>
-                <TableHead className="text-muted-foreground hidden px-3 text-xs sm:table-cell sm:px-4">
+                <TableHead className="text-muted-foreground px-4 text-xs">
                   買い方
                 </TableHead>
-                <TableHead className="text-muted-foreground hidden px-3 text-xs md:table-cell md:px-4">
+                <TableHead className="text-muted-foreground hidden px-4 text-xs md:table-cell">
                   理由
                 </TableHead>
               </TableRow>
@@ -242,12 +300,12 @@ function BudgetPlanCard({
                 const hit = classifyHit(num, winningRaw);
                 return (
                   <TableRow key={`${r.number}-${i}`} className="border-border/60">
-                    <TableCell className="text-muted-foreground px-3 py-2.5 text-xs sm:px-4">
+                    <TableCell className="text-muted-foreground px-4 py-2.5 text-xs">
                       {r.priority ?? `—`}
                     </TableCell>
                     <TableCell
                       className={cn(
-                        "rounded-md px-3 py-2.5 text-sm font-semibold sm:px-4",
+                        "rounded-md px-4 py-2.5 text-sm font-semibold",
                         numberCellClass(hit),
                       )}
                     >
@@ -257,13 +315,13 @@ function BudgetPlanCard({
                         className="font-mono"
                       />
                     </TableCell>
-                    <TableCell className="px-3 py-2.5 sm:px-4">
+                    <TableCell className="px-4 py-2.5">
                       <HitBadge kind={hit} className="text-[0.65rem]" />
                       {hit === "none" && winningRaw && (
                         <span className="text-muted-foreground text-xs">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="hidden px-3 py-2.5 text-xs sm:table-cell sm:px-4">
+                    <TableCell className="px-4 py-2.5 text-xs">
                       <span className="text-foreground">{r.buy_method ?? "—"}</span>
                       {r.box_type && (
                         <span className="text-muted-foreground block text-[0.65rem]">
@@ -271,7 +329,7 @@ function BudgetPlanCard({
                         </span>
                       )}
                     </TableCell>
-                    <TableCell className="text-muted-foreground hidden max-w-[14rem] truncate px-3 py-2.5 text-xs md:table-cell md:max-w-none md:whitespace-normal md:px-4">
+                    <TableCell className="text-muted-foreground hidden max-w-[14rem] truncate px-4 py-2.5 text-xs md:table-cell md:max-w-none md:whitespace-normal">
                       {r.reason ?? "—"}
                     </TableCell>
                   </TableRow>
@@ -287,8 +345,10 @@ function BudgetPlanCard({
 
 function EnsembleNearbyDetails({
   patterns,
+  winningRaw,
 }: {
   patterns: NonNullable<EnsembleTopPrediction["similar_patterns"]>;
+  winningRaw: string | null;
 }) {
   return (
     <details className="text-xs">
@@ -304,7 +364,11 @@ function EnsembleNearbyDetails({
             key={`${sp.number}-${si}`}
             className="text-muted-foreground leading-snug"
           >
-            <span className="font-mono text-foreground">{sp.number ?? "—"}</span>
+            <PredictionNumberHighlight
+              value={sp.number}
+              winningRaw={winningRaw}
+              className="font-mono text-foreground"
+            />
             {sp.score != null && (
               <span className="ml-1 tabular-nums">
                 (
@@ -685,7 +749,72 @@ export async function Numbers4PredictionsHub({
                     <ListOrderedIcon className="size-3.5" />
                     ランキングとあたり
                   </div>
-                  <div className="overflow-x-auto">
+                  {/* Mobile card layout */}
+                  <div className="space-y-2 sm:hidden">
+                    {topList.length === 0 ? (
+                      <p className="text-muted-foreground py-8 text-center text-sm">
+                        アンサンブル予測がありません
+                      </p>
+                    ) : (
+                      topList.map((row: EnsembleTopPrediction, i: number) => {
+                        const num = row.number ?? "";
+                        const hit = classifyHit(num, winningRaw);
+                        const norm = normalizeNumbers4(num) ?? "";
+                        const contrib = contributorsForEnsembleNumber(
+                          norm || num,
+                          data.methodRows,
+                        );
+                        return (
+                          <div
+                            key={`${row.rank}-${row.number}-${i}`}
+                            className={cn(
+                              "border-border/60 rounded-lg border p-3",
+                              numberCellClass(hit),
+                            )}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-muted-foreground text-xs tabular-nums">
+                                  #{row.rank ?? "—"}
+                                </span>
+                                <PredictionNumberHighlight
+                                  value={row.number}
+                                  winningRaw={winningRaw}
+                                  className="font-mono text-base font-semibold"
+                                />
+                                <HitBadge kind={hit} className="text-[0.65rem]" />
+                              </div>
+                              <span
+                                className="text-muted-foreground text-xs tabular-nums"
+                                title={ENSEMBLE_SCORE_HEAD_TITLE}
+                              >
+                                {row.score != null
+                                  ? row.score.toLocaleString("ja-JP", {
+                                      maximumFractionDigits: 2,
+                                    })
+                                  : "—"}
+                              </span>
+                            </div>
+                            <div className="mt-2 space-y-1.5">
+                              <EnsembleContributorCell
+                                exactSlugs={contrib.exactSlugs}
+                                boxOnlySlugs={contrib.boxOnlySlugs}
+                              />
+                              {row.similar_patterns &&
+                              row.similar_patterns.length > 0 ? (
+                                <EnsembleNearbyDetails
+                                  patterns={row.similar_patterns}
+                                  winningRaw={winningRaw}
+                                />
+                              ) : null}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                  {/* Desktop table layout */}
+                  <div className="hidden overflow-x-auto sm:block">
                     <Table>
                       <TableHeader>
                         <TableRow className="hover:bg-transparent">
@@ -761,6 +890,7 @@ export async function Numbers4PredictionsHub({
                                       <div className="lg:hidden">
                                         <EnsembleNearbyDetails
                                           patterns={row.similar_patterns}
+                                          winningRaw={winningRaw}
                                         />
                                       </div>
                                     ) : null}
@@ -790,6 +920,7 @@ export async function Numbers4PredictionsHub({
                                   row.similar_patterns.length > 0 ? (
                                     <EnsembleNearbyDetails
                                       patterns={row.similar_patterns}
+                                      winningRaw={winningRaw}
                                     />
                                   ) : (
                                     <span className="text-muted-foreground">
