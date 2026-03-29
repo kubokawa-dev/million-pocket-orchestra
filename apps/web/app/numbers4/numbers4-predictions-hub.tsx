@@ -832,7 +832,6 @@ export async function Numbers4PredictionsHub({
                             title={ENSEMBLE_CONTRIBUTOR_HEAD_TITLE}
                           >
                             寄与モデル
-                            {/* 列見出し横の ? ヘルプは一旦オフ */}
                           </TableHead>
                           <TableHead
                             className="hidden min-w-[7rem] text-xs lg:table-cell"
