@@ -4,6 +4,7 @@ tqdm
 Flask>=2.0
 streamlit>=1.30
 python-dotenv
+psycopg2-binary>=2.9
 scikit-learn>=1.2
 lightgbm>=3.3
 anthropic>=0.18.0

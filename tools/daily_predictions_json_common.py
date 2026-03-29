@@ -1,0 +1,88 @@
+"""
+predictions/daily 配下の JSON を走査する共通処理（SQLite / PostgREST 取り込み用）。
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+import re
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+DAILY = ROOT / "predictions" / "daily"
+
+
+@dataclass(frozen=True)
+class DailyPredictionRecord:
+    target_draw_number: int
+    doc_kind: str
+    method_slug: str
+    relative_path: str
+    payload: object
+    payload_sha256: str
+    file_mtime: str
+
+
+def classify_json_path(path: Path) -> tuple[str, int, str] | None:
+    """(doc_kind, target_draw_number, method_slug) を返す。対象外は None。"""
+    try:
+        rel = path.relative_to(ROOT).as_posix()
+    except ValueError:
+        return None
+
+    m = re.fullmatch(
+        r"predictions/daily/methods/([^/]+)/numbers4_(\d+)\.json", rel
+    )
+    if m:
+        return ("method", int(m.group(2)), m.group(1))
+
+    m = re.fullmatch(r"predictions/daily/numbers4_(\d+)\.json", rel)
+    if m:
+        return ("ensemble", int(m.group(1)), "")
+
+    m = re.fullmatch(r"predictions/daily/budget_plan_(\d+)\.json", rel)
+    if m:
+        return ("budget_plan", int(m.group(1)), "")
+
+    return None
+
+
+def collect_daily_prediction_records() -> tuple[list[DailyPredictionRecord], int]:
+    """日次 JSON を読み込み、レコード一覧とスキップ数を返す。"""
+    records: list[DailyPredictionRecord] = []
+    skipped = 0
+
+    if not DAILY.is_dir():
+        return records, skipped
+
+    for path in sorted(DAILY.rglob("*.json")):
+        meta = classify_json_path(path)
+        if not meta:
+            skipped += 1
+            continue
+        doc_kind, draw, method_slug = meta
+        rel = path.relative_to(ROOT).as_posix()
+        raw = path.read_bytes()
+        try:
+            obj = json.loads(raw.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            skipped += 1
+            continue
+        sha = hashlib.sha256(raw).hexdigest()
+        mtime = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
+        mtime_iso = mtime.replace(microsecond=0).isoformat()
+        records.append(
+            DailyPredictionRecord(
+                target_draw_number=draw,
+                doc_kind=doc_kind,
+                method_slug=method_slug,
+                relative_path=rel,
+                payload=obj,
+                payload_sha256=sha,
+                file_mtime=mtime_iso,
+            )
+        )
+
+    return records, skipped
