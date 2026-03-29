@@ -22,7 +22,8 @@ export function summarizeMethodPayload(payload: unknown): MethodPayloadSummary {
   const preds = p.predictions ?? [];
   const last = preds[preds.length - 1];
   const tops = last?.top_predictions ?? [];
-  const topPredictions = tops.slice(0, 8).map((row, i) => {
+  /** UI でモデル別に十分な行を出せるよう、直近ランの上位を多めに保持 */
+  const topPredictions = tops.slice(0, 24).map((row, i) => {
     const raw = row.number;
     const n =
       typeof raw === "string" || typeof raw === "number"

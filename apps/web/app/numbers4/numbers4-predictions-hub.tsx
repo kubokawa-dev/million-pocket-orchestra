@@ -48,6 +48,7 @@ import type {
   BudgetPlanSlice,
   BudgetRecommendation,
   EnsembleTopPrediction,
+  MethodPredictionRow,
   Numbers4PredictionBundle,
 } from "@/lib/numbers4-predictions/types";
 import { cn } from "@/lib/utils";
@@ -265,6 +266,159 @@ function BudgetPlanCard({
             </TableBody>
           </Table>
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function EnsembleNearbyDetails({
+  patterns,
+}: {
+  patterns: NonNullable<EnsembleTopPrediction["similar_patterns"]>;
+}) {
+  return (
+    <details className="text-xs">
+      <summary className="text-muted-foreground cursor-pointer list-none py-0.5 marker:content-none [&::-webkit-details-marker]:hidden">
+        近傍 {patterns.length} 件
+      </summary>
+      <ul className="border-border/60 mt-1 max-h-36 max-w-full space-y-1 overflow-y-auto border-t pt-1">
+        {patterns.slice(0, 8).map((sp, si) => (
+          <li
+            key={`${sp.number}-${si}`}
+            className="text-muted-foreground leading-snug"
+          >
+            <span className="font-mono text-foreground">{sp.number ?? "—"}</span>
+            {sp.score != null && (
+              <span className="ml-1 tabular-nums">
+                (
+                {sp.score.toLocaleString("ja-JP", {
+                  maximumFractionDigits: 2,
+                })}
+                )
+              </span>
+            )}
+            {sp.description != null && sp.description !== "" && (
+              <span className="mt-0.5 block text-[0.65rem] opacity-90">
+                {sp.description}
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
+/** モデルカード内で見せる予測行の上限（JSON 側は最大 24 件まで読み込み） */
+const METHOD_MODEL_TABLE_MAX_ROWS = 16;
+
+function MethodModelDetailCard({
+  row,
+  winningRaw,
+}: {
+  row: MethodPredictionRow;
+  winningRaw: string | null;
+}) {
+  const ja = getEnsembleWeightJaLabel(row.slug);
+  const preds = row.topPredictions.slice(0, METHOD_MODEL_TABLE_MAX_ROWS);
+
+  return (
+    <Card className="border-border/80 flex h-full flex-col shadow-sm ring-1 ring-black/5 dark:ring-white/10">
+      <CardHeader className="border-border/60 space-y-1 border-b pb-3">
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+          <CardTitle className="font-mono text-base leading-tight">
+            {row.slug}
+          </CardTitle>
+          {ja != null && ja !== "" ? (
+            <Badge variant="secondary" className="font-normal">
+              {ja}
+            </Badge>
+          ) : null}
+        </div>
+        <CardDescription className="text-xs leading-relaxed">
+          <span className="text-muted-foreground">
+            実行 {row.runs} 回 · 最終 JST {row.lastTimeJst ?? "—"}
+          </span>
+          {row.relativePath != null && row.relativePath !== "" ? (
+            <span
+              className="text-muted-foreground mt-1 block truncate font-mono text-[0.65rem]"
+              title={row.relativePath}
+            >
+              {row.relativePath}
+            </span>
+          ) : null}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-1 flex-col px-0 pb-3 pt-0">
+        {preds.length === 0 ? (
+          <p className="text-muted-foreground px-4 py-6 text-center text-sm">
+            このモデルは直近ランで候補がありません
+          </p>
+        ) : (
+          <div className="max-h-[22rem] overflow-y-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="text-muted-foreground w-11 px-2 text-xs">
+                    #
+                  </TableHead>
+                  <TableHead className="text-muted-foreground px-2 text-xs">
+                    番号
+                  </TableHead>
+                  <TableHead className="text-muted-foreground px-2 text-right text-xs">
+                    スコア
+                  </TableHead>
+                  <TableHead className="text-muted-foreground w-14 px-2 text-xs">
+                    照合
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {preds.map((p, i) => {
+                  const hit = classifyHit(p.number, winningRaw);
+                  return (
+                    <TableRow
+                      key={`${row.slug}-${p.rank}-${p.number}-${i}`}
+                      className="border-border/60"
+                    >
+                      <TableCell className="text-muted-foreground px-2 py-2 tabular-nums text-xs">
+                        {p.rank ?? i + 1}
+                      </TableCell>
+                      <TableCell
+                        className={cn(
+                          "px-2 py-2 font-mono text-sm font-semibold",
+                          numberCellClass(hit),
+                          "rounded-md",
+                        )}
+                      >
+                        <PredictionNumberHighlight
+                          value={p.number}
+                          winningRaw={winningRaw}
+                          className="font-mono"
+                        />
+                      </TableCell>
+                      <TableCell className="text-muted-foreground px-2 py-2 text-right tabular-nums text-xs">
+                        {p.score != null
+                          ? p.score.toLocaleString("ja-JP", {
+                              maximumFractionDigits: 2,
+                            })
+                          : "—"}
+                      </TableCell>
+                      <TableCell className="px-2 py-2">
+                        <HitBadge kind={hit} className="text-[0.6rem]" />
+                        {hit === "none" && winningRaw && (
+                          <span className="text-muted-foreground text-[0.6rem]">
+                            —
+                          </span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -505,13 +659,16 @@ export async function Numbers4PredictionsHub({
                           <TableHead className="text-xs">番号</TableHead>
                           <TableHead className="text-xs">あたり</TableHead>
                           <TableHead className="text-right text-xs">スコア</TableHead>
+                          <TableHead className="hidden min-w-[7rem] text-xs lg:table-cell">
+                            近傍
+                          </TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {topList.length === 0 ? (
                           <TableRow>
                             <TableCell
-                              colSpan={4}
+                              colSpan={5}
                               className="text-muted-foreground h-24 text-center text-sm"
                             >
                               アンサンブル予測がありません
@@ -533,11 +690,21 @@ export async function Numbers4PredictionsHub({
                                     "rounded-md",
                                   )}
                                 >
-                                  <PredictionNumberHighlight
-                                    value={row.number}
-                                    winningRaw={winningRaw}
-                                    className="font-mono"
-                                  />
+                                  <div className="flex flex-col gap-1">
+                                    <PredictionNumberHighlight
+                                      value={row.number}
+                                      winningRaw={winningRaw}
+                                      className="font-mono"
+                                    />
+                                    {row.similar_patterns &&
+                                    row.similar_patterns.length > 0 ? (
+                                      <div className="lg:hidden">
+                                        <EnsembleNearbyDetails
+                                          patterns={row.similar_patterns}
+                                        />
+                                      </div>
+                                    ) : null}
+                                  </div>
                                 </TableCell>
                                 <TableCell className="py-2">
                                   <HitBadge kind={hit} className="text-[0.65rem]" />
@@ -548,6 +715,18 @@ export async function Numbers4PredictionsHub({
                                         maximumFractionDigits: 2,
                                       })
                                     : "—"}
+                                </TableCell>
+                                <TableCell className="hidden align-top lg:table-cell">
+                                  {row.similar_patterns &&
+                                  row.similar_patterns.length > 0 ? (
+                                    <EnsembleNearbyDetails
+                                      patterns={row.similar_patterns}
+                                    />
+                                  ) : (
+                                    <span className="text-muted-foreground">
+                                      —
+                                    </span>
+                                  )}
                                 </TableCell>
                               </TableRow>
                             );
@@ -612,112 +791,34 @@ export async function Numbers4PredictionsHub({
 
         <Card className="border-border/80 shadow-sm ring-1 ring-black/5 dark:ring-white/10">
           <CardHeader className="border-border/60 border-b">
-            <CardTitle className="text-lg">手法別（method）</CardTitle>
-            <CardDescription>
-              <code className="font-mono text-xs">doc_kind: method</code>
-              {" · "}
-              各行が 1 スラッグ＝1 JSON（
-              <code className="font-mono text-xs">relative_path</code> 相当）。上位
-              5 件を番号チップで表示し、当選と照合します。
+            <CardTitle className="text-lg">
+              次回（第 {data.targetDrawNumber} 回）予測 · モデル別
+            </CardTitle>
+            <CardDescription className="space-y-1">
+              <span className="block">
+                <code className="font-mono text-xs">doc_kind: method</code>
+                {" · "}
+                各予測モデルごとに、直近実行ランの上位候補を順位・スコアつきで表示します（最大{" "}
+                {METHOD_MODEL_TABLE_MAX_ROWS} 件 / モデル）。当選番号が分かっている回では照合バッジも付きます。
+              </span>
             </CardDescription>
           </CardHeader>
-          <CardContent className="px-0 pb-4 pt-0 sm:px-0">
-            <div className="overflow-x-auto">
-              <Table className="min-w-[720px]">
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="text-muted-foreground px-4 text-xs sm:px-6">
-                      method_slug
-                    </TableHead>
-                    <TableHead className="text-muted-foreground px-4 text-xs sm:px-6">
-                      relative_path
-                    </TableHead>
-                    <TableHead className="text-muted-foreground px-4 text-xs sm:px-6">
-                      実行
-                    </TableHead>
-                    <TableHead className="text-muted-foreground px-4 text-xs sm:px-6">
-                      最終 JST
-                    </TableHead>
-                    <TableHead className="text-muted-foreground px-4 text-xs sm:px-6">
-                      予測 TOP（スコア付き）
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {data.methodRows.length === 0 ? (
-                    <TableRow>
-                      <TableCell
-                        colSpan={5}
-                        className="text-muted-foreground h-20 text-center text-sm"
-                      >
-                        method 行がありません（未生成か、別回のみ）
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    data.methodRows.map((m) => (
-                      <TableRow key={m.slug} className="border-border/60">
-                        <TableCell className="px-4 font-mono text-xs sm:px-6">
-                          {m.slug}
-                        </TableCell>
-                        <TableCell
-                          className="text-muted-foreground max-w-[14rem] truncate px-4 font-mono text-[0.65rem] sm:max-w-xs sm:px-6"
-                          title={m.relativePath ?? undefined}
-                        >
-                          {m.relativePath ?? "—"}
-                        </TableCell>
-                        <TableCell className="px-4 tabular-nums sm:px-6">
-                          {m.runs}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground px-4 text-sm sm:px-6">
-                          {m.lastTimeJst ?? "—"}
-                        </TableCell>
-                        <TableCell className="px-4 py-3 sm:px-6">
-                          <div className="flex flex-wrap gap-1.5">
-                            {m.topPredictions.slice(0, 5).map((p) => {
-                              const hit = classifyHit(p.number, winningRaw);
-                              return (
-                                <span
-                                  key={`${m.slug}-${p.rank}-${p.number}`}
-                                  className={cn(
-                                    "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 font-mono text-xs",
-                                    hit === "none" && "bg-muted/40",
-                                    hit === "straight" &&
-                                      "border-emerald-600/50 bg-emerald-500/15",
-                                    hit === "box" &&
-                                      "border-amber-600/50 bg-amber-500/15",
-                                  )}
-                                >
-                                  <span className="tabular-nums">
-                                    #{p.rank ?? "—"}
-                                  </span>
-                                  <PredictionNumberHighlight
-                                    value={p.number}
-                                    winningRaw={winningRaw}
-                                    className="font-mono"
-                                  />
-                                  {p.score != null && (
-                                    <span className="text-muted-foreground text-[0.65rem]">
-                                      {p.score.toLocaleString("ja-JP", {
-                                        maximumFractionDigits: 1,
-                                      })}
-                                    </span>
-                                  )}
-                                  {hit !== "none" && (
-                                    <span className="text-[0.6rem] font-normal">
-                                      {hit === "straight" ? "◎" : "△"}
-                                    </span>
-                                  )}
-                                </span>
-                              );
-                            })}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+          <CardContent className="px-4 pb-6 pt-4 sm:px-6">
+            {data.methodRows.length === 0 ? (
+              <p className="text-muted-foreground py-8 text-center text-sm">
+                method ドキュメントがありません（未生成か、別回のみ）
+              </p>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {data.methodRows.map((m) => (
+                  <MethodModelDetailCard
+                    key={m.slug}
+                    row={m}
+                    winningRaw={winningRaw}
+                  />
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
