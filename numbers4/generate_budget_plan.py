@@ -18,6 +18,8 @@ sys.path.insert(0, ROOT_DIR)
 
 # 共通ユーティリティからインポート
 from numbers4.box_utils import get_box_type_info
+from numbers4.permutation_pick import refine_top_predictions_numbers
+from tools.utils import load_all_numbers4_draws
 
 
 def get_reason(row: Dict, rank: int) -> str:
@@ -329,6 +331,16 @@ def generate_budget_plans(target_draw_number: Optional[int] = None) -> Optional[
     if not predictions:
         print("❌ 予測候補が見つかりません")
         return None
+
+    # ensemble 上位候補の並びを、直近データの桁位置別出現に基づき同一ボックス内で再選択
+    try:
+        draws_df = load_all_numbers4_draws()
+        if draws_df is not None and len(draws_df) > 0:
+            predictions = refine_top_predictions_numbers(
+                predictions, draws_df, recent_n=50
+            )
+    except Exception as e:
+        print(f"⚠️ 予算プラン用の並び再選択をスキップ: {e}")
     
     # プラン生成
     plan_5 = generate_5_slot_plan(predictions)
