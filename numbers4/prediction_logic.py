@@ -13,6 +13,7 @@ from numbers4.learn_from_predictions import (
     ensure_state_schema,
     rank_numbers_from_state,
 )
+from numbers4.permutation_pick import best_straight_for_sorted_box
 # from numbers4.predict_numbers_with_model import predict_top_k as _predict_top_k_model  # 削除されたファイル
 
 
@@ -1072,11 +1073,13 @@ def predict_from_box_pattern_analysis_n4(df: pd.DataFrame, limit: int = 100):
             break
         if box_id in seen_boxes:
             continue
-        
-        digits = list(box_id)
-        random.shuffle(digits)
-        num_str = "".join(digits)
-        
+
+        num_str = best_straight_for_sorted_box(box_id, latest_number, recent)
+        if num_str is None:
+            digits = list(box_id)
+            random.shuffle(digits)
+            num_str = "".join(digits)
+
         if num_str != latest_number:
             predictions.append(num_str)
             seen_boxes.add(box_id)
@@ -1154,17 +1157,20 @@ def predict_from_hot_pair_combination_n4(df: pd.DataFrame, limit: int = 150):
     
     predictions = []
     seen_boxes = set()
+    recent_for_perm = df.tail(50)
     
     for box_id, score in sorted_boxes:
         if len(predictions) >= limit:
             break
         if box_id in seen_boxes:
             continue
-        
-        digits = list(box_id)
-        random.shuffle(digits)
-        num_str = "".join(digits)
-        
+
+        num_str = best_straight_for_sorted_box(box_id, latest_number, recent_for_perm)
+        if num_str is None:
+            digits = list(box_id)
+            random.shuffle(digits)
+            num_str = "".join(digits)
+
         if num_str != latest_number:
             predictions.append(num_str)
             seen_boxes.add(box_id)
@@ -1836,11 +1842,13 @@ def predict_from_digit_frequency_box_n4(df: pd.DataFrame, limit: int = 100):
             break
         if box_id in seen_boxes:
             continue
-        
-        digits = list(box_id)
-        random.shuffle(digits)
-        num_str = "".join(digits)
-        
+
+        num_str = best_straight_for_sorted_box(box_id, latest_number, recent)
+        if num_str is None:
+            digits = list(box_id)
+            random.shuffle(digits)
+            num_str = "".join(digits)
+
         if num_str != latest_number:
             predictions.append(num_str)
             seen_boxes.add(box_id)

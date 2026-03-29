@@ -29,6 +29,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { buildMethodConsensus } from "@/lib/numbers4-predictions/consensus";
+import {
+  contributorsForEnsembleNumber,
+  formatContributorSlugLine,
+} from "@/lib/numbers4-predictions/ensemble-contributors";
 import { getEnsembleWeightJaLabel } from "@/lib/numbers4-predictions/ensemble-weight-labels";
 import {
   fetchNumbers4DrawFullRow,
@@ -54,6 +58,18 @@ import type {
 import { cn } from "@/lib/utils";
 
 import { Numbers4OfficialDrawDetail } from "./numbers4-official-draw-detail";
+
+const ENSEMBLE_SCORE_HEAD_TITLE =
+  "各モデルの予測リストの順位を重み付けして合算し、その後に多様性調整・4桁の合計値ボーナス・ボックスタイプの分布調整などを適用した値です。当選確率や期待値ではありません。";
+
+const ENSEMBLE_NEARBY_HEAD_TITLE =
+  "メイン候補に近い別4桁の提案です。統計・LightGBMの桁確率などに基づき生成されます。アンサンブル本体のスコアとは別指標です。";
+
+const ENSEMBLE_CONTRIBUTOR_HEAD_TITLE =
+  "下の「モデル別」で読み込んだ各モデル直近ランの候補（最大96件）に、この4桁が含まれるかを表示します。完全一致と、桁の並びだけ異なるボックス同一を分けます。リストの下位のみに載っている場合は「—」になります。";
+
+const ENSEMBLE_WEIGHTS_HEAD_TITLE =
+  "アンサンブル集計時に各モデルへ掛け合わせる重みです。学習結果とデフォルト値が混ざっている場合があります。";
 
 export type Numbers4PredictionsHubProps = {
   /** 指定時はその回の予測のみ読み込み（無ければ公式当選のみ or 404） */
@@ -278,7 +294,10 @@ function EnsembleNearbyDetails({
 }) {
   return (
     <details className="text-xs">
-      <summary className="text-muted-foreground cursor-pointer list-none py-0.5 marker:content-none [&::-webkit-details-marker]:hidden">
+      <summary
+        className="text-muted-foreground cursor-pointer list-none py-0.5 marker:content-none [&::-webkit-details-marker]:hidden"
+        title={ENSEMBLE_NEARBY_HEAD_TITLE}
+      >
         近傍 {patterns.length} 件
       </summary>
       <ul className="border-border/60 mt-1 max-h-36 max-w-full space-y-1 overflow-y-auto border-t pt-1">
@@ -309,8 +328,74 @@ function EnsembleNearbyDetails({
   );
 }
 
-/** モデルカード内で見せる予測行の上限（JSON 側は最大 24 件まで読み込み） */
+/** モデルカード内で見せる予測行の上限（JSON からは最大 96 件まで読み込み） */
 const METHOD_MODEL_TABLE_MAX_ROWS = 16;
+
+function EnsembleContributorCell({
+  exactSlugs,
+  boxOnlySlugs,
+}: {
+  exactSlugs: string[];
+  boxOnlySlugs: string[];
+}) {
+  const nExact = exactSlugs.length;
+  const nBox = boxOnlySlugs.length;
+  if (nExact === 0 && nBox === 0) {
+    return (
+      <span
+        className="text-muted-foreground text-xs tabular-nums"
+        title="各モデル直近ラン上位96件に一致する候補がありません（より下位のみの可能性あり）"
+      >
+        —
+      </span>
+    );
+  }
+
+  const summaryParts: string[] = [];
+  if (nExact > 0) summaryParts.push(`一致 ${nExact}`);
+  if (nBox > 0) summaryParts.push(`ボックス ${nBox}`);
+
+  return (
+    <details className="max-w-[11rem] text-xs">
+      <summary className="text-muted-foreground cursor-pointer list-none py-0.5 marker:content-none [&::-webkit-details-marker]:hidden">
+        <span className="text-foreground font-medium tabular-nums">
+          {summaryParts.join(" · ")}
+        </span>
+      </summary>
+      <div className="border-border/60 mt-1 max-h-36 space-y-2 overflow-y-auto border-t pt-1">
+        {nExact > 0 ? (
+          <ul className="space-y-1">
+            {exactSlugs.map((slug) => (
+              <li
+                key={slug}
+                className="text-muted-foreground leading-snug break-words"
+              >
+                {formatContributorSlugLine(slug)}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {nBox > 0 ? (
+          <div>
+            <p className="text-muted-foreground mb-1 text-[0.65rem] leading-snug">
+              桁の並びは異なるが、ボックス（数字の組み合わせ）は同一の候補:
+            </p>
+            <ul className="space-y-1">
+              {boxOnlySlugs.map((slug) => (
+                <li
+                  key={slug}
+                  className="text-muted-foreground leading-snug break-words"
+                >
+                  {formatContributorSlugLine(slug)}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </div>
+    </details>
+  );
+}
 
 function MethodModelDetailCard({
   row,
@@ -645,6 +730,20 @@ export async function Numbers4PredictionsHub({
               </div>
             </CardHeader>
             <CardContent className="px-0 pb-6 pt-4 sm:px-0">
+              <div className="text-muted-foreground border-border/60 bg-muted/30 mx-4 mb-4 space-y-2 rounded-lg border px-3 py-2.5 text-xs leading-relaxed sm:mx-6">
+                <p>
+                  <strong className="text-foreground">統合スコア</strong>
+                  列は、多数の予測モデルの
+                  <strong className="text-foreground"> 順位を重み付けして合算 </strong>
+                  したうえで、多様性・4桁の合計値・ボックスタイプの分布などを調整した値です。
+                  <strong className="text-foreground"> 当選確率ではありません。</strong>
+                  列見出しにカーソルを置くと同じ説明が表示されます。
+                </p>
+                <p>
+                  <strong className="text-foreground">寄与モデル</strong>
+                  は、このページで読み込んだ「モデル別」各モデルの直近ラン候補（最大96件）との照合です。集計パイプライン内部の票とは完全一致しない場合があります。
+                </p>
+              </div>
               <div className="grid gap-6 lg:grid-cols-2">
                 <div className="px-4 sm:px-6">
                   <div className="text-muted-foreground mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide">
@@ -658,8 +757,22 @@ export async function Numbers4PredictionsHub({
                           <TableHead className="w-12 text-xs">#</TableHead>
                           <TableHead className="text-xs">番号</TableHead>
                           <TableHead className="text-xs">あたり</TableHead>
-                          <TableHead className="text-right text-xs">スコア</TableHead>
-                          <TableHead className="hidden min-w-[7rem] text-xs lg:table-cell">
+                          <TableHead
+                            className="text-right text-xs"
+                            title={ENSEMBLE_SCORE_HEAD_TITLE}
+                          >
+                            統合スコア
+                          </TableHead>
+                          <TableHead
+                            className="hidden min-w-[6.5rem] text-xs md:table-cell"
+                            title={ENSEMBLE_CONTRIBUTOR_HEAD_TITLE}
+                          >
+                            寄与モデル
+                          </TableHead>
+                          <TableHead
+                            className="hidden min-w-[7rem] text-xs lg:table-cell"
+                            title={ENSEMBLE_NEARBY_HEAD_TITLE}
+                          >
                             近傍
                           </TableHead>
                         </TableRow>
@@ -668,7 +781,7 @@ export async function Numbers4PredictionsHub({
                         {topList.length === 0 ? (
                           <TableRow>
                             <TableCell
-                              colSpan={5}
+                              colSpan={6}
                               className="text-muted-foreground h-24 text-center text-sm"
                             >
                               アンサンブル予測がありません
@@ -678,6 +791,11 @@ export async function Numbers4PredictionsHub({
                           topList.map((row: EnsembleTopPrediction, i: number) => {
                             const num = row.number ?? "";
                             const hit = classifyHit(num, winningRaw);
+                            const norm = normalizeNumbers4(num) ?? "";
+                            const contrib = contributorsForEnsembleNumber(
+                              norm || num,
+                              data.methodRows,
+                            );
                             return (
                               <TableRow key={`${row.rank}-${row.number}-${i}`}>
                                 <TableCell className="text-muted-foreground tabular-nums">
@@ -696,6 +814,12 @@ export async function Numbers4PredictionsHub({
                                       winningRaw={winningRaw}
                                       className="font-mono"
                                     />
+                                    <div className="md:hidden">
+                                      <EnsembleContributorCell
+                                        exactSlugs={contrib.exactSlugs}
+                                        boxOnlySlugs={contrib.boxOnlySlugs}
+                                      />
+                                    </div>
                                     {row.similar_patterns &&
                                     row.similar_patterns.length > 0 ? (
                                       <div className="lg:hidden">
@@ -709,12 +833,21 @@ export async function Numbers4PredictionsHub({
                                 <TableCell className="py-2">
                                   <HitBadge kind={hit} className="text-[0.65rem]" />
                                 </TableCell>
-                                <TableCell className="text-right tabular-nums">
+                                <TableCell
+                                  className="text-right tabular-nums"
+                                  title={ENSEMBLE_SCORE_HEAD_TITLE}
+                                >
                                   {row.score != null
                                     ? row.score.toLocaleString("ja-JP", {
                                         maximumFractionDigits: 2,
                                       })
                                     : "—"}
+                                </TableCell>
+                                <TableCell className="hidden align-top md:table-cell">
+                                  <EnsembleContributorCell
+                                    exactSlugs={contrib.exactSlugs}
+                                    boxOnlySlugs={contrib.boxOnlySlugs}
+                                  />
                                 </TableCell>
                                 <TableCell className="hidden align-top lg:table-cell">
                                   {row.similar_patterns &&
@@ -737,10 +870,17 @@ export async function Numbers4PredictionsHub({
                   </div>
                 </div>
                 <div className="border-border/60 px-4 lg:border-l lg:px-6">
-                  <div className="text-muted-foreground mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide">
+                  <div
+                    className="text-muted-foreground mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide"
+                    title={ENSEMBLE_WEIGHTS_HEAD_TITLE}
+                  >
                     <BarChart3Icon className="size-3.5" />
-                    ensemble_weights（上位）
+                    モデル別の重み（上位）
                   </div>
+                  <p className="text-muted-foreground mb-2 text-[0.7rem] leading-snug">
+                    <code className="font-mono text-[0.65rem]">ensemble_weights</code>
+                    。英字キーは開発用ID、括弧内は日本語の意味です。
+                  </p>
                   <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
                     {weights.length === 0 ? (
                       <p className="text-muted-foreground text-sm">—</p>
@@ -798,8 +938,9 @@ export async function Numbers4PredictionsHub({
               <span className="block">
                 <code className="font-mono text-xs">doc_kind: method</code>
                 {" · "}
-                各予測モデルごとに、直近実行ランの上位候補を順位・スコアつきで表示します（最大{" "}
-                {METHOD_MODEL_TABLE_MAX_ROWS} 件 / モデル）。当選番号が分かっている回では照合バッジも付きます。
+                各予測モデルごとに、直近実行ランの上位候補を順位・スコアつきで表示します（JSON
+                から最大 96 件まで読み込み、カード内では最大 {METHOD_MODEL_TABLE_MAX_ROWS}{" "}
+                件まで表示）。当選番号が分かっている回では照合バッジも付きます。
               </span>
             </CardDescription>
           </CardHeader>
