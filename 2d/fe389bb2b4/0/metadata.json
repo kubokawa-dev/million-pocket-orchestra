@@ -1,0 +1,30 @@
+{
+  "cli_version": "0.4.4",
+  "checkpoint_id": "2dfe389bb2b4",
+  "session_id": "401b29ff-0b1a-4810-913c-8ba68028182e",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-30T16:39:56.954411981Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    ".github/workflows/daily-numbers4-analysis.yml"
+  ],
+  "agent": "Claude Code",
+  "token_usage": {
+    "input_tokens": 16,
+    "cache_creation_tokens": 20935,
+    "cache_read_tokens": 241518,
+    "output_tokens": 2397,
+    "api_call_count": 10
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-30T16:39:56.769903593Z",
+    "agent_lines": 13,
+    "human_added": 39,
+    "human_modified": 4,
+    "human_removed": 0,
+    "total_committed": 56,
+    "agent_percentage": 23.214285714285715
+  },
+  "transcript_path": ".claude/projects/-home-kbkkbk-Develop-kubocchi-million-pocket/401b29ff-0b1a-4810-913c-8ba68028182e.jsonl"
+}
