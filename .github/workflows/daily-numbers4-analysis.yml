@@ -33,7 +33,7 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git pull origin main --rebase || true
+          git pull origin main --rebase
       
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -257,7 +257,7 @@ jobs:
           else
             DRAW_NUMBER="${{ steps.analysis.outputs.draw_number }}"
             git commit -m "📊 Numbers4 Draw #${DRAW_NUMBER} - Analysis & Learning update"
-            git push origin main
+            bash tools/git_push_with_retry.sh main
             echo "✅ Analysis report, learning results and CSV data committed and pushed!"
           fi
       

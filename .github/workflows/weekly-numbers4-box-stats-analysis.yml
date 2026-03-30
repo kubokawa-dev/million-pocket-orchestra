@@ -24,7 +24,7 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git pull origin main --rebase || true
+          git pull origin main --rebase
       
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -63,7 +63,7 @@ jobs:
           else
             TIMESTAMP=$(TZ=Asia/Tokyo date '+%Y-%m-%d')
             git commit -m "📊 Weekly box stats analysis $TIMESTAMP"
-            git push origin main
+            bash tools/git_push_with_retry.sh main
             echo "✅ Analysis report committed and pushed!"
           fi
       
