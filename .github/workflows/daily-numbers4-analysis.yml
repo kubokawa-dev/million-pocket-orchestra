@@ -239,6 +239,23 @@ jobs:
           
           echo "✅ Model learning completed!"
       
+      - name: Upsert latest draw result to Supabase
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          DRAW_NUMBER="${{ steps.check.outputs.draw_number }}"
+
+          if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ] || [ -z "$NEXT_PUBLIC_SUPABASE_URL" ]; then
+            echo "⚠️ Supabase credentials not configured, skipping upsert"
+            exit 0
+          fi
+
+          echo "📤 Upserting Draw #${DRAW_NUMBER} to Supabase..."
+          SUPABASE_USE_REST=1 python tools/load_numbers4_csv_to_postgres.py \
+            --draw-number "$DRAW_NUMBER"
+          echo "✅ Draw #${DRAW_NUMBER} upserted to Supabase!"
+
       - name: Commit analysis report, learning results & CSV data
         run: |
           git config --local user.email "action@github.com"
