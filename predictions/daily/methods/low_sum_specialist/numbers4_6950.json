@@ -891,8 +891,341 @@
         "limit": 200,
         "total_predictions": 115
       }
+    },
+    {
+      "time": "2026-03-29T22:42:05.889318+00:00",
+      "time_jst": "07:42",
+      "method": "low_sum_specialist",
+      "top_predictions": [
+        {
+          "rank": 1,
+          "number": "2032",
+          "score": 100.0
+        },
+        {
+          "rank": 2,
+          "number": "2212",
+          "score": 99.15
+        },
+        {
+          "rank": 3,
+          "number": "2204",
+          "score": 98.29
+        },
+        {
+          "rank": 4,
+          "number": "2222",
+          "score": 97.44
+        },
+        {
+          "rank": 5,
+          "number": "2313",
+          "score": 96.58
+        },
+        {
+          "rank": 6,
+          "number": "2511",
+          "score": 95.73
+        },
+        {
+          "rank": 7,
+          "number": "2332",
+          "score": 94.87
+        },
+        {
+          "rank": 8,
+          "number": "2602",
+          "score": 94.02
+        },
+        {
+          "rank": 9,
+          "number": "2350",
+          "score": 93.16
+        },
+        {
+          "rank": 10,
+          "number": "2604",
+          "score": 92.31
+        },
+        {
+          "rank": 11,
+          "number": "2244",
+          "score": 91.45
+        },
+        {
+          "rank": 12,
+          "number": "2145",
+          "score": 90.6
+        },
+        {
+          "rank": 13,
+          "number": "0000",
+          "score": 89.74
+        },
+        {
+          "rank": 14,
+          "number": "1321",
+          "score": 88.89
+        },
+        {
+          "rank": 15,
+          "number": "1051",
+          "score": 88.03
+        },
+        {
+          "rank": 16,
+          "number": "1411",
+          "score": 87.18
+        },
+        {
+          "rank": 17,
+          "number": "1025",
+          "score": 86.32
+        },
+        {
+          "rank": 18,
+          "number": "1241",
+          "score": 85.47
+        },
+        {
+          "rank": 19,
+          "number": "1151",
+          "score": 84.62
+        },
+        {
+          "rank": 20,
+          "number": "1070",
+          "score": 83.76
+        }
+      ],
+      "metadata": {
+        "limit": 200,
+        "total_predictions": 117
+      }
+    },
+    {
+      "time": "2026-03-30T00:08:09.800245+00:00",
+      "time_jst": "09:08",
+      "method": "low_sum_specialist",
+      "top_predictions": [
+        {
+          "rank": 1,
+          "number": "2203",
+          "score": 100.0
+        },
+        {
+          "rank": 2,
+          "number": "2221",
+          "score": 99.12
+        },
+        {
+          "rank": 3,
+          "number": "2510",
+          "score": 98.25
+        },
+        {
+          "rank": 4,
+          "number": "2114",
+          "score": 97.37
+        },
+        {
+          "rank": 5,
+          "number": "2222",
+          "score": 96.49
+        },
+        {
+          "rank": 6,
+          "number": "2124",
+          "score": 95.61
+        },
+        {
+          "rank": 7,
+          "number": "2242",
+          "score": 94.74
+        },
+        {
+          "rank": 8,
+          "number": "2620",
+          "score": 93.86
+        },
+        {
+          "rank": 9,
+          "number": "2504",
+          "score": 92.98
+        },
+        {
+          "rank": 10,
+          "number": "2324",
+          "score": 92.11
+        },
+        {
+          "rank": 11,
+          "number": "2360",
+          "score": 91.23
+        },
+        {
+          "rank": 12,
+          "number": "2424",
+          "score": 90.35
+        },
+        {
+          "rank": 13,
+          "number": "0000",
+          "score": 89.47
+        },
+        {
+          "rank": 14,
+          "number": "1033",
+          "score": 88.6
+        },
+        {
+          "rank": 15,
+          "number": "1141",
+          "score": 87.72
+        },
+        {
+          "rank": 16,
+          "number": "1061",
+          "score": 86.84
+        },
+        {
+          "rank": 17,
+          "number": "1034",
+          "score": 85.96
+        },
+        {
+          "rank": 18,
+          "number": "1511",
+          "score": 85.09
+        },
+        {
+          "rank": 19,
+          "number": "1007",
+          "score": 84.21
+        },
+        {
+          "rank": 20,
+          "number": "1017",
+          "score": 83.33
+        }
+      ],
+      "metadata": {
+        "limit": 200,
+        "total_predictions": 114
+      }
+    },
+    {
+      "time": "2026-03-30T03:40:05.093756+00:00",
+      "time_jst": "12:40",
+      "method": "low_sum_specialist",
+      "top_predictions": [
+        {
+          "rank": 1,
+          "number": "2212",
+          "score": 100.0
+        },
+        {
+          "rank": 2,
+          "number": "2222",
+          "score": 99.12
+        },
+        {
+          "rank": 3,
+          "number": "2232",
+          "score": 98.25
+        },
+        {
+          "rank": 4,
+          "number": "2331",
+          "score": 97.37
+        },
+        {
+          "rank": 5,
+          "number": "2115",
+          "score": 96.49
+        },
+        {
+          "rank": 6,
+          "number": "2016",
+          "score": 95.61
+        },
+        {
+          "rank": 7,
+          "number": "2206",
+          "score": 94.74
+        },
+        {
+          "rank": 8,
+          "number": "2611",
+          "score": 93.86
+        },
+        {
+          "rank": 9,
+          "number": "2440",
+          "score": 92.98
+        },
+        {
+          "rank": 10,
+          "number": "2251",
+          "score": 92.11
+        },
+        {
+          "rank": 11,
+          "number": "2305",
+          "score": 91.23
+        },
+        {
+          "rank": 12,
+          "number": "2341",
+          "score": 90.35
+        },
+        {
+          "rank": 13,
+          "number": "2315",
+          "score": 89.47
+        },
+        {
+          "rank": 14,
+          "number": "2441",
+          "score": 88.6
+        },
+        {
+          "rank": 15,
+          "number": "2262",
+          "score": 87.72
+        },
+        {
+          "rank": 16,
+          "number": "2244",
+          "score": 86.84
+        },
+        {
+          "rank": 17,
+          "number": "0000",
+          "score": 85.96
+        },
+        {
+          "rank": 18,
+          "number": "1141",
+          "score": 85.09
+        },
+        {
+          "rank": 19,
+          "number": "1015",
+          "score": 84.21
+        },
+        {
+          "rank": 20,
+          "number": "1123",
+          "score": 83.33
+        }
+      ],
+      "metadata": {
+        "limit": 200,
+        "total_predictions": 114
+      }
     }
   ],
-  "last_updated": "2026-03-29T21:05:44.481617+00:00",
-  "prediction_count": 8
+  "last_updated": "2026-03-30T03:40:05.093756+00:00",
+  "prediction_count": 11
 }
