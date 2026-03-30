@@ -36,6 +36,8 @@ from numbers4.prediction_logic import (
     predict_from_sequential_pattern_n4,
     predict_from_lightgbm_with_probs,
     predict_from_model_state_v2,
+    predict_from_adjacent_digit_pattern_n4,  # v13.0
+    predict_from_lgbm_box,                   # v14.0
 )
 from numbers4.box_learning import (
     load_box_model,
@@ -56,6 +58,8 @@ DEFAULT_METHODS = [
     "box_pattern",
     "digit_freq_box",
     "global_frequency",
+    "adjacent_digit",   # v13.0
+    "lgbm_box",         # v14.0
 ]
 
 
@@ -135,6 +139,8 @@ def _build_method_map(df: pd.DataFrame) -> Dict[str, Callable[[int], List[str]]]
         "sequential_pattern": lambda limit: predict_from_sequential_pattern_n4(df, limit),
         "lightgbm": lambda limit: _predict_lightgbm(df, limit),
         "state_chain": lambda limit: predict_from_model_state_v2(limit=limit),
+        "adjacent_digit": lambda limit: predict_from_adjacent_digit_pattern_n4(df, limit),  # v13.0
+        "lgbm_box": lambda limit: predict_from_lgbm_box(df, limit),                        # v14.0
     }
 
 

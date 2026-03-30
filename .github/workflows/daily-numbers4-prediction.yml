@@ -2,11 +2,11 @@ name: Daily Numbers4 Prediction
 
 on:
   schedule:
-    # 平日（月〜金）JST 3:00〜11:30 の30分おき実行（計18回）
-    # JST 03:00〜08:30 = UTC 18:00〜23:30（前日）
-    - cron: '0,30 18-23 * * 0-4'  # 日〜木の18-23時 UTC = 月〜金の03:00〜08:30 JST
-    # JST 09:00〜11:30 = UTC 00:00〜02:30
-    - cron: '0,30 0-2 * * 1-5'    # 月〜金の00-02時 UTC = 月〜金の09:00〜11:30 JST
+    # 平日（月〜金）JST 1:00〜11:40 の20分おき実行
+    # JST 01:00〜08:40 = UTC 16:00〜23:40（前日）
+    - cron: '*/20 16-23 * * 0-4'  # 日〜木の16-23時 UTC = 月〜金の01:00〜08:40 JST
+    # JST 09:00〜11:40 = UTC 00:00〜02:40
+    - cron: '*/20 0-2 * * 1-5'    # 月〜金の00-02時 UTC = 月〜金の09:00〜11:40 JST
   workflow_dispatch:  # 手動実行も可能
 
 jobs:
@@ -56,33 +56,32 @@ jobs:
           NOW_MIN=$(TZ=Asia/Tokyo date +%M)
           HOUR=$((10#$NOW_HOUR))
           MIN=$((10#$NOW_MIN))
-          
-          if [ "$HOUR" -lt 3 ] || [ "$HOUR" -gt 11 ]; then
+
+          if [ "$HOUR" -lt 1 ] || [ "$HOUR" -gt 11 ]; then
             SLOT=0
           else
-            HALF=0
-            if [ "$MIN" -ge 30 ]; then
-              HALF=1
-            fi
-            SLOT=$(( (HOUR - 3) * 2 + HALF ))
+            # JST 1:00から20分刻みのスロット番号を計算
+            MINUTES_SINCE_START=$(( (HOUR - 1) * 60 + MIN ))
+            SLOT=$(( MINUTES_SINCE_START / 20 ))
           fi
-          
-          # 3グループ × 4メソッド = 12メソッド
-          # 18スロット ÷ 3グループ = 各メソッド6回ずつ実行
-          GROUP=$(( SLOT % 3 ))
-          
+
+          # 4グループ × 3-4メソッド = 14メソッド（v14.0: lgbm_box, adjacent_digit 追加）
+          # 33スロット ÷ 4グループ = 各グループ約8回ずつ実行
+          GROUP=$(( SLOT % 4 ))
+
           case "$GROUP" in
-            0) METHODS="box_model,ml_neighborhood,even_odd_pattern,low_sum_specialist" ;;
-            1) METHODS="sequential_pattern,cold_revival,hot_pair,box_pattern" ;;
+            0) METHODS="box_model,ml_neighborhood,even_odd_pattern,lgbm_box" ;;
+            1) METHODS="sequential_pattern,cold_revival,hot_pair,adjacent_digit" ;;
             2) METHODS="digit_freq_box,global_frequency,lightgbm,state_chain" ;;
+            3) METHODS="box_pattern,low_sum_specialist" ;;
           esac
-          
+
           if [ "$SLOT" -eq 0 ]; then
             RUN_ENSEMBLE="true"
           else
             RUN_ENSEMBLE="false"
           fi
-          
+
           echo "slot=$SLOT" >> $GITHUB_OUTPUT
           echo "group=$GROUP" >> $GITHUB_OUTPUT
           echo "methods=$METHODS" >> $GITHUB_OUTPUT
