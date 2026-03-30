@@ -6,7 +6,8 @@ BRANCH="${1:-main}"
 MAX_ATTEMPTS="${GIT_PUSH_MAX_ATTEMPTS:-10}"
 
 for i in $(seq 1 "$MAX_ATTEMPTS"); do
-  git pull origin "$BRANCH" --rebase
+  # CI などでコミット対象外のファイルだけが変更済みのとき、rebase が拒否されるのを防ぐ
+  git pull origin "$BRANCH" --rebase --autostash
   if git push origin "$BRANCH"; then
     exit 0
   fi
