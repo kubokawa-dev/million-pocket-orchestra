@@ -1,19 +1,19 @@
 {
   "weights": {
-    "box_model": 16.88847597110666,
-    "ml_neighborhood": 5.2397879640614695,
-    "even_odd_pattern": 6.375538234961797,
-    "low_sum_specialist": 6.367890980723319,
-    "sequential_pattern": 7.121346718780664,
-    "cold_revival": 12.089061871182917,
-    "hot_pair": 8.830194158707142,
-    "box_pattern": 12.927247659582306,
-    "digit_freq_box": 7.399181116309121,
-    "global_frequency": 20.165951202608298,
-    "lightgbm": 8.732979940102444,
-    "state_chain": 5.86234418187397
+    "box_model": 17.329041120417774,
+    "ml_neighborhood": 5.061613532616387,
+    "even_odd_pattern": 6.171054254949649,
+    "low_sum_specialist": 6.241927310261194,
+    "sequential_pattern": 6.844679198828256,
+    "cold_revival": 12.54522652447337,
+    "hot_pair": 9.155560823393412,
+    "box_pattern": 12.601124063702004,
+    "digit_freq_box": 7.159889050619114,
+    "global_frequency": 20.783071507857773,
+    "lightgbm": 8.43602255436064,
+    "state_chain": 5.670790058520518
   },
-  "updated_at": "2026-03-30T14:51:49.267232+00:00",
+  "updated_at": "2026-03-30T14:53:57.259439+00:00",
   "metadata": {
     "draw_number": 6950,
     "actual_number": "9107",
