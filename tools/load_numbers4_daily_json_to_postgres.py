@@ -106,6 +106,12 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY が無いときは成功終了（CI）",
     )
+    p.add_argument(
+        "--target-draw-number",
+        type=int,
+        default=None,
+        help="指定時はその回号の predictions/daily JSON のみ UPSERT",
+    )
     return p.parse_args()
 
 
@@ -134,8 +140,15 @@ def main() -> None:
             sys.exit(1)
         print("🔑 環境変数（NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY）を使用します")
 
-    records, skipped = collect_daily_prediction_records()
-    print(f"📂 対象 {len(records)} 件（パターン外スキップ {skipped}）")
+    records, skipped = collect_daily_prediction_records(
+        target_draw_number=args.target_draw_number
+    )
+    hint = (
+        f"（回号 {args.target_draw_number} のみ）"
+        if args.target_draw_number is not None
+        else ""
+    )
+    print(f"📂 対象 {len(records)} 件{hint}（パターン外・対象外スキップ {skipped}）")
 
     if not records:
         print("⚠️ 投入する行がありません")

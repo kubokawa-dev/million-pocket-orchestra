@@ -118,6 +118,15 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="--use-cli-login 時のプロジェクト ref（省略時は link 先や NEXT_PUBLIC_SUPABASE_URL から推定）",
     )
+    p.add_argument(
+        "--draw-number",
+        type=int,
+        default=None,
+        action="append",
+        dest="draw_numbers",
+        metavar="N",
+        help="指定した回号だけ UPSERT（複数回は --draw-number を繰り返す）",
+    )
     return p.parse_args()
 
 
@@ -287,6 +296,15 @@ def main() -> None:
     if not rows:
         print("⚠️ 投入する行がありません")
         return
+
+    if args.draw_numbers:
+        want = set(args.draw_numbers)
+        before = len(rows)
+        rows = [r for r in rows if r[0] in want]
+        print(f"🎯 --draw-number フィルタ: {before} 行 → {len(rows)} 行（対象: {sorted(want)}）")
+        if not rows:
+            print("⚠️ フィルタ後に行がありません")
+            return
 
     db_url = resolve_postgres_url()
     use_rest = (

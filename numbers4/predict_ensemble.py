@@ -45,6 +45,8 @@ from numbers4.prediction_logic import (
     predict_from_sequential_pattern_n4,       # 連続数字パターン
     # v13.0 6376問題対策モデル（NEW!）
     predict_from_adjacent_digit_pattern_n4,   # 隣接数字パターン
+    # v14.0 ボックスレベルLightGBM（NEW!）
+    predict_from_lgbm_box,                    # ボックスレベルLightGBM
     aggregate_predictions,
     apply_diversity_penalty
 )
@@ -460,9 +462,14 @@ def generate_ensemble_prediction(progress_callback=None):
     report_progress(0.988, f"- [v12.0] 連続数字パターンモデル完了: {len(predictions_sequential)}件")
     
     # 22. 隣接数字パターンモデル（v13.0 NEW! 6376問題対策）
-    report_progress(0.989, "- [v13.0] 隣接数字パターンモデルで予測中...")
+    report_progress(0.986, "- [v13.0] 隣接数字パターンモデルで予測中...")
     predictions_adjacent = predict_from_adjacent_digit_pattern_n4(all_draws_df, limit=150)
-    report_progress(0.992, f"- [v13.0] 隣接数字パターンモデル完了: {len(predictions_adjacent)}件")
+    report_progress(0.988, f"- [v13.0] 隣接数字パターンモデル完了: {len(predictions_adjacent)}件")
+
+    # 23. ボックスレベルLightGBMモデル（v14.0 NEW! ボックス直接予測）
+    report_progress(0.989, "- [v14.0] ボックスレベルLightGBMモデルで予測中...")
+    predictions_lgbm_box = predict_from_lgbm_box(all_draws_df, limit=150)
+    report_progress(0.992, f"- [v14.0] ボックスレベルLightGBMモデル完了: {len(predictions_lgbm_box)}件")
 
     # --- アンサンブル集計 ---
     report_progress(0.993, "全モデルの予測を統合・集計中...")
@@ -484,7 +491,10 @@ def generate_ensemble_prediction(progress_callback=None):
         'sequential_pattern': 25.0,       # 連続数字パターン
         
         # v13.0 6376問題対策モデル（隣接数字パターン）
-        'adjacent_digit': 35.0,           # 隣接数字パターン（NEW!）
+        'adjacent_digit': 35.0,           # 隣接数字パターン
+
+        # v14.0 ボックスレベルLightGBM（NEW! ボックス組み合わせを直接予測）
+        'lgbm_box': 40.0,                # ボックスレベルLightGBM（NEW!）
         
         # v10.7 コールドナンバー復活モデル
         'cold_revival': 22.0,             # コールドナンバー復活
@@ -570,6 +580,8 @@ def generate_ensemble_prediction(progress_callback=None):
         'sequential_pattern': predictions_sequential,
         # v13.0 6376問題対策モデル（NEW!）
         'adjacent_digit': predictions_adjacent,
+        # v14.0 ボックスレベルLightGBM（NEW!）
+        'lgbm_box': predictions_lgbm_box,
         # ML
         'lightgbm': predictions_lgbm,
         # model_state

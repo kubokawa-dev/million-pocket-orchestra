@@ -49,8 +49,13 @@ def classify_json_path(path: Path) -> tuple[str, int, str] | None:
     return None
 
 
-def collect_daily_prediction_records() -> tuple[list[DailyPredictionRecord], int]:
-    """日次 JSON を読み込み、レコード一覧とスキップ数を返す。"""
+def collect_daily_prediction_records(
+    target_draw_number: int | None = None,
+) -> tuple[list[DailyPredictionRecord], int]:
+    """日次 JSON を読み込み、レコード一覧とスキップ数を返す。
+
+    target_draw_number を指定したときはその回号のファイルだけ取り込む。
+    """
     records: list[DailyPredictionRecord] = []
     skipped = 0
 
@@ -63,6 +68,9 @@ def collect_daily_prediction_records() -> tuple[list[DailyPredictionRecord], int
             skipped += 1
             continue
         doc_kind, draw, method_slug = meta
+        if target_draw_number is not None and draw != target_draw_number:
+            skipped += 1
+            continue
         rel = path.relative_to(ROOT).as_posix()
         raw = path.read_bytes()
         try:

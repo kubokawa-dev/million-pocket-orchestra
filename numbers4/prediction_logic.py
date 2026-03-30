@@ -6,6 +6,7 @@ import os
 from itertools import product
 from numbers4.prediction_logic_lgbm import (
     predict_from_lightgbm,  # LightGBM
+    predict_from_lgbm_box,  # v14.0 ボックスレベルLightGBM
     train_and_predict_lgbm_with_probs,
     DEFAULT_TEMPERATURE,
 )
@@ -549,14 +550,16 @@ def aggregate_predictions(predictions_by_model: dict, weights: dict, normalize_s
     
     for model_name, predictions in predictions_by_model.items():
         weight = weights.get(model_name, 1)
-        
+
         if normalize_scores and predictions:
-            # ランクベーススコア：1位=1.0, 最下位=0.0
+            # v14.0: 指数減衰ランクスコア（上位候補をより強く優遇）
+            # 1位=1.0, 10位≈0.63, 50位≈0.22, 100位≈0.05
             n = len(predictions)
+            decay_rate = 3.0 / n  # nが大きいモデルでも適切な減衰
             for rank, pred in enumerate(predictions):
-                # 線形減衰: 1位=1.0, 2位=0.99, ..., 最下位=0.0
-                normalized_score = (n - rank) / n
-                
+                # 指数減衰: exp(-decay_rate * rank)
+                normalized_score = np.exp(-decay_rate * rank)
+
                 if pred not in model_scores:
                     model_scores[pred] = 0
                 model_scores[pred] += normalized_score * weight

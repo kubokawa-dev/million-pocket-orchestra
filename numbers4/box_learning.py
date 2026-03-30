@@ -149,15 +149,30 @@ def learn_box_model_from_history(df=None) -> Dict:
     box_type_counts = Counter()
     digit_pair_counts = defaultdict(int)
     digit_in_box_counts = Counter()
-    
-    for _, row in df.iterrows():
+
+    # v14.0: 指数減衰付き重み付きカウント（最近のデータをより重視）
+    total_draws = len(df)
+    decay_rate = 0.002  # 500回前で重み≈0.37、1000回前で≈0.14
+    box_weighted_counts = defaultdict(float)
+
+    # v14.0: 各ボックスの最終出現からの経過回数を追跡
+    box_last_seen = {}  # box_id -> draws_since_last_appearance
+
+    for idx, (_, row) in enumerate(df.iterrows()):
         number = f"{row['d1']}{row['d2']}{row['d3']}{row['d4']}"
         box_id = number_to_box(number)
         box_type = get_box_type(box_id)
-        
+
         box_counts[box_id] += 1
         box_type_counts[box_type] += 1
-        
+
+        # v14.0: 指数減衰重み（最新=1.0、古い=小さい）
+        recency_weight = np.exp(-decay_rate * (total_draws - 1 - idx))
+        box_weighted_counts[box_id] += recency_weight
+
+        # 最終出現位置を記録
+        box_last_seen[box_id] = idx
+
         # 数字ペアの共起をカウント
         digits = list(box_id)
         for i in range(len(digits)):
@@ -165,35 +180,51 @@ def learn_box_model_from_history(df=None) -> Dict:
             for j in range(i + 1, len(digits)):
                 pair = ''.join(sorted([digits[i], digits[j]]))
                 digit_pair_counts[pair] += 1
-    
-    total_draws = len(df)
-    
-    # 確率に変換
-    box_probs = {box: count / total_draws for box, count in box_counts.items()}
+
+    # 確率に変換（重み付き）
+    total_weight = sum(box_weighted_counts.values())
+    box_probs = {box: w / total_weight for box, w in box_weighted_counts.items()}
     box_type_probs = {bt: count / total_draws for bt, count in box_type_counts.items()}
-    
+
+    # v14.0: box_recency - 各ボックスの「最後に出てからの回数」
+    box_recency = {}
+    for box_id, last_idx in box_last_seen.items():
+        box_recency[box_id] = total_draws - 1 - last_idx
+
     # 直近N回の分析
     recent_window = 50
     recent_df = df.tail(recent_window)
     recent_box_counts = Counter()
-    
+
     for _, row in recent_df.iterrows():
         number = f"{row['d1']}{row['d2']}{row['d3']}{row['d4']}"
         box_id = number_to_box(number)
         recent_box_counts[box_id] += 1
-    
-    # ホットボックス（直近で2回以上出現）
+
+    # ホットボックス（直近で出現、重み付きスコア順）
     hot_boxes = [box for box, count in recent_box_counts.most_common(20) if count >= 1]
-    
-    # コールドボックス（全履歴で出現したが直近では出ていない）
+
+    # v14.0: コールドボックスを「期待出現回数 vs 実際」で計算
+    # 期待値: total_draws / 715 ≈ 9.7回（6950回の場合）
+    expected_count = total_draws / 715.0
+    cold_box_scores = []
     all_appeared_boxes = set(box_counts.keys())
     recent_appeared_boxes = set(recent_box_counts.keys())
-    cold_boxes = list(all_appeared_boxes - recent_appeared_boxes)[:50]
-    
+    for box_id in all_appeared_boxes - recent_appeared_boxes:
+        actual_count = box_counts[box_id]
+        draws_since = box_recency.get(box_id, total_draws)
+        # 期待値より少なく、かつ長期間出ていないほどスコアが高い
+        cold_score = (expected_count - actual_count) + draws_since * 0.1
+        cold_box_scores.append((box_id, cold_score))
+    cold_box_scores.sort(key=lambda x: -x[1])
+    cold_boxes = [box_id for box_id, _ in cold_box_scores[:50]]
+
     # 状態を更新
     state['total_draws'] = total_draws
     state['box_counts'] = dict(box_counts)
     state['box_probs'] = box_probs
+    state['box_weighted_counts'] = dict(box_weighted_counts)  # v14.0 NEW
+    state['box_recency'] = box_recency                        # v14.0 NEW
     state['recent_box_counts'] = dict(recent_box_counts)
     state['recent_window'] = recent_window
     state['hot_boxes'] = hot_boxes
@@ -204,7 +235,7 @@ def learn_box_model_from_history(df=None) -> Dict:
     state['metadata']['last_learned_draw'] = int(df.iloc[-1]['draw_number'])
     state['metadata']['learning_events'] = total_draws
     state['updated_at'] = now_iso()
-    
+
     return state
 
 
@@ -277,12 +308,18 @@ def predict_boxes_from_model(state: Dict, limit: int = 50) -> List[Tuple[str, fl
     for box_id, prob in state.get('box_probs', {}).items():
         predictions[box_id] = predictions.get(box_id, 0) + prob * 100
     
-    # === 戦略2: コールドボックス（そろそろ来そう） ===
+    # === 戦略2: コールドボックス（そろそろ来そう、リーセンシー加味） ===
     cold_boxes = state.get('cold_boxes', [])
+    box_recency = state.get('box_recency', {})
+    total_draws = state.get('total_draws', 1)
+    expected_interval = 715.0 / total_draws * total_draws  # ≈715回に1回
     for i, box_id in enumerate(cold_boxes[:30]):
-        # コールドボックスにボーナス（上位ほど高い）
-        bonus = 50 - i * 1.5
-        predictions[box_id] = predictions.get(box_id, 0) + bonus
+        # v14.0: リーセンシーに基づくボーナス
+        draws_since = box_recency.get(box_id, total_draws)
+        # 期待間隔(≈715)を超えて出ていないほど高ボーナス
+        overdue_ratio = draws_since / max(expected_interval, 1)
+        bonus = 50 * (1 + overdue_ratio * 0.5) - i * 1.5
+        predictions[box_id] = predictions.get(box_id, 0) + max(bonus, 10)
     
     # === 戦略3: 数字ペアの共起パターン ===
     digit_pair_counts = state.get('digit_pair_counts', {})
