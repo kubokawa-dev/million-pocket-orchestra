@@ -7,7 +7,23 @@ on:
     - cron: '*/20 16-23 * * 0-4'  # 日〜木の16-23時 UTC = 月〜金の01:00〜08:40 JST
     # JST 09:00〜11:40 = UTC 00:00〜02:40
     - cron: '*/20 0-2 * * 1-5'    # 月〜金の00-02時 UTC = 月〜金の09:00〜11:40 JST
-  workflow_dispatch:  # 手動実行も可能
+  workflow_dispatch:
+    inputs:
+      methods:
+        description: '実行するメソッド（カンマ区切り、空欄=自動選択）'
+        required: false
+        type: string
+        default: ''
+      run_ensemble:
+        description: 'アンサンブル予測も実行する'
+        required: false
+        type: boolean
+        default: false
+      run_all_methods:
+        description: '全14メソッドを一括実行'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   predict:
@@ -52,41 +68,55 @@ jobs:
       - name: Select method batch
         id: batch
         run: |
-          NOW_HOUR=$(TZ=Asia/Tokyo date +%H)
-          NOW_MIN=$(TZ=Asia/Tokyo date +%M)
-          HOUR=$((10#$NOW_HOUR))
-          MIN=$((10#$NOW_MIN))
+          ALL_METHODS="box_model,ml_neighborhood,even_odd_pattern,lgbm_box,sequential_pattern,cold_revival,hot_pair,adjacent_digit,digit_freq_box,global_frequency,lightgbm,state_chain,box_pattern,low_sum_specialist"
 
-          if [ "$HOUR" -lt 1 ] || [ "$HOUR" -gt 11 ]; then
-            SLOT=0
-          else
-            # JST 1:00から20分刻みのスロット番号を計算
-            MINUTES_SINCE_START=$(( (HOUR - 1) * 60 + MIN ))
-            SLOT=$(( MINUTES_SINCE_START / 20 ))
-          fi
+          # --- 手動実行: inputs を優先 ---
+          MANUAL_METHODS="${{ inputs.methods }}"
+          MANUAL_ENSEMBLE="${{ inputs.run_ensemble }}"
+          MANUAL_ALL="${{ inputs.run_all_methods }}"
 
-          # 4グループ × 3-4メソッド = 14メソッド（v14.0: lgbm_box, adjacent_digit 追加）
-          # 33スロット ÷ 4グループ = 各グループ約8回ずつ実行
-          GROUP=$(( SLOT % 4 ))
-
-          case "$GROUP" in
-            0) METHODS="box_model,ml_neighborhood,even_odd_pattern,lgbm_box" ;;
-            1) METHODS="sequential_pattern,cold_revival,hot_pair,adjacent_digit" ;;
-            2) METHODS="digit_freq_box,global_frequency,lightgbm,state_chain" ;;
-            3) METHODS="box_pattern,low_sum_specialist" ;;
-          esac
-
-          if [ "$SLOT" -eq 0 ]; then
+          if [ "$MANUAL_ALL" = "true" ]; then
+            METHODS="$ALL_METHODS"
             RUN_ENSEMBLE="true"
+            echo "🖐️ 手動実行: 全メソッド一括"
+          elif [ -n "$MANUAL_METHODS" ]; then
+            METHODS="$MANUAL_METHODS"
+            RUN_ENSEMBLE="${MANUAL_ENSEMBLE:-false}"
+            echo "🖐️ 手動実行: $METHODS"
           else
-            RUN_ENSEMBLE="false"
+            # --- 自動実行: 時刻ベースのスロット選択 ---
+            NOW_HOUR=$(TZ=Asia/Tokyo date +%H)
+            NOW_MIN=$(TZ=Asia/Tokyo date +%M)
+            HOUR=$((10#$NOW_HOUR))
+            MIN=$((10#$NOW_MIN))
+
+            if [ "$HOUR" -lt 1 ] || [ "$HOUR" -gt 11 ]; then
+              SLOT=0
+            else
+              MINUTES_SINCE_START=$(( (HOUR - 1) * 60 + MIN ))
+              SLOT=$(( MINUTES_SINCE_START / 20 ))
+            fi
+
+            GROUP=$(( SLOT % 4 ))
+
+            case "$GROUP" in
+              0) METHODS="box_model,ml_neighborhood,even_odd_pattern,lgbm_box" ;;
+              1) METHODS="sequential_pattern,cold_revival,hot_pair,adjacent_digit" ;;
+              2) METHODS="digit_freq_box,global_frequency,lightgbm,state_chain" ;;
+              3) METHODS="box_pattern,low_sum_specialist" ;;
+            esac
+
+            if [ "$SLOT" -eq 0 ]; then
+              RUN_ENSEMBLE="true"
+            else
+              RUN_ENSEMBLE="false"
+            fi
+
+            echo "🧭 Slot: $SLOT (Group: $GROUP)"
           fi
 
-          echo "slot=$SLOT" >> $GITHUB_OUTPUT
-          echo "group=$GROUP" >> $GITHUB_OUTPUT
           echo "methods=$METHODS" >> $GITHUB_OUTPUT
           echo "run_ensemble=$RUN_ENSEMBLE" >> $GITHUB_OUTPUT
-          echo "🧭 Slot: $SLOT (Group: $GROUP)"
           echo "🧪 Methods: $METHODS"
           echo "🔮 Run ensemble: $RUN_ENSEMBLE"
       
