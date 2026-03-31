@@ -104,6 +104,8 @@ def predict_from_lightgbm_with_probs(
         df_local = df.copy()
         if 'draw_date' not in df_local.columns and 'date' in df_local.columns:
             df_local['draw_date'] = df_local['date']
+        if 'numbers' not in df_local.columns and 'winning_numbers' in df_local.columns:
+            df_local['numbers'] = df_local['winning_numbers']
         return train_and_predict_lgbm_with_probs(df_local, limit=limit, temperature=temperature)
     except Exception as e:
         print(f"[LightGBM] Error (with_probs): {e}")

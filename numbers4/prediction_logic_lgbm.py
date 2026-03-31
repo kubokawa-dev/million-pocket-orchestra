@@ -227,7 +227,8 @@ def train_and_get_digit_probabilities_lgbm(
         return {}
 
     target_cols = ['d1', 'd2', 'd3', 'd4']
-    feature_cols = [c for c in df_features.columns if c not in target_cols + ['draw_date', 'numbers', 'date', 'sum']]
+    exclude_cols = target_cols + ['draw_date', 'numbers', 'winning_numbers', 'date', 'sum', 'draw_number']
+    feature_cols = [c for c in df_features.columns if c not in exclude_cols and df_features[c].dtype in ['int64', 'float64', 'int32', 'float32']]
 
     X = df_features[feature_cols]
     y = df_features[target_cols]
@@ -373,7 +374,9 @@ def predict_from_lightgbm(
         df_local = df.copy()
         if 'draw_date' not in df_local.columns and 'date' in df_local.columns:
             df_local['draw_date'] = df_local['date']
-        
+        if 'numbers' not in df_local.columns and 'winning_numbers' in df_local.columns:
+            df_local['numbers'] = df_local['winning_numbers']
+
         # Run prediction
         return train_and_predict_lgbm(df_local, limit=limit, temperature=temperature)
         
@@ -404,6 +407,8 @@ def predict_from_lgbm_box(df: pd.DataFrame, limit: int = 150, temperature: float
         df_local = df.copy()
         if 'draw_date' not in df_local.columns and 'date' in df_local.columns:
             df_local['draw_date'] = df_local['date']
+        if 'numbers' not in df_local.columns and 'winning_numbers' in df_local.columns:
+            df_local['numbers'] = df_local['winning_numbers']
 
         df_features = create_features(df_local)
         if len(df_features) < 100:
@@ -411,11 +416,9 @@ def predict_from_lgbm_box(df: pd.DataFrame, limit: int = 150, temperature: float
 
         # ソート済み桁をターゲットにする（sd1 <= sd2 <= sd3 <= sd4）
         target_cols = ['sd1', 'sd2', 'sd3', 'sd4']
-        feature_cols = [
-            c for c in df_features.columns
-            if c not in ['d1', 'd2', 'd3', 'd4', 'sd1', 'sd2', 'sd3', 'sd4',
-                         'draw_date', 'numbers', 'date', 'sum']
-        ]
+        exclude_cols = ['d1', 'd2', 'd3', 'd4', 'sd1', 'sd2', 'sd3', 'sd4',
+                        'draw_date', 'numbers', 'winning_numbers', 'date', 'sum', 'draw_number']
+        feature_cols = [c for c in df_features.columns if c not in exclude_cols and df_features[c].dtype in ['int64', 'float64', 'int32', 'float32']]
 
         X = df_features[feature_cols]
         y = df_features[target_cols]
