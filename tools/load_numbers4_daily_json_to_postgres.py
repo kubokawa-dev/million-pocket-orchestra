@@ -15,6 +15,7 @@ import argparse
 import json
 import os
 import sys
+import time
 import urllib.error
 import urllib.request
 
@@ -70,14 +71,29 @@ def upsert_daily_documents_via_rest(
         req.add_header("Authorization", f"Bearer {key}")
         req.add_header("Content-Type", "application/json")
         req.add_header("Prefer", "resolution=merge-duplicates,return=minimal")
-        try:
-            with urllib.request.urlopen(req, timeout=300) as resp:
-                resp.read()
-        except urllib.error.HTTPError as e:
-            err_body = e.read().decode("utf-8", errors="replace")[:4000]
-            raise RuntimeError(
-                f"PostgREST HTTP {e.code} (chunk {i // chunk_size + 1}): {err_body}"
-            ) from e
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                # urllib caches the body; rebuild request on retry
+                if attempt > 0:
+                    req = urllib.request.Request(endpoint, data=body, method="POST")
+                    req.add_header("apikey", key)
+                    req.add_header("Authorization", f"Bearer {key}")
+                    req.add_header("Content-Type", "application/json")
+                    req.add_header("Prefer", "resolution=merge-duplicates,return=minimal")
+                with urllib.request.urlopen(req, timeout=300) as resp:
+                    resp.read()
+                break  # success
+            except urllib.error.HTTPError as e:
+                err_body = e.read().decode("utf-8", errors="replace")[:4000]
+                if e.code in (502, 503, 504) and attempt < max_retries - 1:
+                    wait = 2 ** attempt * 5  # 5s, 10s
+                    print(f"   ⚠️ HTTP {e.code} — {wait}秒後にリトライ ({attempt + 1}/{max_retries})")
+                    time.sleep(wait)
+                    continue
+                raise RuntimeError(
+                    f"PostgREST HTTP {e.code} (chunk {i // chunk_size + 1}): {err_body}"
+                ) from e
         total += len(chunk)
         print(f"   … {total} / {n} 件送信")
 
