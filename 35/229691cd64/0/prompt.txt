@@ -1,0 +1,13 @@
+日次予測のgithub actionsで下記でこけています　Run python tools/load_numbers4_daily_json_to_postgres.py --skip-if-unconfigured --chunk-size 12
+🔑 環境変数（NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY）を使用します
+📂 対象 654 件（パターン外・対象外スキップ 2）
+🔌 PostgREST UPSERT（chunk=12）…
+   … 12 / 654 件送信
+   … 24 / 654 件送信
+   … 36 / 654 件送信
+❌ PostgREST HTTP 502 (chunk 4): error code: 502
+Error: Process completed with exit code 1.
+
+---
+
+コミットしてPUSHしてー

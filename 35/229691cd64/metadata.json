@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.4",
+  "checkpoint_id": "35229691cd64",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "tools/load_numbers4_daily_json_to_postgres.py"
+  ],
+  "sessions": [
+    {
+      "metadata": "/35/229691cd64/0/metadata.json",
+      "transcript": "/35/229691cd64/0/full.jsonl",
+      "context": "/35/229691cd64/0/context.md",
+      "content_hash": "/35/229691cd64/0/content_hash.txt",
+      "prompt": "/35/229691cd64/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 15,
+    "cache_creation_tokens": 11053,
+    "cache_read_tokens": 215420,
+    "output_tokens": 1746,
+    "api_call_count": 11
+  }
+}
