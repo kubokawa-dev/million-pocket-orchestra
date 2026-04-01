@@ -1,137 +1,24 @@
 {
   "weights": {
-    "box_model": 15.444762139124224,
-    "ml_neighborhood": 4.258982452131453,
-    "even_odd_pattern": 5.611447585809467,
-    "low_sum_specialist": 5.310324541822819,
-    "sequential_pattern": 6.348152466675565,
-    "cold_revival": 10.5400882287731,
-    "hot_pair": 7.695092257027336,
-    "box_pattern": 10.587003850536421,
-    "digit_freq_box": 6.020095766175545,
-    "global_frequency": 17.51491942371814,
-    "lightgbm": 7.091173269894491,
-    "state_chain": 4.7702732150309215,
-    "adjacent_digit": 8.40384240164031,
-    "lgbm_box": 8.40384240164031
+    "box_model": 10.716622751172139,
+    "ml_neighborhood": 2.967607858594703,
+    "even_odd_pattern": 4.228841198497452,
+    "low_sum_specialist": 7.180339185859782,
+    "sequential_pattern": 3.5635141152000145,
+    "cold_revival": 20.304592006227853,
+    "hot_pair": 11.029603587307552,
+    "box_pattern": 12.38038786662505,
+    "digit_freq_box": 9.180506882552612,
+    "global_frequency": 18.890331376327907,
+    "lightgbm": 4.946013097657838,
+    "state_chain": 6.429123701904893,
+    "adjacent_digit": 2.473006548828919,
+    "lgbm_box": 3.7095098232433785
   },
-  "updated_at": "2026-03-31T14:53:04.758365+00:00",
+  "updated_at": "2026-04-01T09:58:49.153914+00:00",
   "metadata": {
-    "draw_number": 6951,
-    "actual_number": "4404",
-    "evaluations": {
-      "box_model": {
-        "straight_rank": null,
-        "box_rank": null,
-        "best_position_hits": 3,
-        "best_digit_hits": 3,
-        "good_predictions_count": 6,
-        "score": 51.74999999999999
-      },
-      "ml_neighborhood": {
-        "straight_rank": null,
-        "box_rank": null,
-        "best_position_hits": 2,
-        "best_digit_hits": 2,
-        "good_predictions_count": 0,
-        "score": 18.0
-      },
-      "even_odd_pattern": {
-        "straight_rank": null,
-        "box_rank": null,
-        "best_position_hits": 3,
-        "best_digit_hits": 3,
-        "good_predictions_count": 5,
-        "score": 51.74999999999999
-      },
-      "low_sum_specialist": {
-        "straight_rank": null,
-        "box_rank": null,
-        "best_position_hits": 2,
-        "best_digit_hits": 3,
-        "good_predictions_count": 1,
-        "score": 35.0
-      },
-      "sequential_pattern": {
-        "straight_rank": 84,
-        "box_rank": 10,
-        "best_position_hits": 4,
-        "best_digit_hits": 4,
-        "good_predictions_count": 21,
-        "score": 19.549999999999997
-      },
-      "cold_revival": {
-        "straight_rank": null,
-        "box_rank": null,
-        "best_position_hits": 2,
-        "best_digit_hits": 2,
-        "good_predictions_count": 0,
-        "score": 18.0
-      },
-      "hot_pair": {
-        "straight_rank": null,
-        "box_rank": null,
-        "best_position_hits": 2,
-        "best_digit_hits": 2,
-        "good_predictions_count": 0,
-        "score": 18.0
-      },
-      "box_pattern": {
-        "straight_rank": null,
-        "box_rank": null,
-        "best_position_hits": 2,
-        "best_digit_hits": 2,
-        "good_predictions_count": 0,
-        "score": 18.0
-      },
-      "digit_freq_box": {
-        "straight_rank": null,
-        "box_rank": null,
-        "best_position_hits": 2,
-        "best_digit_hits": 2,
-        "good_predictions_count": 0,
-        "score": 18.0
-      },
-      "global_frequency": {
-        "straight_rank": null,
-        "box_rank": null,
-        "best_position_hits": 2,
-        "best_digit_hits": 3,
-        "good_predictions_count": 1,
-        "score": 35.0
-      },
-      "lightgbm": {
-        "straight_rank": null,
-        "box_rank": null,
-        "best_position_hits": 2,
-        "best_digit_hits": 2,
-        "good_predictions_count": 0,
-        "score": 18.0
-      },
-      "state_chain": {
-        "straight_rank": null,
-        "box_rank": null,
-        "best_position_hits": 2,
-        "best_digit_hits": 2,
-        "good_predictions_count": 0,
-        "score": 18.0
-      },
-      "adjacent_digit": {
-        "straight_rank": null,
-        "box_rank": null,
-        "best_position_hits": 2,
-        "best_digit_hits": 2,
-        "good_predictions_count": 0,
-        "score": 18.0
-      },
-      "lgbm_box": {
-        "straight_rank": null,
-        "box_rank": null,
-        "best_position_hits": 2,
-        "best_digit_hits": 2,
-        "good_predictions_count": 0,
-        "score": 18.0
-      }
-    }
+    "optimizer": "backtest_weight_optimizer",
+    "backtest_draws": 50,
+    "draw_range": "6900-6949"
   }
 }

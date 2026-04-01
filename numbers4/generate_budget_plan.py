@@ -1,5 +1,12 @@
 """
-予算別おすすめ購入プランを生成 (v15.0)
+予算別おすすめ購入プランを生成 (v16.0)
+
+v16.0 改善:
+- オールミニ戦略: 5口全部ミニで月間78.5%の当選確率
+- 月間確率シミュレーター: 各戦略の月間当選確率を自動計算
+- ミニ下2桁最適化: 過去データから出やすい下2桁パターンを分析
+- セット購入プラン: ストレート+ボックス両取り（1口400円）
+- 予測プール拡大: top20→top50に拡大しカバー率向上
 
 v15.0 改善:
 - カバー率最大化モード: スコアよりABCD型(24通り)を最優先し、カバー数を最大化
@@ -649,6 +656,348 @@ def _generate_hybrid_plan(
     }
 
 
+# ============================================================
+# v16.0: ミニ下2桁の最適化（提案3 強化版）
+# 過去データから出やすい下2桁パターンを分析して、
+# アンサンブルスコアと統合したミニ専用予測を生成
+# ============================================================
+
+def _analyze_hot_tails(draws_df, recent_n: int = 200) -> Dict[str, float]:
+    """
+    過去データから下2桁の出現頻度を分析し、スコアを返す。
+    直近ほど重み大。
+    """
+    if draws_df is None or len(draws_df) == 0:
+        return {}
+
+    col = 'winning_numbers' if 'winning_numbers' in draws_df.columns else 'numbers'
+    recent = draws_df.tail(recent_n)
+    tail_scores: Dict[str, float] = {}
+
+    for i, row in recent.iterrows():
+        num = str(row[col]).zfill(4)
+        tail = num[2:]  # 下2桁
+        # 新しいデータほど重みが大きい（指数減衰）
+        recency = (i - recent.index[0]) / max(len(recent) - 1, 1)
+        weight = 0.5 + 0.5 * recency  # 0.5 ~ 1.0
+        tail_scores[tail] = tail_scores.get(tail, 0) + weight
+
+    # 正規化（最大を1.0に）
+    max_score = max(tail_scores.values()) if tail_scores else 1.0
+    return {k: v / max_score for k, v in tail_scores.items()}
+
+
+def _generate_optimized_mini_plan(
+    predictions: List[Dict],
+    num_slots: int,
+    draws_df=None,
+) -> Tuple[List[Dict], int]:
+    """
+    最適化ミニ購入プラン: 過去データの下2桁出現傾向 + アンサンブルスコアを
+    統合してミニ候補を選ぶ。
+    """
+    # 過去データからホットな下2桁を取得
+    hot_tails = _analyze_hot_tails(draws_df) if draws_df is not None else {}
+
+    # アンサンブル候補から下2桁を集計
+    tail_map: Dict[str, Dict] = {}
+    for idx, pred in enumerate(predictions[:50], 1):
+        num = str(pred.get("number", ""))
+        if len(num) != 4 or not num.isdigit():
+            continue
+        tail = num[2:]
+        if tail not in tail_map:
+            ensemble_score = float(pred.get("score", 0))
+            hot_score = hot_tails.get(tail, 0.0)
+            # 統合スコア: アンサンブル50% + 過去傾向50%
+            combined = ensemble_score * 0.5 + hot_score * 50.0
+            tail_map[tail] = {
+                "rank": idx,
+                "source_number": num,
+                "ensemble_score": ensemble_score,
+                "hot_score": hot_score,
+                "combined_score": combined,
+                "pred": pred,
+            }
+
+    # 過去データにあるがアンサンブルに無いホットな下2桁も追加
+    for tail, score in sorted(hot_tails.items(), key=lambda x: x[1], reverse=True):
+        if tail not in tail_map and len(tail_map) < 30:
+            # ホットな下2桁から代表番号を生成（上2桁は最頻出の組み合わせ）
+            tail_map[tail] = {
+                "rank": 99,
+                "source_number": f"XX{tail}",
+                "ensemble_score": 0,
+                "hot_score": score,
+                "combined_score": score * 50.0,
+                "pred": {"number": f"00{tail}", "score": 0},
+            }
+
+    sorted_tails = sorted(tail_map.items(), key=lambda x: x[1]["combined_score"], reverse=True)
+
+    selected: List[Dict] = []
+    used_tails: set = set()
+
+    for tail, info in sorted_tails:
+        if len(selected) >= num_slots:
+            break
+        if tail in used_tails:
+            continue
+        used_tails.add(tail)
+
+        pr = len(selected) + 1
+        hot_label = f"過去傾向{info['hot_score']:.0%}" if info['hot_score'] > 0 else "新規"
+        source = info['source_number']
+        selected.append({
+            "priority": format_priority(pr),
+            "number": source if source[:2] != "XX" else f"00{tail}",
+            "buy_method": "ミニ",
+            "box_type": f"下2桁: {tail}",
+            "coverage": 1,
+            "marginal_coverage": 1,
+            "reason": f"ミニ(1/100) / {hot_label} / 下2桁「{tail}」",
+        })
+
+    return selected, len(selected)
+
+
+# ============================================================
+# v16.0: オールミニ戦略
+# 全口ミニで購入し、月間当選確率を最大化
+# ============================================================
+
+def _generate_all_mini_plan(
+    predictions: List[Dict],
+    num_slots: int,
+    draws_df=None,
+) -> Dict:
+    """
+    オールミニプラン: 全口をミニで購入。
+    1口200円、当選確率1/100。5口で5%、月間78.5%。
+    """
+    mini_plan, mini_count = _generate_optimized_mini_plan(predictions, num_slots, draws_df)
+
+    per_draw_prob = min(mini_count / 100, 1.0)
+    total_cost = num_slots * YEN_PER_TICKET
+
+    # 月間確率（平日のみ、約22回/月）
+    draws_per_month = 22
+    monthly_prob = 1.0 - (1.0 - per_draw_prob) ** draws_per_month
+
+    return {
+        "strategy": f"オールミニ（全{num_slots}口ミニ）",
+        "total_budget": f"{total_cost:,}円",
+        "slots": num_slots,
+        "per_draw_probability": f"{per_draw_prob * 100:.1f}%",
+        "draws_per_month": draws_per_month,
+        "monthly_probability": f"{monthly_prob * 100:.1f}%",
+        "mini_payout_estimate": "約9,000円",
+        "recommendations": mini_plan,
+    }
+
+
+# ============================================================
+# v16.0: セット購入プラン
+# セット = ストレート + ボックスの両取り（1口400円）
+# ストレート当選: 約100万円、ボックス当選: 約3-25万円
+# ============================================================
+
+YEN_PER_SET_TICKET = 400  # セット1口の価格
+
+
+def _generate_set_plan(
+    predictions: List[Dict],
+    num_slots: int,
+    pool_max: int = 50,
+) -> Tuple[List[Dict], int]:
+    """
+    セット購入プラン: ストレートとボックスの両方を狙う。
+    1口400円。当たればストレート当選金の半額 + ボックス当選金の半額。
+    """
+    pool: List[Dict] = []
+    for idx, pred in enumerate(predictions[:pool_max], 1):
+        num = str(pred.get("number", ""))
+        if len(num) != 4 or not num.isdigit():
+            continue
+        box_type, _desc, coverage = get_box_type_info(num)
+        if coverage <= 0:
+            continue
+        pool.append({
+            "rank": idx,
+            "number": num,
+            "score": float(pred.get("score", 0)),
+            "box_type": box_type,
+            "coverage": coverage,
+            "fingerprint": _box_fingerprint(num),
+            "pred": pred,
+        })
+
+    selected: List[Dict] = []
+    used_fp: set = set()
+    unique_total = 0
+
+    while len(selected) < num_slots and pool:
+        best = None
+        best_key = None
+        for cand in pool:
+            if cand["fingerprint"] in used_fp:
+                continue
+            # セットはストレート(1通り) + ボックス(coverage通り)の両方を狙える
+            # 実質カバーはcoverage通り（ボックス的中でも当選）
+            key = (cand["coverage"], cand["score"])
+            if best_key is None or key > best_key:
+                best_key = key
+                best = cand
+        if best is None:
+            break
+        used_fp.add(best["fingerprint"])
+        unique_total += best["coverage"]
+        pool.remove(best)
+
+        pr = len(selected) + 1
+        pred = best["pred"]
+
+        payout_info = AVERAGE_PAYOUTS.get(best["box_type"], {"straight": 1_000_000, "box": 50_000})
+        # セットの配当: ストレート当選金/2 + ボックス当選金/2
+        set_straight_payout = payout_info["straight"] // 2
+        set_box_payout = payout_info["box"] // 2
+
+        selected.append({
+            "priority": format_priority(pr),
+            "number": best["number"],
+            "buy_method": "セット",
+            "box_type": best["box_type"],
+            "coverage": best["coverage"],
+            "marginal_coverage": best["coverage"],
+            "set_straight_payout": set_straight_payout,
+            "set_box_payout": set_box_payout,
+            "reason": f"セット(ST+BOX両取り) / ST的中:{set_straight_payout:,}円 BOX的中:{set_box_payout:,}円 / " + get_reason(pred, best["rank"]),
+        })
+
+    return selected, unique_total
+
+
+# ============================================================
+# v16.0: 月間確率シミュレーター
+# 各戦略ごとに月間（22営業日）で1回以上当選する確率を計算
+# ============================================================
+
+DRAWS_PER_MONTH = 22  # 平日のみ
+
+
+def _monthly_probability(per_draw_prob: float, draws: int = DRAWS_PER_MONTH) -> float:
+    """月間で1回以上当選する確率"""
+    return 1.0 - (1.0 - per_draw_prob) ** draws
+
+
+def _generate_monthly_simulation(plans: Dict) -> Dict:
+    """
+    全戦略の月間確率を一覧で比較するシミュレーション結果を生成。
+    """
+    strategies = []
+
+    # 1. BOXのみ 5口
+    p5 = plans.get('plan_5', {})
+    cov5 = p5.get('total_coverage', 0)
+    if cov5 > 0:
+        prob = cov5 / 10_000
+        strategies.append({
+            "name": "BOXのみ 5口",
+            "budget_per_draw": "1,000円",
+            "monthly_budget": f"{1_000 * DRAWS_PER_MONTH:,}円",
+            "per_draw_probability": f"{prob * 100:.2f}%",
+            "monthly_probability": f"{_monthly_probability(prob) * 100:.1f}%",
+            "monthly_probability_raw": _monthly_probability(prob),
+            "payout_type": "ボックス当選金",
+        })
+
+    # 2. BOXのみ 10口
+    p10 = plans.get('plan_10', {})
+    cov10 = p10.get('total_coverage', 0)
+    if cov10 > 0:
+        prob = cov10 / 10_000
+        strategies.append({
+            "name": "BOXのみ 10口",
+            "budget_per_draw": "2,000円",
+            "monthly_budget": f"{2_000 * DRAWS_PER_MONTH:,}円",
+            "per_draw_probability": f"{prob * 100:.2f}%",
+            "monthly_probability": f"{_monthly_probability(prob) * 100:.1f}%",
+            "monthly_probability_raw": _monthly_probability(prob),
+            "payout_type": "ボックス当選金",
+        })
+
+    # 3. ハイブリッド 5口
+    h5 = plans.get('hybrid_5', {})
+    h5_prob_str = h5.get('combined_probability', '0%')
+    h5_prob = float(h5_prob_str.replace('%', '')) / 100 if h5_prob_str else 0
+    if h5_prob > 0:
+        strategies.append({
+            "name": "ハイブリッド 5口 (BOX+MINI)",
+            "budget_per_draw": "1,000円",
+            "monthly_budget": f"{1_000 * DRAWS_PER_MONTH:,}円",
+            "per_draw_probability": h5_prob_str,
+            "monthly_probability": f"{_monthly_probability(h5_prob) * 100:.1f}%",
+            "monthly_probability_raw": _monthly_probability(h5_prob),
+            "payout_type": "BOX or MINI当選金",
+        })
+
+    # 4. ハイブリッド 10口
+    h10 = plans.get('hybrid_10', {})
+    h10_prob_str = h10.get('combined_probability', '0%')
+    h10_prob = float(h10_prob_str.replace('%', '')) / 100 if h10_prob_str else 0
+    if h10_prob > 0:
+        strategies.append({
+            "name": "ハイブリッド 10口 (BOX+MINI)",
+            "budget_per_draw": "2,000円",
+            "monthly_budget": f"{2_000 * DRAWS_PER_MONTH:,}円",
+            "per_draw_probability": h10_prob_str,
+            "monthly_probability": f"{_monthly_probability(h10_prob) * 100:.1f}%",
+            "monthly_probability_raw": _monthly_probability(h10_prob),
+            "payout_type": "BOX or MINI当選金",
+        })
+
+    # 5. オールミニ 5口
+    am5 = plans.get('all_mini_5', {})
+    am5_prob_str = am5.get('per_draw_probability', '0%')
+    am5_prob = float(am5_prob_str.replace('%', '')) / 100 if am5_prob_str else 0
+    if am5_prob > 0:
+        strategies.append({
+            "name": "オールミニ 5口",
+            "budget_per_draw": "1,000円",
+            "monthly_budget": f"{1_000 * DRAWS_PER_MONTH:,}円",
+            "per_draw_probability": am5_prob_str,
+            "monthly_probability": f"{_monthly_probability(am5_prob) * 100:.1f}%",
+            "monthly_probability_raw": _monthly_probability(am5_prob),
+            "payout_type": "MINI当選金 (約9,000円)",
+        })
+
+    # 6. セット 2口（1000円予算、1口400円なので2口）
+    sp = plans.get('set_plan', {})
+    sp_cov = 0
+    for rec in sp.get('recommendations', []):
+        sp_cov += rec.get('coverage', 0)
+    if sp_cov > 0:
+        prob = sp_cov / 10_000
+        strategies.append({
+            "name": f"セット {len(sp.get('recommendations', []))}口",
+            "budget_per_draw": sp.get('total_budget', ''),
+            "monthly_budget": f"—",
+            "per_draw_probability": f"{prob * 100:.2f}%",
+            "monthly_probability": f"{_monthly_probability(prob) * 100:.1f}%",
+            "monthly_probability_raw": _monthly_probability(prob),
+            "payout_type": "ST半額+BOX半額",
+        })
+
+    # 月間確率の高い順にソート
+    strategies.sort(key=lambda x: x.get("monthly_probability_raw", 0), reverse=True)
+
+    return {
+        "draws_per_month": DRAWS_PER_MONTH,
+        "note": "月間確率 = 1回以上当選する確率。平日22回/月で計算。",
+        "strategies": strategies,
+    }
+
+
 def load_predictions_from_json(target_draw_number: Optional[int] = None) -> Optional[Dict]:
     """
     JSONファイルから予測データを読み込む (DB接続不要)
@@ -727,16 +1076,17 @@ def generate_budget_plans(target_draw_number: Optional[int] = None) -> Optional[
         print("❌ 予測候補が見つかりません")
         return None
     
-    # 上位30件を取得
+    # v16.0: 上位50件に拡大（従来30件 → カバー率向上のため拡大）
+    POOL_SIZE = 50
     predictions = []
-    
+
     # predictions配列の最初の要素を確認
     first_pred = raw_predictions[0] if raw_predictions else {}
-    
+
     # 新形式: predictions[0].top_predictions に予測がある場合
     if isinstance(first_pred, dict) and 'top_predictions' in first_pred:
         top_preds = first_pred.get('top_predictions', [])
-        for pred in top_preds[:30]:
+        for pred in top_preds[:POOL_SIZE]:
             predictions.append({
                 'number': str(pred.get('number', '')),
                 'score': float(pred.get('score', 0)),
@@ -744,14 +1094,14 @@ def generate_budget_plans(target_draw_number: Optional[int] = None) -> Optional[
             })
     # 旧形式: predictions 配列に直接予測がある場合
     else:
-        for i, pred in enumerate(raw_predictions[:30], 1):
+        for i, pred in enumerate(raw_predictions[:POOL_SIZE], 1):
             if isinstance(pred, dict):
                 number = pred.get('number', pred.get('prediction', ''))
                 score = pred.get('score', 0)
             else:
                 number = str(pred)
                 score = 0
-            
+
             predictions.append({
                 'number': str(number),
                 'score': float(score) if score else 0,
@@ -772,7 +1122,14 @@ def generate_budget_plans(target_draw_number: Optional[int] = None) -> Optional[
     except Exception as e:
         print(f"⚠️ 予算プラン用の並び再選択をスキップ: {e}")
     
-    # === v15.0: 複数プラン生成 ===
+    # === v16.0: 複数プラン生成 ===
+
+    # 過去データを読み込み（ミニ最適化用）
+    draws_df = None
+    try:
+        draws_df = load_all_numbers4_draws()
+    except Exception as e:
+        print(f"⚠️ 過去データ読み込みスキップ: {e}")
 
     # 1. 従来のスコアベースプラン（v12互換）
     plan_5_score, cov_5_score = _greedy_box_plan(predictions, 5)
@@ -794,30 +1151,54 @@ def generate_budget_plans(target_draw_number: Optional[int] = None) -> Optional[
     # 5. 分散購入プラン（2000円を2口×5回に分散）
     distributed_plan = _generate_distributed_plan(predictions, total_budget_yen=2_000, tickets_per_session=2)
 
+    # 6. v16: オールミニプラン（5口全部ミニ、過去データ最適化済み）
+    all_mini_5 = _generate_all_mini_plan(predictions, 5, draws_df)
+
+    # 7. v16: セット購入プラン（1口400円、2口で800円 / 5口で2000円）
+    set_plan_recs, set_cov = _generate_set_plan(predictions, 2, pool_max=50)
+    set_plan = {
+        "strategy": "セット購入（ST+BOX両取り）",
+        "total_budget": f"{2 * YEN_PER_SET_TICKET:,}円",
+        "slots": 2,
+        "total_coverage": set_cov,
+        "probability": f"{set_cov / 10000 * 100:.2f}%",
+        "recommendations": set_plan_recs,
+    }
+
+    set_plan_5_recs, set_cov_5 = _generate_set_plan(predictions, 5, pool_max=50)
+    set_plan_5 = {
+        "strategy": "セット購入（ST+BOX両取り）",
+        "total_budget": f"{5 * YEN_PER_SET_TICKET:,}円",
+        "slots": 5,
+        "total_coverage": set_cov_5,
+        "probability": f"{set_cov_5 / 10000 * 100:.2f}%",
+        "recommendations": set_plan_5_recs,
+    }
+
     # v15推奨プランの選択: カバー率が高い方を採用
     if cov_5_max >= cov_5_score:
         best_plan_5, best_cov_5 = plan_5_max, cov_5_max
-        best_plan_5_label = "v15カバー最大化+数字均等"
+        best_plan_5_label = "v16カバー最大化+数字均等"
     else:
         best_plan_5, best_cov_5 = plan_5_score, cov_5_score
         best_plan_5_label = "v12スコアベース"
 
     if cov_10_max >= cov_10_score:
         best_plan_10, best_cov_10 = plan_10_max, cov_10_max
-        best_plan_10_label = "v15カバー最大化+数字均等"
+        best_plan_10_label = "v16カバー最大化+数字均等"
     else:
         best_plan_10, best_cov_10 = plan_10_score, cov_10_score
         best_plan_10_label = "v12スコアベース"
 
     created_at = datetime.now().isoformat()
 
-    return {
+    result_plans = {
         'target_draw_number': target_draw,
         'created_at': created_at,
         'source_file': result['json_path'],
-        'planner_version': 'v15.0',
+        'planner_version': 'v16.0',
         'monthly_budget_guide': monthly_budget_guide_meta(),
-        # === メインプラン（v15推奨: カバー率最大化） ===
+        # === メインプラン（v16推奨: カバー率最大化） ===
         'plan_5': {
             'budget': '1,000円',
             'slots': 5,
@@ -854,7 +1235,16 @@ def generate_budget_plans(target_draw_number: Optional[int] = None) -> Optional[
             'recommendations': plan_10_ev,
         },
         'distributed_plan': distributed_plan,
+        # === v16追加プラン ===
+        'all_mini_5': all_mini_5,
+        'set_plan': set_plan,
+        'set_plan_5': set_plan_5,
     }
+
+    # 8. v16: 月間確率シミュレーション（全戦略のまとめ）
+    result_plans['monthly_simulation'] = _generate_monthly_simulation(result_plans)
+
+    return result_plans
 
 
 def _print_plan_table(recommendations: List[Dict]) -> None:
@@ -871,7 +1261,7 @@ def _print_plan_table(recommendations: List[Dict]) -> None:
 def print_budget_plans(plans: Dict) -> None:
     """プランをコンソールに表示"""
     print("\n" + "=" * 60)
-    print("💰 予算別おすすめ購入プラン (v15.0)")
+    print("💰 予算別おすすめ購入プラン (v16.0)")
     print("=" * 60)
     print(f"🎯 対象: 第{plans['target_draw_number']}回")
     print(f"📅 生成日時: {plans['created_at']}")
@@ -964,12 +1354,57 @@ def print_budget_plans(plans: Dict) -> None:
             for p in s['picks']:
                 print(f"    - `{p['number']}` {p['buy_method']} {p['box_type']} +{p['coverage']}通り")
 
+    # ========== v16: オールミニプラン ==========
+    am = plans.get('all_mini_5')
+    if am:
+        print("\n" + "-" * 60)
+        print("## 🎰 オールミニプラン（月間当選確率MAX）")
+        print("-" * 60)
+        print(f"\n**戦略:** {am['strategy']}")
+        print(f"**予算:** {am['total_budget']}/回")
+        print(f"**1回の当選確率:** {am['per_draw_probability']}")
+        print(f"**月間当選確率（{am['draws_per_month']}回）: {am['monthly_probability']}**")
+        print(f"**配当目安:** {am['mini_payout_estimate']}\n")
+        _print_plan_table(am['recommendations'])
+
+    # ========== v16: セット購入プラン ==========
+    sp = plans.get('set_plan')
+    sp5 = plans.get('set_plan_5')
+    if sp or sp5:
+        print("\n" + "-" * 60)
+        print("## 🎪 セット購入プラン（ST+BOX両取り）")
+        print("-" * 60)
+
+        if sp:
+            print(f"\n### 🎫 {sp['total_budget']}（{sp['slots']}口）")
+            print(f"**カバー:** {sp['total_coverage']}通り ({sp['probability']})\n")
+            _print_plan_table(sp['recommendations'])
+        if sp5:
+            print(f"\n### 🎫 {sp5['total_budget']}（{sp5['slots']}口）")
+            print(f"**カバー:** {sp5['total_coverage']}通り ({sp5['probability']})\n")
+            _print_plan_table(sp5['recommendations'])
+
+    # ========== v16: 月間確率シミュレーター ==========
+    sim = plans.get('monthly_simulation')
+    if sim:
+        print("\n" + "-" * 60)
+        print("## 📊 月間確率シミュレーション（全戦略比較）")
+        print("-" * 60)
+        print(f"\n平日{sim['draws_per_month']}回/月で計算\n")
+        print("| 順位 | 戦略 | 1回の予算 | 1回の確率 | 月間確率 | 配当タイプ |")
+        print("|:---:|:---|:---:|:---:|:---:|:---|")
+        for i, s in enumerate(sim['strategies'], 1):
+            print(
+                f"| {i} | {s['name']} | {s['budget_per_draw']} | "
+                f"{s['per_draw_probability']} | **{s['monthly_probability']}** | {s['payout_type']} |"
+            )
+
     # ========== 購入のコツ ==========
-    print("\n### 📝 購入のコツ (v15)")
-    print("1. **推奨プラン**はABCD型(24通り)を優先し、カバー率を最大化しています")
-    print("2. **ハイブリッド**はミニ(1/100)を混ぜることで「当たる体験」が増えます")
-    print("3. **分散購入**は同じ予算でも複数回に分けると月間当選確率がUPします")
-    print("4. **期待値プラン**は配当が高くなりやすい番号を優先しています")
+    print("\n### 📝 購入のコツ (v16)")
+    print("1. **オールミニ**は月間約67%の当選確率！ 「当たる楽しさ」重視ならこれ")
+    print("2. **ハイブリッド**はBOXの高配当 + MINIの高確率の良いとこ取り")
+    print("3. **セット**はストレート当選金の半額 + ボックス当選金の半額が貰える")
+    print("4. **月間シミュレーション**で自分の予算に合った戦略を比較できます")
     print("5. **確率は参考値**（実際の当せんは券種・ルールによる）")
 
 

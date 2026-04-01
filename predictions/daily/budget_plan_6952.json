@@ -1,60 +1,341 @@
 {
   "target_draw_number": 6952,
-  "created_at": "2026-04-01T04:02:45.316394",
-  "source_file": "/home/runner/work/million-pocket-orchestra/million-pocket-orchestra/predictions/daily/numbers4_6952.json",
+  "created_at": "2026-04-01T18:44:28.173848",
+  "source_file": "/home/kbkkbk/Develop/kubocchi/million-pocket/predictions/daily/numbers4_6952.json",
+  "planner_version": "v16.0",
+  "monthly_budget_guide": {
+    "max_yen_per_month": 30000,
+    "default_per_draw_yen": 1000,
+    "max_per_draw_yen": 2000,
+    "yen_per_ticket": 200,
+    "slots_for_1000yen": 5,
+    "slots_for_2000yen": 10,
+    "daily_full_month_hint": "毎日1000円×約30日 ≒ 30000円/月。攻める日は2000円(10口)にして他日を抑えると上限内に収めやすい。"
+  },
   "plan_5": {
     "budget": "1,000円",
     "slots": 5,
-    "total_coverage": 33,
-    "probability": "0.33%",
+    "total_coverage": 60,
+    "coverage_note": "v16カバー最大化+数字均等 / ボックス multiset 単位の重複を除いたユニーク通り数",
+    "probability": "0.60%",
     "recommendations": [
       {
         "priority": "🥇 1",
-        "number": "4444",
-        "buy_method": "ボックス",
-        "box_type": "クアッド(AAAA)",
-        "coverage": 1,
-        "reason": "第1位の最有力候補 / 超高スコア"
-      },
-      {
-        "priority": "🥈 2",
-        "number": "0444",
-        "buy_method": "ボックス",
-        "box_type": "トリプル(AAAB)",
-        "coverage": 4,
-        "reason": "第2位の最有力候補"
-      },
-      {
-        "priority": "🥉 3",
-        "number": "6444",
-        "buy_method": "ボックス",
-        "box_type": "トリプル(AAAB)",
-        "coverage": 4,
-        "reason": "第3位の最有力候補"
-      },
-      {
-        "priority": "4️⃣",
         "number": "9117",
         "buy_method": "ボックス",
         "box_type": "ダブル(AABC)",
         "coverage": 12,
-        "reason": "上位5位 / 12通りの広カバー"
+        "marginal_coverage": 12,
+        "reason": "カバー最大+数字均等 / 上位5位 / 12通りの広カバー"
       },
       {
-        "priority": "5️⃣",
-        "number": "4408",
+        "priority": "🥈 2",
+        "number": "0484",
         "buy_method": "ボックス",
         "box_type": "ダブル(AABC)",
         "coverage": 12,
-        "reason": "上位6位 / 12通りの広カバー"
+        "marginal_coverage": 12,
+        "reason": "カバー最大+数字均等 / 上位6位 / 12通りの広カバー"
+      },
+      {
+        "priority": "🥉 3",
+        "number": "6808",
+        "buy_method": "ボックス",
+        "box_type": "ダブル(AABC)",
+        "coverage": 12,
+        "marginal_coverage": 12,
+        "reason": "カバー最大+数字均等 / 上位9位 / 12通りの広カバー"
+      },
+      {
+        "priority": "4️⃣",
+        "number": "3007",
+        "buy_method": "ボックス",
+        "box_type": "ダブル(AABC)",
+        "coverage": 12,
+        "marginal_coverage": 12,
+        "reason": "カバー最大+数字均等 / 15位にランクイン / 12通りの広カバー"
+      },
+      {
+        "priority": "5️⃣",
+        "number": "3404",
+        "buy_method": "ボックス",
+        "box_type": "ダブル(AABC)",
+        "coverage": 12,
+        "marginal_coverage": 12,
+        "reason": "カバー最大+数字均等 / 17位にランクイン / 12通りの広カバー"
       }
     ]
   },
   "plan_10": {
     "budget": "2,000円",
     "slots": 10,
-    "total_coverage": 63,
-    "probability": "0.63%",
+    "total_coverage": 82,
+    "coverage_note": "v16カバー最大化+数字均等 / ボックス multiset 単位の重複を除いたユニーク通り数",
+    "probability": "0.82%",
+    "recommendations": [
+      {
+        "priority": "🥇 1",
+        "number": "9117",
+        "buy_method": "ボックス",
+        "box_type": "ダブル(AABC)",
+        "coverage": 12,
+        "marginal_coverage": 12,
+        "reason": "カバー最大+数字均等 / 上位5位 / 12通りの広カバー"
+      },
+      {
+        "priority": "🥈 2",
+        "number": "0484",
+        "buy_method": "ボックス",
+        "box_type": "ダブル(AABC)",
+        "coverage": 12,
+        "marginal_coverage": 12,
+        "reason": "カバー最大+数字均等 / 上位6位 / 12通りの広カバー"
+      },
+      {
+        "priority": "🥉 3",
+        "number": "6808",
+        "buy_method": "ボックス",
+        "box_type": "ダブル(AABC)",
+        "coverage": 12,
+        "marginal_coverage": 12,
+        "reason": "カバー最大+数字均等 / 上位9位 / 12通りの広カバー"
+      },
+      {
+        "priority": "4️⃣",
+        "number": "3007",
+        "buy_method": "ボックス",
+        "box_type": "ダブル(AABC)",
+        "coverage": 12,
+        "marginal_coverage": 12,
+        "reason": "カバー最大+数字均等 / 15位にランクイン / 12通りの広カバー"
+      },
+      {
+        "priority": "5️⃣",
+        "number": "3404",
+        "buy_method": "ボックス",
+        "box_type": "ダブル(AABC)",
+        "coverage": 12,
+        "marginal_coverage": 12,
+        "reason": "カバー最大+数字均等 / 17位にランクイン / 12通りの広カバー"
+      },
+      {
+        "priority": "6",
+        "number": "3535",
+        "buy_method": "ボックス",
+        "box_type": "ダブルダブル(AABB)",
+        "coverage": 6,
+        "marginal_coverage": 6,
+        "reason": "カバー最大+数字均等 / 19位にランクイン / 6通りカバー"
+      },
+      {
+        "priority": "7",
+        "number": "2226",
+        "buy_method": "ボックス",
+        "box_type": "トリプル(AAAB)",
+        "coverage": 4,
+        "marginal_coverage": 4,
+        "reason": "カバー最大+数字均等 / 18位にランクイン"
+      },
+      {
+        "priority": "8",
+        "number": "6111",
+        "buy_method": "ボックス",
+        "box_type": "トリプル(AAAB)",
+        "coverage": 4,
+        "marginal_coverage": 4,
+        "reason": "カバー最大+数字均等 / 14位にランクイン"
+      },
+      {
+        "priority": "9",
+        "number": "5515",
+        "buy_method": "ボックス",
+        "box_type": "トリプル(AAAB)",
+        "coverage": 4,
+        "marginal_coverage": 4,
+        "reason": "カバー最大+数字均等 / 20位にランクイン"
+      },
+      {
+        "priority": "10",
+        "number": "6444",
+        "buy_method": "ボックス",
+        "box_type": "トリプル(AAAB)",
+        "coverage": 4,
+        "marginal_coverage": 4,
+        "reason": "カバー最大+数字均等 / 第3位の最有力候補"
+      }
+    ]
+  },
+  "hybrid_5": {
+    "strategy": "ハイブリッド（ボックス＋ミニ）",
+    "total_budget": "1,000円",
+    "box_slots": 3,
+    "mini_slots": 2,
+    "box_coverage": 36,
+    "box_probability": "0.36%",
+    "mini_unique_tails": 2,
+    "mini_probability": "2.0%",
+    "combined_probability": "2.35%",
+    "box_recommendations": [
+      {
+        "priority": "🥇 1",
+        "number": "9117",
+        "buy_method": "ボックス",
+        "box_type": "ダブル(AABC)",
+        "coverage": 12,
+        "marginal_coverage": 12,
+        "reason": "カバー最大+数字均等 / 上位5位 / 12通りの広カバー"
+      },
+      {
+        "priority": "🥈 2",
+        "number": "0484",
+        "buy_method": "ボックス",
+        "box_type": "ダブル(AABC)",
+        "coverage": 12,
+        "marginal_coverage": 12,
+        "reason": "カバー最大+数字均等 / 上位6位 / 12通りの広カバー"
+      },
+      {
+        "priority": "🥉 3",
+        "number": "6808",
+        "buy_method": "ボックス",
+        "box_type": "ダブル(AABC)",
+        "coverage": 12,
+        "marginal_coverage": 12,
+        "reason": "カバー最大+数字均等 / 上位9位 / 12通りの広カバー"
+      }
+    ],
+    "mini_recommendations": [
+      {
+        "priority": "🥇 1",
+        "number": "4444",
+        "buy_method": "ミニ",
+        "box_type": "下2桁: 44",
+        "coverage": 1,
+        "marginal_coverage": 1,
+        "reason": "ミニ(1/100) / 元番号4444の下2桁「44」"
+      },
+      {
+        "priority": "🥈 2",
+        "number": "4414",
+        "buy_method": "ミニ",
+        "box_type": "下2桁: 14",
+        "coverage": 1,
+        "marginal_coverage": 1,
+        "reason": "ミニ(1/100) / 元番号4414の下2桁「14」"
+      }
+    ]
+  },
+  "hybrid_10": {
+    "strategy": "ハイブリッド（ボックス＋ミニ）",
+    "total_budget": "2,000円",
+    "box_slots": 5,
+    "mini_slots": 5,
+    "box_coverage": 60,
+    "box_probability": "0.60%",
+    "mini_unique_tails": 5,
+    "mini_probability": "5.0%",
+    "combined_probability": "5.57%",
+    "box_recommendations": [
+      {
+        "priority": "🥇 1",
+        "number": "9117",
+        "buy_method": "ボックス",
+        "box_type": "ダブル(AABC)",
+        "coverage": 12,
+        "marginal_coverage": 12,
+        "reason": "カバー最大+数字均等 / 上位5位 / 12通りの広カバー"
+      },
+      {
+        "priority": "🥈 2",
+        "number": "0484",
+        "buy_method": "ボックス",
+        "box_type": "ダブル(AABC)",
+        "coverage": 12,
+        "marginal_coverage": 12,
+        "reason": "カバー最大+数字均等 / 上位6位 / 12通りの広カバー"
+      },
+      {
+        "priority": "🥉 3",
+        "number": "6808",
+        "buy_method": "ボックス",
+        "box_type": "ダブル(AABC)",
+        "coverage": 12,
+        "marginal_coverage": 12,
+        "reason": "カバー最大+数字均等 / 上位9位 / 12通りの広カバー"
+      },
+      {
+        "priority": "4️⃣",
+        "number": "3007",
+        "buy_method": "ボックス",
+        "box_type": "ダブル(AABC)",
+        "coverage": 12,
+        "marginal_coverage": 12,
+        "reason": "カバー最大+数字均等 / 15位にランクイン / 12通りの広カバー"
+      },
+      {
+        "priority": "5️⃣",
+        "number": "3404",
+        "buy_method": "ボックス",
+        "box_type": "ダブル(AABC)",
+        "coverage": 12,
+        "marginal_coverage": 12,
+        "reason": "カバー最大+数字均等 / 17位にランクイン / 12通りの広カバー"
+      }
+    ],
+    "mini_recommendations": [
+      {
+        "priority": "🥇 1",
+        "number": "4444",
+        "buy_method": "ミニ",
+        "box_type": "下2桁: 44",
+        "coverage": 1,
+        "marginal_coverage": 1,
+        "reason": "ミニ(1/100) / 元番号4444の下2桁「44」"
+      },
+      {
+        "priority": "🥈 2",
+        "number": "4414",
+        "buy_method": "ミニ",
+        "box_type": "下2桁: 14",
+        "coverage": 1,
+        "marginal_coverage": 1,
+        "reason": "ミニ(1/100) / 元番号4414の下2桁「14」"
+      },
+      {
+        "priority": "🥉 3",
+        "number": "9117",
+        "buy_method": "ミニ",
+        "box_type": "下2桁: 17",
+        "coverage": 1,
+        "marginal_coverage": 1,
+        "reason": "ミニ(1/100) / 元番号9117の下2桁「17」"
+      },
+      {
+        "priority": "4️⃣",
+        "number": "0484",
+        "buy_method": "ミニ",
+        "box_type": "下2桁: 84",
+        "coverage": 1,
+        "marginal_coverage": 1,
+        "reason": "ミニ(1/100) / 元番号0484の下2桁「84」"
+      },
+      {
+        "priority": "5️⃣",
+        "number": "0000",
+        "buy_method": "ミニ",
+        "box_type": "下2桁: 00",
+        "coverage": 1,
+        "marginal_coverage": 1,
+        "reason": "ミニ(1/100) / 元番号0000の下2桁「00」"
+      }
+    ]
+  },
+  "expected_value_5": {
+    "budget": "1,000円",
+    "slots": 5,
+    "total_coverage": 14,
+    "total_expected_value": -500.0,
+    "probability": "0.14%",
     "recommendations": [
       {
         "priority": "🥇 1",
@@ -62,7 +343,10 @@
         "buy_method": "ボックス",
         "box_type": "クアッド(AAAA)",
         "coverage": 1,
-        "reason": "第1位の最有力候補 / 超高スコア"
+        "marginal_coverage": 1,
+        "expected_value": -100.0,
+        "box_payout": 1000000,
+        "reason": "期待値-100円 / 配当目安1,000,000円 / 第1位の最有力候補 / 超高スコア"
       },
       {
         "priority": "🥈 2",
@@ -70,7 +354,10 @@
         "buy_method": "ボックス",
         "box_type": "トリプル(AAAB)",
         "coverage": 4,
-        "reason": "第2位の最有力候補"
+        "marginal_coverage": 4,
+        "expected_value": -100.0,
+        "box_payout": 250000,
+        "reason": "期待値-100円 / 配当目安250,000円 / 第2位の最有力候補"
       },
       {
         "priority": "🥉 3",
@@ -78,7 +365,10 @@
         "buy_method": "ボックス",
         "box_type": "トリプル(AAAB)",
         "coverage": 4,
-        "reason": "第3位の最有力候補"
+        "marginal_coverage": 4,
+        "expected_value": -100.0,
+        "box_payout": 250000,
+        "reason": "期待値-100円 / 配当目安250,000円 / 第3位の最有力候補"
       },
       {
         "priority": "4️⃣",
@@ -86,55 +376,472 @@
         "buy_method": "ボックス",
         "box_type": "トリプル(AAAB)",
         "coverage": 4,
-        "reason": "上位4位"
+        "marginal_coverage": 4,
+        "expected_value": -100.0,
+        "box_payout": 250000,
+        "reason": "期待値-100円 / 配当目安250,000円 / 上位4位"
       },
       {
         "priority": "5️⃣",
-        "number": "9117",
-        "buy_method": "ボックス",
-        "box_type": "ダブル(AABC)",
-        "coverage": 12,
-        "reason": "上位5位 / 12通りの広カバー"
-      },
-      {
-        "priority": "6",
-        "number": "4408",
-        "buy_method": "ボックス",
-        "box_type": "ダブル(AABC)",
-        "coverage": 12,
-        "reason": "上位6位 / 12通りの広カバー"
-      },
-      {
-        "priority": "7",
-        "number": "6808",
-        "buy_method": "ボックス",
-        "box_type": "ダブル(AABC)",
-        "coverage": 12,
-        "reason": "上位9位 / 12通りの広カバー"
-      },
-      {
-        "priority": "8",
         "number": "0000",
         "buy_method": "ボックス",
         "box_type": "クアッド(AAAA)",
         "coverage": 1,
-        "reason": "上位7位"
-      },
+        "marginal_coverage": 1,
+        "expected_value": -100.0,
+        "box_payout": 1000000,
+        "reason": "期待値-100円 / 配当目安1,000,000円 / 上位7位"
+      }
+    ]
+  },
+  "expected_value_10": {
+    "budget": "2,000円",
+    "slots": 10,
+    "total_coverage": 22,
+    "total_expected_value": -1000.0,
+    "probability": "0.22%",
+    "recommendations": [
       {
-        "priority": "9",
-        "number": "3007",
+        "priority": "🥇 1",
+        "number": "4444",
         "buy_method": "ボックス",
-        "box_type": "ダブル(AABC)",
-        "coverage": 12,
-        "reason": "15位にランクイン / 12通りの広カバー"
+        "box_type": "クアッド(AAAA)",
+        "coverage": 1,
+        "marginal_coverage": 1,
+        "expected_value": -100.0,
+        "box_payout": 1000000,
+        "reason": "期待値-100円 / 配当目安1,000,000円 / 第1位の最有力候補 / 超高スコア"
       },
       {
-        "priority": "10",
+        "priority": "🥈 2",
+        "number": "0444",
+        "buy_method": "ボックス",
+        "box_type": "トリプル(AAAB)",
+        "coverage": 4,
+        "marginal_coverage": 4,
+        "expected_value": -100.0,
+        "box_payout": 250000,
+        "reason": "期待値-100円 / 配当目安250,000円 / 第2位の最有力候補"
+      },
+      {
+        "priority": "🥉 3",
+        "number": "6444",
+        "buy_method": "ボックス",
+        "box_type": "トリプル(AAAB)",
+        "coverage": 4,
+        "marginal_coverage": 4,
+        "expected_value": -100.0,
+        "box_payout": 250000,
+        "reason": "期待値-100円 / 配当目安250,000円 / 第3位の最有力候補"
+      },
+      {
+        "priority": "4️⃣",
+        "number": "4414",
+        "buy_method": "ボックス",
+        "box_type": "トリプル(AAAB)",
+        "coverage": 4,
+        "marginal_coverage": 4,
+        "expected_value": -100.0,
+        "box_payout": 250000,
+        "reason": "期待値-100円 / 配当目安250,000円 / 上位4位"
+      },
+      {
+        "priority": "5️⃣",
+        "number": "0000",
+        "buy_method": "ボックス",
+        "box_type": "クアッド(AAAA)",
+        "coverage": 1,
+        "marginal_coverage": 1,
+        "expected_value": -100.0,
+        "box_payout": 1000000,
+        "reason": "期待値-100円 / 配当目安1,000,000円 / 上位7位"
+      },
+      {
+        "priority": "6",
         "number": "5555",
         "buy_method": "ボックス",
         "box_type": "クアッド(AAAA)",
         "coverage": 1,
-        "reason": "上位8位"
+        "marginal_coverage": 1,
+        "expected_value": -100.0,
+        "box_payout": 1000000,
+        "reason": "期待値-100円 / 配当目安1,000,000円 / 上位8位"
+      },
+      {
+        "priority": "7",
+        "number": "6666",
+        "buy_method": "ボックス",
+        "box_type": "クアッド(AAAA)",
+        "coverage": 1,
+        "marginal_coverage": 1,
+        "expected_value": -100.0,
+        "box_payout": 1000000,
+        "reason": "期待値-100円 / 配当目安1,000,000円 / 上位10位"
+      },
+      {
+        "priority": "8",
+        "number": "3444",
+        "buy_method": "ボックス",
+        "box_type": "トリプル(AAAB)",
+        "coverage": 4,
+        "marginal_coverage": 4,
+        "expected_value": -100.0,
+        "box_payout": 250000,
+        "reason": "期待値-100円 / 配当目安250,000円 / 11位にランクイン"
+      },
+      {
+        "priority": "9",
+        "number": "9999",
+        "buy_method": "ボックス",
+        "box_type": "クアッド(AAAA)",
+        "coverage": 1,
+        "marginal_coverage": 1,
+        "expected_value": -100.0,
+        "box_payout": 1000000,
+        "reason": "期待値-100円 / 配当目安1,000,000円 / 12位にランクイン"
+      },
+      {
+        "priority": "10",
+        "number": "2222",
+        "buy_method": "ボックス",
+        "box_type": "クアッド(AAAA)",
+        "coverage": 1,
+        "marginal_coverage": 1,
+        "expected_value": -100.0,
+        "box_payout": 1000000,
+        "reason": "期待値-100円 / 配当目安1,000,000円 / 13位にランクイン"
+      }
+    ]
+  },
+  "distributed_plan": {
+    "strategy": "分散購入（独立試行最大化）",
+    "total_budget": "2,000円",
+    "sessions": 5,
+    "tickets_per_session": 2,
+    "cumulative_unique_coverage": 82,
+    "cumulative_probability": "0.82%",
+    "monthly_hit_probability": "0.817%",
+    "schedule": [
+      {
+        "session": 1,
+        "budget": "400円",
+        "tickets": 2,
+        "session_coverage": 24,
+        "picks": [
+          {
+            "number": "9117",
+            "buy_method": "ボックス",
+            "box_type": "ダブル(AABC)",
+            "coverage": 12,
+            "reason": "上位5位 / 12通りの広カバー"
+          },
+          {
+            "number": "0484",
+            "buy_method": "ボックス",
+            "box_type": "ダブル(AABC)",
+            "coverage": 12,
+            "reason": "上位6位 / 12通りの広カバー"
+          }
+        ]
+      },
+      {
+        "session": 2,
+        "budget": "400円",
+        "tickets": 2,
+        "session_coverage": 24,
+        "picks": [
+          {
+            "number": "6808",
+            "buy_method": "ボックス",
+            "box_type": "ダブル(AABC)",
+            "coverage": 12,
+            "reason": "上位9位 / 12通りの広カバー"
+          },
+          {
+            "number": "3007",
+            "buy_method": "ボックス",
+            "box_type": "ダブル(AABC)",
+            "coverage": 12,
+            "reason": "15位にランクイン / 12通りの広カバー"
+          }
+        ]
+      },
+      {
+        "session": 3,
+        "budget": "400円",
+        "tickets": 2,
+        "session_coverage": 18,
+        "picks": [
+          {
+            "number": "3404",
+            "buy_method": "ボックス",
+            "box_type": "ダブル(AABC)",
+            "coverage": 12,
+            "reason": "17位にランクイン / 12通りの広カバー"
+          },
+          {
+            "number": "3535",
+            "buy_method": "ボックス",
+            "box_type": "ダブルダブル(AABB)",
+            "coverage": 6,
+            "reason": "19位にランクイン / 6通りカバー"
+          }
+        ]
+      },
+      {
+        "session": 4,
+        "budget": "400円",
+        "tickets": 2,
+        "session_coverage": 8,
+        "picks": [
+          {
+            "number": "0444",
+            "buy_method": "ボックス",
+            "box_type": "トリプル(AAAB)",
+            "coverage": 4,
+            "reason": "第2位の最有力候補"
+          },
+          {
+            "number": "6444",
+            "buy_method": "ボックス",
+            "box_type": "トリプル(AAAB)",
+            "coverage": 4,
+            "reason": "第3位の最有力候補"
+          }
+        ]
+      },
+      {
+        "session": 5,
+        "budget": "400円",
+        "tickets": 2,
+        "session_coverage": 8,
+        "picks": [
+          {
+            "number": "4414",
+            "buy_method": "ボックス",
+            "box_type": "トリプル(AAAB)",
+            "coverage": 4,
+            "reason": "上位4位"
+          },
+          {
+            "number": "3444",
+            "buy_method": "ボックス",
+            "box_type": "トリプル(AAAB)",
+            "coverage": 4,
+            "reason": "11位にランクイン"
+          }
+        ]
+      }
+    ]
+  },
+  "all_mini_5": {
+    "strategy": "オールミニ（全5口ミニ）",
+    "total_budget": "1,000円",
+    "slots": 5,
+    "per_draw_probability": "5.0%",
+    "draws_per_month": 22,
+    "monthly_probability": "67.6%",
+    "mini_payout_estimate": "約9,000円",
+    "recommendations": [
+      {
+        "priority": "🥇 1",
+        "number": "3404",
+        "buy_method": "ミニ",
+        "box_type": "下2桁: 04",
+        "coverage": 1,
+        "marginal_coverage": 1,
+        "reason": "ミニ(1/100) / 過去傾向82% / 下2桁「04」"
+      },
+      {
+        "priority": "🥈 2",
+        "number": "0076",
+        "buy_method": "ミニ",
+        "box_type": "下2桁: 76",
+        "coverage": 1,
+        "marginal_coverage": 1,
+        "reason": "ミニ(1/100) / 過去傾向100% / 下2桁「76」"
+      },
+      {
+        "priority": "🥉 3",
+        "number": "0027",
+        "buy_method": "ミニ",
+        "box_type": "下2桁: 27",
+        "coverage": 1,
+        "marginal_coverage": 1,
+        "reason": "ミニ(1/100) / 過去傾向100% / 下2桁「27」"
+      },
+      {
+        "priority": "4️⃣",
+        "number": "4444",
+        "buy_method": "ミニ",
+        "box_type": "下2桁: 44",
+        "coverage": 1,
+        "marginal_coverage": 1,
+        "reason": "ミニ(1/100) / 過去傾向34% / 下2桁「44」"
+      },
+      {
+        "priority": "5️⃣",
+        "number": "2226",
+        "buy_method": "ミニ",
+        "box_type": "下2桁: 26",
+        "coverage": 1,
+        "marginal_coverage": 1,
+        "reason": "ミニ(1/100) / 過去傾向63% / 下2桁「26」"
+      }
+    ]
+  },
+  "set_plan": {
+    "strategy": "セット購入（ST+BOX両取り）",
+    "total_budget": "800円",
+    "slots": 2,
+    "total_coverage": 24,
+    "probability": "0.24%",
+    "recommendations": [
+      {
+        "priority": "🥇 1",
+        "number": "9117",
+        "buy_method": "セット",
+        "box_type": "ダブル(AABC)",
+        "coverage": 12,
+        "marginal_coverage": 12,
+        "set_straight_payout": 500000,
+        "set_box_payout": 37500,
+        "reason": "セット(ST+BOX両取り) / ST的中:500,000円 BOX的中:37,500円 / 上位5位 / 12通りの広カバー"
+      },
+      {
+        "priority": "🥈 2",
+        "number": "0484",
+        "buy_method": "セット",
+        "box_type": "ダブル(AABC)",
+        "coverage": 12,
+        "marginal_coverage": 12,
+        "set_straight_payout": 500000,
+        "set_box_payout": 37500,
+        "reason": "セット(ST+BOX両取り) / ST的中:500,000円 BOX的中:37,500円 / 上位6位 / 12通りの広カバー"
+      }
+    ]
+  },
+  "set_plan_5": {
+    "strategy": "セット購入（ST+BOX両取り）",
+    "total_budget": "2,000円",
+    "slots": 5,
+    "total_coverage": 60,
+    "probability": "0.60%",
+    "recommendations": [
+      {
+        "priority": "🥇 1",
+        "number": "9117",
+        "buy_method": "セット",
+        "box_type": "ダブル(AABC)",
+        "coverage": 12,
+        "marginal_coverage": 12,
+        "set_straight_payout": 500000,
+        "set_box_payout": 37500,
+        "reason": "セット(ST+BOX両取り) / ST的中:500,000円 BOX的中:37,500円 / 上位5位 / 12通りの広カバー"
+      },
+      {
+        "priority": "🥈 2",
+        "number": "0484",
+        "buy_method": "セット",
+        "box_type": "ダブル(AABC)",
+        "coverage": 12,
+        "marginal_coverage": 12,
+        "set_straight_payout": 500000,
+        "set_box_payout": 37500,
+        "reason": "セット(ST+BOX両取り) / ST的中:500,000円 BOX的中:37,500円 / 上位6位 / 12通りの広カバー"
+      },
+      {
+        "priority": "🥉 3",
+        "number": "6808",
+        "buy_method": "セット",
+        "box_type": "ダブル(AABC)",
+        "coverage": 12,
+        "marginal_coverage": 12,
+        "set_straight_payout": 500000,
+        "set_box_payout": 37500,
+        "reason": "セット(ST+BOX両取り) / ST的中:500,000円 BOX的中:37,500円 / 上位9位 / 12通りの広カバー"
+      },
+      {
+        "priority": "4️⃣",
+        "number": "3007",
+        "buy_method": "セット",
+        "box_type": "ダブル(AABC)",
+        "coverage": 12,
+        "marginal_coverage": 12,
+        "set_straight_payout": 500000,
+        "set_box_payout": 37500,
+        "reason": "セット(ST+BOX両取り) / ST的中:500,000円 BOX的中:37,500円 / 15位にランクイン / 12通りの広カバー"
+      },
+      {
+        "priority": "5️⃣",
+        "number": "3404",
+        "buy_method": "セット",
+        "box_type": "ダブル(AABC)",
+        "coverage": 12,
+        "marginal_coverage": 12,
+        "set_straight_payout": 500000,
+        "set_box_payout": 37500,
+        "reason": "セット(ST+BOX両取り) / ST的中:500,000円 BOX的中:37,500円 / 17位にランクイン / 12通りの広カバー"
+      }
+    ]
+  },
+  "monthly_simulation": {
+    "draws_per_month": 22,
+    "note": "月間確率 = 1回以上当選する確率。平日22回/月で計算。",
+    "strategies": [
+      {
+        "name": "ハイブリッド 10口 (BOX+MINI)",
+        "budget_per_draw": "2,000円",
+        "monthly_budget": "44,000円",
+        "per_draw_probability": "5.57%",
+        "monthly_probability": "71.7%",
+        "monthly_probability_raw": 0.7165869961655653,
+        "payout_type": "BOX or MINI当選金"
+      },
+      {
+        "name": "オールミニ 5口",
+        "budget_per_draw": "1,000円",
+        "monthly_budget": "22,000円",
+        "per_draw_probability": "5.0%",
+        "monthly_probability": "67.6%",
+        "monthly_probability_raw": 0.676466455026291,
+        "payout_type": "MINI当選金 (約9,000円)"
+      },
+      {
+        "name": "ハイブリッド 5口 (BOX+MINI)",
+        "budget_per_draw": "1,000円",
+        "monthly_budget": "22,000円",
+        "per_draw_probability": "2.35%",
+        "monthly_probability": "40.7%",
+        "monthly_probability_raw": 0.407362064561258,
+        "payout_type": "BOX or MINI当選金"
+      },
+      {
+        "name": "BOXのみ 10口",
+        "budget_per_draw": "2,000円",
+        "monthly_budget": "44,000円",
+        "per_draw_probability": "0.82%",
+        "monthly_probability": "16.6%",
+        "monthly_probability_raw": 0.16568454805539634,
+        "payout_type": "ボックス当選金"
+      },
+      {
+        "name": "BOXのみ 5口",
+        "budget_per_draw": "1,000円",
+        "monthly_budget": "22,000円",
+        "per_draw_probability": "0.60%",
+        "monthly_probability": "12.4%",
+        "monthly_probability_raw": 0.12400736109924926,
+        "payout_type": "ボックス当選金"
+      },
+      {
+        "name": "セット 2口",
+        "budget_per_draw": "800円",
+        "monthly_budget": "—",
+        "per_draw_probability": "0.24%",
+        "monthly_probability": "5.1%",
+        "monthly_probability_raw": 0.05149048834855163,
+        "payout_type": "ST半額+BOX半額"
       }
     ]
   }

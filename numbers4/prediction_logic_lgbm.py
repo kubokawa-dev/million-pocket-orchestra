@@ -206,6 +206,57 @@ def create_features(df: pd.DataFrame):
     df['digit_std'] = df[['d1', 'd2', 'd3', 'd4']].std(axis=1)
     df['digit_std_lag_1'] = df['digit_std'].shift(1)
 
+    # ========== v16.0 NEW: コールド/ホットナンバー特徴量 ==========
+    # バックテストでcold_revival(19% BOX的中率)が最強だったため、
+    # コールドナンバー情報をLightGBMに統合
+    for digit in range(10):
+        col_since = f'digit_{digit}_since_last'
+        if col_since in df.columns:
+            # コールド度（出現間隔が長い = コールド）
+            df[f'digit_{digit}_is_cold'] = (df[col_since] >= 15).astype(int)
+            # ホット度（出現間隔が短い = ホット）
+            df[f'digit_{digit}_is_hot'] = (df[col_since] <= 3).astype(int)
+
+    # 全桁のコールド数字数（0-4）
+    cold_cols = [f'digit_{d}_is_cold' for d in range(10) if f'digit_{d}_is_cold' in df.columns]
+    if cold_cols:
+        # 現在の4桁に含まれるコールド数字の数
+        def count_cold_in_number(row):
+            count = 0
+            for d in [int(row['d1']), int(row['d2']), int(row['d3']), int(row['d4'])]:
+                col_name = f'digit_{d}_is_cold'
+                if col_name in row.index and row[col_name] == 1:
+                    count += 1
+            return count
+        df['cold_digit_count'] = df.apply(count_cold_in_number, axis=1)
+        df['cold_digit_count_lag_1'] = df['cold_digit_count'].shift(1)
+
+    # ========== v16.0 NEW: 曜日別パターン強化 ==========
+    # 曜日ごとの合計値の傾向
+    if 'dayofweek' in df.columns and 'sum' in df.columns:
+        for dow in range(5):  # 月〜金
+            mask = df['dayofweek'] == dow
+            df[f'dow_{dow}_sum_mean'] = df.loc[mask, 'sum'].expanding().mean()
+            df[f'dow_{dow}_sum_mean'] = df[f'dow_{dow}_sum_mean'].ffill()
+
+    # ========== v16.0 NEW: ギャップ分析特徴量 ==========
+    # 各桁の「前回値からの距離」のパターン
+    for col in ['d1', 'd2', 'd3', 'd4']:
+        diff_col = f'{col}_diff_1'
+        if diff_col in df.columns:
+            # 符号（上昇/下降トレンド）
+            df[f'{col}_trend'] = df[diff_col].apply(lambda x: 1 if x > 0 else (-1 if x < 0 else 0) if pd.notna(x) else 0)
+            # 2回連続同方向かどうか
+            df[f'{col}_trend_streak'] = (df[f'{col}_trend'] == df[f'{col}_trend'].shift(1)).astype(int)
+
+    # ========== v16.0 NEW: ボックスパターン連続性 ==========
+    # 前回と同じボックスタイプになるかどうかの手がかり
+    if 'unique_count' in df.columns:
+        df['box_type_same_as_prev'] = (df['unique_count'] == df['unique_count'].shift(1)).astype(int)
+        # 過去5回でのABCD型(unique=4)の割合
+        df['abcd_ratio_5'] = (df['unique_count'] == 4).astype(int).rolling(5).mean()
+        df['abcd_ratio_10'] = (df['unique_count'] == 4).astype(int).rolling(10).mean()
+
     # Drop rows with NaN (due to shifting/rolling)
     df_clean = df.dropna().reset_index(drop=True)
     return df_clean

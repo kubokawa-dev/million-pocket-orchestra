@@ -192,10 +192,10 @@ def annotate_box_metadata(df: pd.DataFrame) -> pd.DataFrame:
 def apply_box_type_balance(
     df: pd.DataFrame,
     target_distribution: dict,
-    min_multiplier: float = 0.6,
-    max_multiplier: float = 1.6,
+    min_multiplier: float = 0.4,
+    max_multiplier: float = 2.5,
 ) -> pd.DataFrame:
-    """予測DFのボックスタイプ比率を実績分布に寄せる"""
+    """予測DFのボックスタイプ比率を実績分布に寄せる (v16: 調整力強化 0.6-1.6 → 0.4-2.5)"""
     if df.empty or 'box_type' not in df.columns:
         return df
 
@@ -617,6 +617,31 @@ def generate_ensemble_prediction(progress_callback=None):
     report_progress(0.98, "ボックス情報を追加中...")
     final_predictions_df = annotate_box_metadata(final_predictions_df)
     final_predictions_df = apply_box_type_balance(final_predictions_df, target_box_distribution)
+
+    # v16.0: ABCD型(シングル)の最低保証
+    # 実データではABCD型が51%を占めるのに、予測上位20件にABCD型が不足しがち
+    # Top20のうち最低10件(50%)はABCD型を確保する
+    report_progress(0.985, "ABCD型最低保証を適用中...")
+    ABCD_MIN_IN_TOP20 = 10
+    top_20 = final_predictions_df.head(20)
+    abcd_in_top20 = len(top_20[top_20['box_type'].str.contains('ABCD', na=False)]) if 'box_type' in top_20.columns else 0
+
+    if abcd_in_top20 < ABCD_MIN_IN_TOP20:
+        # Top20外のABCD型候補を探してスコアをブーストし上位に引き上げる
+        deficit = ABCD_MIN_IN_TOP20 - abcd_in_top20
+        rest = final_predictions_df.iloc[20:]
+        abcd_rest = rest[rest['box_type'].str.contains('ABCD', na=False)] if 'box_type' in rest.columns else pd.DataFrame()
+
+        if not abcd_rest.empty:
+            # 不足分のABCD型候補のスコアをTop20の最低スコアより少し上にブースト
+            top20_min_score = top_20['score'].min() if len(top_20) > 0 else 0
+            boost_targets = abcd_rest.head(deficit).index
+            final_predictions_df.loc[boost_targets, 'score'] = top20_min_score + 0.01
+
+        # 再ソート
+        final_predictions_df = final_predictions_df.sort_values(by='score', ascending=False).reset_index(drop=True)
+        new_abcd = len(final_predictions_df.head(20)[final_predictions_df.head(20)['box_type'].str.contains('ABCD', na=False)]) if 'box_type' in final_predictions_df.columns else 0
+        report_progress(0.99, f"ABCD型: {abcd_in_top20} → {new_abcd}件 (Top20中)")
 
     # 保存用に順列を展開
     storage_predictions_df = expand_predictions_with_permutations(final_predictions_df)

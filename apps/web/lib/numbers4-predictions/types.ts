@@ -98,6 +98,46 @@ export type ExpectedValuePlanSlice = BudgetPlanSlice & {
   total_expected_value?: number;
 };
 
+/** v16: オールミニプラン */
+export type AllMiniPlanPayload = {
+  strategy?: string;
+  total_budget?: string;
+  slots?: number;
+  per_draw_probability?: string;
+  draws_per_month?: number;
+  monthly_probability?: string;
+  mini_payout_estimate?: string;
+  recommendations?: BudgetRecommendation[];
+};
+
+/** v16: セット購入プラン */
+export type SetPlanPayload = {
+  strategy?: string;
+  total_budget?: string;
+  slots?: number;
+  total_coverage?: number;
+  probability?: string;
+  recommendations?: BudgetRecommendation[];
+};
+
+/** v16: 月間シミュレーション戦略 */
+export type MonthlyStrategy = {
+  name?: string;
+  budget_per_draw?: string;
+  monthly_budget?: string;
+  per_draw_probability?: string;
+  monthly_probability?: string;
+  monthly_probability_raw?: number;
+  payout_type?: string;
+};
+
+/** v16: 月間確率シミュレーション */
+export type MonthlySimulationPayload = {
+  draws_per_month?: number;
+  note?: string;
+  strategies?: MonthlyStrategy[];
+};
+
 export type BudgetPlanPayload = {
   target_draw_number?: number;
   created_at?: string;
@@ -113,6 +153,13 @@ export type BudgetPlanPayload = {
   expected_value_10?: ExpectedValuePlanSlice;
   /** v15: 分散購入プラン */
   distributed_plan?: DistributedPlanPayload;
+  /** v16: オールミニプラン */
+  all_mini_5?: AllMiniPlanPayload;
+  /** v16: セット購入プラン */
+  set_plan?: SetPlanPayload;
+  set_plan_5?: SetPlanPayload;
+  /** v16: 月間確率シミュレーション */
+  monthly_simulation?: MonthlySimulationPayload;
 };
 
 export type MethodTopPrediction = {

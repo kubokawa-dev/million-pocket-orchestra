@@ -46,6 +46,7 @@ import {
   type HitKind,
 } from "@/lib/numbers4-predictions/prediction-hit-utils";
 import type {
+  AllMiniPlanPayload,
   BudgetPlanSlice,
   BudgetRecommendation,
   DistributedPlanPayload,
@@ -53,7 +54,9 @@ import type {
   ExpectedValuePlanSlice,
   HybridPlanPayload,
   MethodPredictionRow,
+  MonthlySimulationPayload,
   Numbers4PredictionBundle,
+  SetPlanPayload,
 } from "@/lib/numbers4-predictions/types";
 import { cn } from "@/lib/utils";
 
@@ -608,6 +611,251 @@ function ExpectedValuePlanCard({
             );
           })}
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** v16: オールミニプラン表示 */
+function AllMiniPlanCard({
+  plan,
+  winning: winningRaw,
+}: {
+  plan: AllMiniPlanPayload | undefined;
+  winning: string | null;
+}) {
+  const recs = plan?.recommendations ?? [];
+  if (!plan || recs.length === 0) return null;
+
+  return (
+    <Card className="border-border/80 h-full shadow-sm ring-1 ring-black/5 dark:ring-white/10">
+      <CardHeader className="border-border/60 border-b pb-4">
+        <div className="flex items-center gap-2">
+          <SparklesIcon className="text-muted-foreground size-4" />
+          <CardTitle className="text-base">
+            オールミニ（月間当選確率MAX）
+          </CardTitle>
+        </div>
+        <CardDescription className="flex flex-wrap gap-x-3 gap-y-1 text-xs sm:text-sm">
+          <span>{plan.total_budget}/回</span>
+          <span>{plan.slots}口</span>
+          {plan.mini_payout_estimate && (
+            <span>配当目安 {plan.mini_payout_estimate}</span>
+          )}
+        </CardDescription>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <Badge variant="outline" className="text-[0.65rem]">
+            1回 {plan.per_draw_probability}
+          </Badge>
+          <Badge variant="default" className="bg-green-600 text-[0.65rem]">
+            月間 {plan.monthly_probability}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="px-3 pb-4 pt-3">
+        <div className="space-y-1.5">
+          {recs.map((r, i) => (
+            <div
+              key={`mini-all-${r.number}-${i}`}
+              className="border-border/60 flex items-center justify-between rounded border px-2.5 py-1.5"
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground text-[0.65rem]">
+                  {r.priority}
+                </span>
+                <span className="font-mono text-sm">
+                  <span className="text-muted-foreground/50">
+                    {(r.number ?? "").slice(0, 2)}
+                  </span>
+                  <span className="font-semibold">
+                    {(r.number ?? "").slice(2)}
+                  </span>
+                </span>
+                <span className="text-muted-foreground text-[0.6rem]">
+                  {r.box_type}
+                </span>
+              </div>
+              <span className="text-muted-foreground text-[0.6rem]">
+                {r.reason?.split(" / ").find((s) => s.includes("過去")) ?? ""}
+              </span>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** v16: セット購入プラン表示 */
+function SetPlanCard({
+  title,
+  plan,
+  winning: winningRaw,
+}: {
+  title: string;
+  plan: SetPlanPayload | undefined;
+  winning: string | null;
+}) {
+  const recs = plan?.recommendations ?? [];
+  if (!plan || recs.length === 0) return null;
+
+  return (
+    <Card className="border-border/80 h-full shadow-sm ring-1 ring-black/5 dark:ring-white/10">
+      <CardHeader className="border-border/60 border-b pb-4">
+        <div className="flex items-center gap-2">
+          <ListOrderedIcon className="text-muted-foreground size-4" />
+          <CardTitle className="text-base">{title}</CardTitle>
+        </div>
+        <CardDescription className="flex flex-wrap gap-x-3 gap-y-1 text-xs sm:text-sm">
+          <span>{plan.total_budget}</span>
+          <span>{plan.slots}口 (1口400円)</span>
+          {plan.total_coverage != null && (
+            <span>カバー {plan.total_coverage}通り</span>
+          )}
+          {plan.probability && <span>({plan.probability})</span>}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="px-3 pb-4 pt-3">
+        <div className="space-y-1.5">
+          {recs.map((r, i) => {
+            const hit = classifyHit(r.number ?? "", winningRaw);
+            return (
+              <div
+                key={`set-${r.number}-${i}`}
+                className={cn(
+                  "border-border/60 rounded border px-2.5 py-1.5",
+                  numberCellClass(hit),
+                )}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground text-[0.65rem]">
+                      {r.priority}
+                    </span>
+                    <PredictionNumberHighlight
+                      value={r.number}
+                      winningRaw={winningRaw}
+                      className="font-mono text-sm font-semibold"
+                    />
+                    <span className="text-muted-foreground text-[0.6rem]">
+                      {r.box_type} +{r.coverage}通り
+                    </span>
+                  </div>
+                  <HitBadge kind={hit} className="text-[0.6rem]" />
+                </div>
+                {(r as Record<string, unknown>).set_straight_payout != null && (
+                  <p className="text-muted-foreground mt-0.5 text-[0.6rem]">
+                    ST的中:{" "}
+                    {(
+                      (r as Record<string, unknown>)
+                        .set_straight_payout as number
+                    ).toLocaleString("ja-JP")}
+                    円 / BOX的中:{" "}
+                    {(
+                      (r as Record<string, unknown>).set_box_payout as number
+                    ).toLocaleString("ja-JP")}
+                    円
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** v16: 月間確率シミュレーション表示 */
+function MonthlySimulationCard({
+  simulation,
+}: {
+  simulation: MonthlySimulationPayload | undefined;
+}) {
+  if (!simulation?.strategies?.length) return null;
+
+  return (
+    <Card className="border-border/80 shadow-sm ring-1 ring-black/5 dark:ring-white/10 lg:col-span-2">
+      <CardHeader className="border-border/60 border-b pb-4">
+        <div className="flex items-center gap-2">
+          <BarChart3Icon className="text-muted-foreground size-4" />
+          <CardTitle className="text-base">
+            月間確率シミュレーション（全戦略比較）
+          </CardTitle>
+        </div>
+        <CardDescription className="text-xs">
+          平日{simulation.draws_per_month}回/月で「1回以上当選する確率」を計算
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="px-0 pb-4 pt-0">
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="text-muted-foreground w-10 px-3 text-xs">
+                #
+              </TableHead>
+              <TableHead className="text-muted-foreground px-3 text-xs">
+                戦略
+              </TableHead>
+              <TableHead className="text-muted-foreground px-3 text-xs">
+                1回の予算
+              </TableHead>
+              <TableHead className="text-muted-foreground px-3 text-xs">
+                1回の確率
+              </TableHead>
+              <TableHead className="text-muted-foreground px-3 text-xs">
+                月間確率
+              </TableHead>
+              <TableHead className="text-muted-foreground hidden px-3 text-xs md:table-cell">
+                配当
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {simulation.strategies.map((s, i) => {
+              const raw = s.monthly_probability_raw ?? 0;
+              const barWidth = Math.min(raw * 100, 100);
+              return (
+                <TableRow
+                  key={s.name}
+                  className={cn(
+                    "border-border/60",
+                    i === 0 && "bg-green-50/50 dark:bg-green-950/20",
+                  )}
+                >
+                  <TableCell className="text-muted-foreground px-3 py-2.5 text-xs tabular-nums">
+                    {i + 1}
+                  </TableCell>
+                  <TableCell className="px-3 py-2.5 text-xs font-medium">
+                    {s.name}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground px-3 py-2.5 text-xs tabular-nums">
+                    {s.budget_per_draw}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground px-3 py-2.5 text-xs tabular-nums">
+                    {s.per_draw_probability}
+                  </TableCell>
+                  <TableCell className="px-3 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold tabular-nums">
+                        {s.monthly_probability}
+                      </span>
+                      <div className="bg-muted hidden h-2 w-16 overflow-hidden rounded-full sm:block">
+                        <div
+                          className="h-full rounded-full bg-green-500"
+                          style={{ width: `${barWidth}%` }}
+                        />
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground hidden px-3 py-2.5 text-xs md:table-cell">
+                    {s.payout_type}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
       </CardContent>
     </Card>
   );
@@ -1253,7 +1501,7 @@ export async function Numbers4PredictionsHub({
 
           {data.budgetPlan?.monthly_budget_guide != null && (
             <div className="border-border/60 bg-muted/25 text-muted-foreground rounded-lg border px-4 py-3 text-xs leading-relaxed lg:col-span-2">
-              <p className="text-foreground mb-1 font-medium">月間の目安（v15 プラン）</p>
+              <p className="text-foreground mb-1 font-medium">月間の目安（v16 プラン）</p>
               <p>
                 上限{" "}
                 <span className="tabular-nums">
@@ -1314,6 +1562,29 @@ export async function Numbers4PredictionsHub({
           <DistributedPlanCard
             plan={data.budgetPlan?.distributed_plan}
             winning={winningRaw}
+          />
+
+          {/* v16: オールミニプラン */}
+          <AllMiniPlanCard
+            plan={data.budgetPlan?.all_mini_5}
+            winning={winningRaw}
+          />
+
+          {/* v16: セット購入プラン */}
+          <SetPlanCard
+            title="セット · 800円枠 (2口)"
+            plan={data.budgetPlan?.set_plan}
+            winning={winningRaw}
+          />
+          <SetPlanCard
+            title="セット · 2,000円枠 (5口)"
+            plan={data.budgetPlan?.set_plan_5}
+            winning={winningRaw}
+          />
+
+          {/* v16: 月間確率シミュレーション */}
+          <MonthlySimulationCard
+            simulation={data.budgetPlan?.monthly_simulation}
           />
         </div>
 
