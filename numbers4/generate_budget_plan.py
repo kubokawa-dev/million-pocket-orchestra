@@ -1,7 +1,16 @@
 """
-予算別おすすめ購入プランを生成 (v11.1 改善版)
+予算別おすすめ購入プランを生成 (v15.0)
 
-ボックスタイプを考慮して、最大カバー範囲を実現する5口/10口プランを提案
+v15.0 改善:
+- カバー率最大化モード: スコアよりABCD型(24通り)を最優先し、カバー数を最大化
+- 分散購入戦略: 月間の購入スケジュールを生成（5回×2口で独立試行を増やす）
+- ミニ購入導入: ボックス+ミニのハイブリッド戦略（ミニは1/100で当選しやすい）
+- 期待値ベーススコアリング: 配当金額×確率でランキング
+- 数字カバレッジ最適化: 各桁で0-9が均等にカバーされるよう最適化
+
+同一ボックス類型（桁の並び替えで同じ multiset）は二重にカバーしない前提で
+限界カバー最大化しつつ、アンサンブルスコアと順位でタイブレークする。
+月3万円・1回1000円(5口)/最大2000円(10口)の運用メタを JSON に同梱。
 JSONファイルから予測データを読み込み (DB接続不要)
 """
 import json
@@ -9,8 +18,10 @@ import sys
 import os
 import glob
 import traceback
-from typing import List, Dict, Optional
+import math
+from typing import List, Dict, Optional, Tuple
 from datetime import datetime
+from collections import Counter
 
 # プロジェクトルートをパスに追加
 ROOT_DIR = os.path.dirname(os.path.dirname(__file__))
@@ -20,6 +31,34 @@ sys.path.insert(0, ROOT_DIR)
 from numbers4.box_utils import get_box_type_info
 from numbers4.permutation_pick import refine_top_predictions_numbers
 from tools.utils import load_all_numbers4_draws
+
+# 運用目安（購入判断用メタ。JSON に同梱）
+DEFAULT_MONTHLY_BUDGET_YEN = 30_000
+DEFAULT_PER_DRAW_YEN = 1_000
+MAX_PER_DRAW_YEN = 2_000
+YEN_PER_TICKET = 200
+
+
+def monthly_budget_guide_meta() -> Dict:
+    return {
+        "max_yen_per_month": DEFAULT_MONTHLY_BUDGET_YEN,
+        "default_per_draw_yen": DEFAULT_PER_DRAW_YEN,
+        "max_per_draw_yen": MAX_PER_DRAW_YEN,
+        "yen_per_ticket": YEN_PER_TICKET,
+        "slots_for_1000yen": 5,
+        "slots_for_2000yen": 10,
+        "daily_full_month_hint": (
+            f"毎日{DEFAULT_PER_DRAW_YEN}円×約30日 ≒ {DEFAULT_MONTHLY_BUDGET_YEN}円/月。"
+            f"攻める日は{MAX_PER_DRAW_YEN}円(10口)にして他日を抑えると上限内に収めやすい。"
+        ),
+    }
+
+
+def _box_fingerprint(number: str) -> str:
+    """ボックス購入で同一となる multiset のキー（重複カバー判定用）"""
+    if not number or len(number) != 4 or not number.isdigit():
+        return ""
+    return "".join(sorted(number))
 
 
 def get_reason(row: Dict, rank: int) -> str:
@@ -53,28 +92,6 @@ def get_reason(row: Dict, rank: int) -> str:
     return " / ".join(reasons)
 
 
-def calculate_score_with_coverage(row: Dict, rank: int) -> float:
-    """
-    カバー範囲を考慮したスコアを計算
-    
-    ランクが高く、カバー範囲が広いほど高スコア
-    """
-    number = row['number']
-    base_score = row.get('score', 0)
-    _box_type, _desc, coverage = get_box_type_info(number)
-    
-    # ランクボーナス (上位ほど高い)
-    rank_bonus = max(0, 100 - rank * 2)
-    
-    # カバレッジボーナス (広いほど高い)
-    coverage_bonus = coverage * 2
-    
-    # 総合スコア
-    total_score = base_score + rank_bonus + coverage_bonus
-    
-    return total_score
-
-
 def format_priority(rank: int, use_emoji: bool = True) -> str:
     """
     優先度フォーマットを統一
@@ -103,120 +120,533 @@ def format_priority(rank: int, use_emoji: bool = True) -> str:
         return str(rank)
 
 
-def generate_5_slot_plan(predictions: List[Dict]) -> List[Dict]:
+def _greedy_box_plan(
+    predictions: List[Dict],
+    num_slots: int,
+    pool_max: int = 45,
+) -> Tuple[List[Dict], int]:
     """
-    5口プラン: カバー範囲を最大化しつつ、上位候補を厳選
-    
-    戦略:
-    1. 上位3件は確定 (信頼性重視)
-    2. 残り2枠はカバー範囲が広い候補を優先
+    限界カバー（新しい multiset のみカウント）を最大化する貪欲プラン。
+
+    同一 fingerprint（例: 1234 と 4321）はボックス上同じ集合のため、
+    2口目以降は限界カバー0として優先度を下げる。
     """
-    plan = []
-    
-    # 上位3件は確定
-    for i, pred in enumerate(predictions[:3], 1):
-        box_type, _desc, coverage = get_box_type_info(pred['number'])
-        plan.append({
-            'priority': format_priority(i),
-            'number': pred['number'],
-            'buy_method': "ボックス",
-            'box_type': box_type,
-            'coverage': coverage,
-            'reason': get_reason(pred, i)
+    pool: List[Dict] = []
+    for idx, pred in enumerate(predictions[:pool_max], 1):
+        num = str(pred.get("number", ""))
+        if len(num) != 4 or not num.isdigit():
+            continue
+        box_type, _desc, coverage = get_box_type_info(num)
+        if coverage <= 0:
+            continue
+        pool.append({
+            "rank": idx,
+            "number": num,
+            "score": float(pred.get("score", 0)),
+            "box_type": box_type,
+            "coverage": coverage,
+            "fingerprint": _box_fingerprint(num),
+            "pred": pred,
         })
-    
-    # 4-20位からカバー範囲の広い候補を2つ選ぶ
-    candidates = []
-    for i, pred in enumerate(predictions[3:20], 4):
-        box_type, _desc, coverage = get_box_type_info(pred['number'])
-        score = calculate_score_with_coverage(pred, i)
-        candidates.append({
-            'rank': i,
-            'number': pred['number'],
-            'box_type': box_type,
-            'coverage': coverage,
-            'score': score,
-            'reason': get_reason(pred, i)
-        })
-    
-    # カバー範囲 x スコアで降順ソート
-    candidates.sort(key=lambda x: x['score'], reverse=True)
-    
-    # 上位2件を追加 (重複除去)
-    added = set(p['number'] for p in plan)
-    for cand in candidates:
-        if cand['number'] not in added:
-            plan.append({
-                'priority': format_priority(len(plan) + 1),
-                'number': cand['number'],
-                'buy_method': "ボックス",
-                'box_type': cand['box_type'],
-                'coverage': cand['coverage'],
-                'reason': cand['reason']
-            })
-            added.add(cand['number'])
-            if len(plan) >= 5:
-                break
-    
-    return plan
+
+    selected: List[Dict] = []
+    used_numbers: set = set()
+    used_fp: set = set()
+    unique_total = 0
+
+    while len(selected) < num_slots:
+        best = None
+        best_key = None
+        for cand in pool:
+            if cand["number"] in used_numbers:
+                continue
+            fp = cand["fingerprint"]
+            marginal = cand["coverage"] if fp not in used_fp else 0
+            rank = cand["rank"]
+            score = cand["score"]
+            composite = score + (45.0 - min(rank, 45)) * 0.35
+            key = (marginal, composite, -rank)
+            if best_key is None or key > best_key:
+                best_key = key
+                best = cand
+        if best is None:
+            break
+        fp = best["fingerprint"]
+        marginal = best["coverage"] if fp not in used_fp else 0
+        used_numbers.add(best["number"])
+        used_fp.add(fp)
+        unique_total += marginal
+
+        pr = len(selected) + 1
+        pred = best["pred"]
+        row = {
+            "priority": format_priority(pr),
+            "number": best["number"],
+            "buy_method": "ボックス",
+            "box_type": best["box_type"],
+            "coverage": best["coverage"],
+            "marginal_coverage": marginal,
+            "reason": get_reason(pred, best["rank"]),
+        }
+        if marginal == 0 and fp:
+            row["reason"] = row["reason"] + " / 同一ボックス型の追加候補(モデル順)"
+        selected.append(row)
+
+    return selected, unique_total
 
 
-def generate_10_slot_plan(predictions: List[Dict]) -> List[Dict]:
+# ============================================================
+# v15.0: カバー率最大化モード（提案1）
+# スコアを無視し、純粋にカバー通り数が最大になる候補を選ぶ
+# ABCD型（24通り）> AABC型（12通り）> AABB型（6通り）の順で優先
+# ============================================================
+
+def _max_coverage_plan(
+    predictions: List[Dict],
+    num_slots: int,
+    pool_max: int = 60,
+) -> Tuple[List[Dict], int]:
     """
-    10口プラン: より広範囲をカバー
-    
-    戦略:
-    1. 上位5件は確定
-    2. 残り5枠はカバー範囲重視 + 多様性確保
+    カバー率最大化プラン: ボックスカバー数を最大化する。
+    スコア順ではなく、カバー数の大きいボックスタイプを優先。
+    同一fingerprint（ボックス重複）は排除。
     """
-    plan = []
-    
-    # 上位5件は確定
-    for i, pred in enumerate(predictions[:5], 1):
-        box_type, _desc, coverage = get_box_type_info(pred['number'])
-        plan.append({
-            'priority': format_priority(i),
-            'number': pred['number'],
-            'buy_method': "ボックス",
-            'box_type': box_type,
-            'coverage': coverage,
-            'reason': get_reason(pred, i)
+    pool: List[Dict] = []
+    for idx, pred in enumerate(predictions[:pool_max], 1):
+        num = str(pred.get("number", ""))
+        if len(num) != 4 or not num.isdigit():
+            continue
+        box_type, _desc, coverage = get_box_type_info(num)
+        if coverage <= 0:
+            continue
+        pool.append({
+            "rank": idx,
+            "number": num,
+            "score": float(pred.get("score", 0)),
+            "box_type": box_type,
+            "coverage": coverage,
+            "fingerprint": _box_fingerprint(num),
+            "pred": pred,
         })
-    
-    # 6-30位からカバー範囲の広い候補を5つ選ぶ
-    candidates = []
-    for i, pred in enumerate(predictions[5:30], 6):
-        box_type, _desc, coverage = get_box_type_info(pred['number'])
-        score = calculate_score_with_coverage(pred, i)
-        candidates.append({
-            'rank': i,
-            'number': pred['number'],
-            'box_type': box_type,
-            'coverage': coverage,
-            'score': score,
-            'reason': get_reason(pred, i)
+
+    selected: List[Dict] = []
+    used_fp: set = set()
+    unique_total = 0
+
+    while len(selected) < num_slots and pool:
+        best = None
+        best_key = None
+        for cand in pool:
+            if cand["fingerprint"] in used_fp:
+                continue
+            # カバー数を最優先、次にスコアでタイブレーク
+            key = (cand["coverage"], cand["score"])
+            if best_key is None or key > best_key:
+                best_key = key
+                best = cand
+        if best is None:
+            break
+        used_fp.add(best["fingerprint"])
+        unique_total += best["coverage"]
+        pool.remove(best)
+
+        pr = len(selected) + 1
+        pred = best["pred"]
+        selected.append({
+            "priority": format_priority(pr),
+            "number": best["number"],
+            "buy_method": "ボックス",
+            "box_type": best["box_type"],
+            "coverage": best["coverage"],
+            "marginal_coverage": best["coverage"],
+            "reason": f"カバー最大化: {best['coverage']}通り / " + get_reason(pred, best["rank"]),
         })
-    
-    # カバー範囲 x スコアで降順ソート
-    candidates.sort(key=lambda x: x['score'], reverse=True)
-    
-    # 上位5件を追加 (重複除去)
-    added = set(p['number'] for p in plan)
-    for cand in candidates:
-        if cand['number'] not in added:
-            plan.append({
-                'priority': format_priority(len(plan) + 1),
-                'number': cand['number'],
-                'buy_method': "ボックス",
-                'box_type': cand['box_type'],
-                'coverage': cand['coverage'],
-                'reason': cand['reason']
-            })
-            added.add(cand['number'])
-            if len(plan) >= 10:
+
+    return selected, unique_total
+
+
+# ============================================================
+# v15.0: 数字カバレッジ最適化（提案5）
+# 選んだ候補の各桁(0-9)が均等にカバーされるよう最適化
+# ============================================================
+
+def _digit_coverage_score(selected_numbers: List[str]) -> float:
+    """選ばれた番号群の桁カバレッジスコア（高いほど均等）"""
+    if not selected_numbers:
+        return 0.0
+    digit_counts = Counter()
+    for num in selected_numbers:
+        for ch in num:
+            digit_counts[ch] += 1
+    # 0-9の全数字に対して出現回数を計算
+    counts = [digit_counts.get(str(d), 0) for d in range(10)]
+    total = sum(counts)
+    if total == 0:
+        return 0.0
+    # 理想は均等分布（各数字が total/10 回）
+    ideal = total / 10.0
+    # 均等度 = 1 - (標準偏差 / 理想値)
+    variance = sum((c - ideal) ** 2 for c in counts) / 10.0
+    std_dev = math.sqrt(variance)
+    return max(0.0, 1.0 - std_dev / ideal)
+
+
+def _max_coverage_with_digit_balance(
+    predictions: List[Dict],
+    num_slots: int,
+    pool_max: int = 60,
+) -> Tuple[List[Dict], int]:
+    """
+    カバー率最大化 + 数字カバレッジ最適化プラン（提案1+5の統合版）
+    カバー数を最大化しつつ、各桁の0-9が均等になるよう調整。
+    """
+    pool: List[Dict] = []
+    for idx, pred in enumerate(predictions[:pool_max], 1):
+        num = str(pred.get("number", ""))
+        if len(num) != 4 or not num.isdigit():
+            continue
+        box_type, _desc, coverage = get_box_type_info(num)
+        if coverage <= 0:
+            continue
+        pool.append({
+            "rank": idx,
+            "number": num,
+            "score": float(pred.get("score", 0)),
+            "box_type": box_type,
+            "coverage": coverage,
+            "fingerprint": _box_fingerprint(num),
+            "pred": pred,
+        })
+
+    selected: List[Dict] = []
+    selected_numbers: List[str] = []
+    used_fp: set = set()
+    unique_total = 0
+
+    while len(selected) < num_slots and pool:
+        best = None
+        best_key = None
+        for cand in pool:
+            if cand["fingerprint"] in used_fp:
+                continue
+            # このcandを追加した場合のdigit coverageを計算
+            test_numbers = selected_numbers + [cand["number"]]
+            digit_score = _digit_coverage_score(test_numbers)
+            # カバー数 × (1 + digit_score * 0.3) でバランス調整
+            adjusted = cand["coverage"] * (1.0 + digit_score * 0.3)
+            key = (adjusted, cand["score"])
+            if best_key is None or key > best_key:
+                best_key = key
+                best = cand
+        if best is None:
+            break
+        used_fp.add(best["fingerprint"])
+        unique_total += best["coverage"]
+        selected_numbers.append(best["number"])
+        pool.remove(best)
+
+        pr = len(selected) + 1
+        pred = best["pred"]
+        digit_score = _digit_coverage_score(selected_numbers)
+        selected.append({
+            "priority": format_priority(pr),
+            "number": best["number"],
+            "buy_method": "ボックス",
+            "box_type": best["box_type"],
+            "coverage": best["coverage"],
+            "marginal_coverage": best["coverage"],
+            "reason": f"カバー最大+数字均等 / " + get_reason(pred, best["rank"]),
+        })
+
+    return selected, unique_total
+
+
+# ============================================================
+# v15.0: ミニ購入プラン（提案2）
+# ナンバーズ4ミニ（下2桁一致で当選、1/100の確率）
+# ============================================================
+
+def _generate_mini_plan(
+    predictions: List[Dict],
+    num_slots: int,
+) -> Tuple[List[Dict], int]:
+    """
+    ミニ購入プラン: 下2桁のユニークペアが最大になるよう候補を選ぶ。
+    ミニは下2桁の一致で当選（1/100）。
+    """
+    # 下2桁の出現頻度をスコア付きで集計
+    tail_map: Dict[str, Dict] = {}
+    for idx, pred in enumerate(predictions[:45], 1):
+        num = str(pred.get("number", ""))
+        if len(num) != 4 or not num.isdigit():
+            continue
+        tail = num[2:]  # 下2桁
+        if tail not in tail_map:
+            tail_map[tail] = {
+                "rank": idx,
+                "source_number": num,
+                "score": float(pred.get("score", 0)),
+                "pred": pred,
+            }
+
+    # スコア順にソートして上位を選択
+    sorted_tails = sorted(tail_map.items(), key=lambda x: x[1]["score"], reverse=True)
+
+    selected: List[Dict] = []
+    unique_tails = 0
+
+    for tail, info in sorted_tails[:num_slots]:
+        unique_tails += 1
+        pr = len(selected) + 1
+        selected.append({
+            "priority": format_priority(pr),
+            "number": info["source_number"],
+            "buy_method": "ミニ",
+            "box_type": f"下2桁: {tail}",
+            "coverage": 1,  # ミニは1通り（下2桁の完全一致）
+            "marginal_coverage": 1,
+            "reason": f"ミニ(1/100) / 元番号{info['source_number']}の下2桁「{tail}」",
+        })
+
+    return selected, unique_tails
+
+
+# ============================================================
+# v15.0: 期待値ベーススコアリング（提案4）
+# 配当金額 × 確率でランキング
+# ナンバーズ4の平均配当: ストレート約100万円、ボックス約3-12万円、ミニ約1万円
+# ============================================================
+
+# 平均配当金額（円）の目安
+AVERAGE_PAYOUTS = {
+    "シングル(ABCD)": {"straight": 1_000_000, "box": 37_500},   # 100万/24通り ≈ 約4万
+    "ダブル(AABC)":   {"straight": 1_000_000, "box": 75_000},   # 100万/12通り ≈ 約8万
+    "ダブルダブル(AABB)": {"straight": 1_000_000, "box": 150_000},  # 100万/6 ≈ 16万
+    "トリプル(AAAB)": {"straight": 1_000_000, "box": 250_000},  # 100万/4 ≈ 25万
+    "クアッド(AAAA)": {"straight": 1_000_000, "box": 1_000_000},# ストレートと同じ
+}
+
+
+def _expected_value_plan(
+    predictions: List[Dict],
+    num_slots: int,
+    pool_max: int = 60,
+) -> Tuple[List[Dict], int, float]:
+    """
+    期待値ベースプラン: ボックス配当 × 当選確率(カバー数/10000) でランキング。
+    人気の低い番号（= 高配当）を優先する傾向。
+
+    Returns:
+        (selected, unique_coverage, total_expected_value)
+    """
+    pool: List[Dict] = []
+    for idx, pred in enumerate(predictions[:pool_max], 1):
+        num = str(pred.get("number", ""))
+        if len(num) != 4 or not num.isdigit():
+            continue
+        box_type, _desc, coverage = get_box_type_info(num)
+        if coverage <= 0:
+            continue
+
+        payout_info = AVERAGE_PAYOUTS.get(box_type, {"box": 50_000})
+        box_payout = payout_info["box"]
+        # 期待値 = 配当 × 確率 (1口200円のコストを差し引く)
+        probability = coverage / 10_000
+        ev = box_payout * probability - YEN_PER_TICKET
+
+        pool.append({
+            "rank": idx,
+            "number": num,
+            "score": float(pred.get("score", 0)),
+            "box_type": box_type,
+            "coverage": coverage,
+            "fingerprint": _box_fingerprint(num),
+            "expected_value": ev,
+            "box_payout": box_payout,
+            "pred": pred,
+        })
+
+    selected: List[Dict] = []
+    used_fp: set = set()
+    unique_total = 0
+    total_ev = 0.0
+
+    while len(selected) < num_slots and pool:
+        best = None
+        best_key = None
+        for cand in pool:
+            if cand["fingerprint"] in used_fp:
+                continue
+            key = (cand["expected_value"], cand["score"])
+            if best_key is None or key > best_key:
+                best_key = key
+                best = cand
+        if best is None:
+            break
+        used_fp.add(best["fingerprint"])
+        unique_total += best["coverage"]
+        total_ev += best["expected_value"]
+        pool.remove(best)
+
+        pr = len(selected) + 1
+        pred = best["pred"]
+        selected.append({
+            "priority": format_priority(pr),
+            "number": best["number"],
+            "buy_method": "ボックス",
+            "box_type": best["box_type"],
+            "coverage": best["coverage"],
+            "marginal_coverage": best["coverage"],
+            "expected_value": round(best["expected_value"], 0),
+            "box_payout": best["box_payout"],
+            "reason": f"期待値{best['expected_value']:+.0f}円 / 配当目安{best['box_payout']:,}円 / " + get_reason(pred, best["rank"]),
+        })
+
+    return selected, unique_total, total_ev
+
+
+# ============================================================
+# v15.0: 分散購入戦略（提案3）
+# 月間の購入スケジュールを生成
+# 1回に10口より、5回×2口の分散でカバー率を最大化
+# ============================================================
+
+def _generate_distributed_plan(
+    predictions: List[Dict],
+    total_budget_yen: int = 2_000,
+    tickets_per_session: int = 2,
+) -> Dict:
+    """
+    分散購入プラン: 同一予算を複数回に分けて購入。
+    独立試行を増やし、月間の当選確率を最大化。
+
+    例: 2000円 → 2口×5回（5日に分散）
+    各回で異なるボックスを選択し、累積カバー率を最大化。
+    """
+    total_tickets = total_budget_yen // YEN_PER_TICKET
+    num_sessions = total_tickets // tickets_per_session
+
+    # 全候補からカバー最大のものを session ごとに割り当て
+    pool: List[Dict] = []
+    for idx, pred in enumerate(predictions[:60], 1):
+        num = str(pred.get("number", ""))
+        if len(num) != 4 or not num.isdigit():
+            continue
+        box_type, _desc, coverage = get_box_type_info(num)
+        if coverage <= 0:
+            continue
+        pool.append({
+            "rank": idx,
+            "number": num,
+            "score": float(pred.get("score", 0)),
+            "box_type": box_type,
+            "coverage": coverage,
+            "fingerprint": _box_fingerprint(num),
+            "pred": pred,
+        })
+
+    # カバー数の大きい順にソート
+    pool.sort(key=lambda x: (x["coverage"], x["score"]), reverse=True)
+
+    sessions = []
+    used_fp: set = set()
+    cumulative_coverage = 0
+
+    for session_idx in range(num_sessions):
+        session_picks = []
+        for _ in range(tickets_per_session):
+            best = None
+            for cand in pool:
+                if cand["fingerprint"] in used_fp:
+                    continue
+                best = cand
                 break
-    
-    return plan
+            if best is None:
+                break
+            used_fp.add(best["fingerprint"])
+            cumulative_coverage += best["coverage"]
+            pool.remove(best)
+            session_picks.append({
+                "number": best["number"],
+                "buy_method": "ボックス",
+                "box_type": best["box_type"],
+                "coverage": best["coverage"],
+                "reason": get_reason(best["pred"], best["rank"]),
+            })
+
+        if session_picks:
+            session_coverage = sum(p["coverage"] for p in session_picks)
+            sessions.append({
+                "session": session_idx + 1,
+                "budget": f"{tickets_per_session * YEN_PER_TICKET:,}円",
+                "tickets": len(session_picks),
+                "session_coverage": session_coverage,
+                "picks": session_picks,
+            })
+
+    # 分散の効果を計算
+    # 一括購入: 1 - (1 - p)^1  （1回の試行）
+    # 分散購入: 1 - (1 - p_i) × (1 - p_j) × ... （独立試行の積）
+    if sessions:
+        # 各セッションでの「当たらない確率」を掛け合わせる
+        miss_prob = 1.0
+        for s in sessions:
+            session_p = s["session_coverage"] / 10_000
+            miss_prob *= (1.0 - session_p)
+        monthly_hit_prob = 1.0 - miss_prob
+    else:
+        monthly_hit_prob = 0.0
+
+    return {
+        "strategy": "分散購入（独立試行最大化）",
+        "total_budget": f"{total_budget_yen:,}円",
+        "sessions": num_sessions,
+        "tickets_per_session": tickets_per_session,
+        "cumulative_unique_coverage": cumulative_coverage,
+        "cumulative_probability": f"{cumulative_coverage / 10_000 * 100:.2f}%",
+        "monthly_hit_probability": f"{monthly_hit_prob * 100:.3f}%",
+        "schedule": sessions,
+    }
+
+
+# ============================================================
+# v15.0: ハイブリッド戦略（ボックス + ミニ混合）
+# ============================================================
+
+def _generate_hybrid_plan(
+    predictions: List[Dict],
+    num_box_slots: int,
+    num_mini_slots: int,
+) -> Dict:
+    """
+    ハイブリッドプラン: ボックスとミニを組み合わせた購入戦略。
+    ボックスで大きなカバーを確保 + ミニで当選確率を底上げ。
+    """
+    box_plan, box_coverage = _max_coverage_with_digit_balance(predictions, num_box_slots)
+    mini_plan, mini_count = _generate_mini_plan(predictions, num_mini_slots)
+
+    # ボックス当選確率
+    box_prob = box_coverage / 10_000
+    # ミニ当選確率（各1/100、ユニーク下2桁の数）
+    mini_prob = min(mini_count / 100, 1.0)
+    # いずれかが当たる確率 = 1 - (両方外れる確率)
+    combined_prob = 1.0 - (1.0 - box_prob) * (1.0 - mini_prob)
+
+    total_cost = (num_box_slots + num_mini_slots) * YEN_PER_TICKET
+
+    return {
+        "strategy": "ハイブリッド（ボックス＋ミニ）",
+        "total_budget": f"{total_cost:,}円",
+        "box_slots": num_box_slots,
+        "mini_slots": num_mini_slots,
+        "box_coverage": box_coverage,
+        "box_probability": f"{box_prob * 100:.2f}%",
+        "mini_unique_tails": mini_count,
+        "mini_probability": f"{mini_prob * 100:.1f}%",
+        "combined_probability": f"{combined_prob * 100:.2f}%",
+        "box_recommendations": box_plan,
+        "mini_recommendations": mini_plan,
+    }
 
 
 def load_predictions_from_json(target_draw_number: Optional[int] = None) -> Optional[Dict]:
@@ -342,67 +772,205 @@ def generate_budget_plans(target_draw_number: Optional[int] = None) -> Optional[
     except Exception as e:
         print(f"⚠️ 予算プラン用の並び再選択をスキップ: {e}")
     
-    # プラン生成
-    plan_5 = generate_5_slot_plan(predictions)
-    plan_10 = generate_10_slot_plan(predictions)
-    
-    # カバー範囲を計算
-    total_coverage_5 = sum(p['coverage'] for p in plan_5)
-    total_coverage_10 = sum(p['coverage'] for p in plan_10)
-    
-    # 生成日時
+    # === v15.0: 複数プラン生成 ===
+
+    # 1. 従来のスコアベースプラン（v12互換）
+    plan_5_score, cov_5_score = _greedy_box_plan(predictions, 5)
+    plan_10_score, cov_10_score = _greedy_box_plan(predictions, 10)
+
+    # 2. カバー率最大化 + 数字カバレッジ最適化プラン（v15 推奨）
+    plan_5_max, cov_5_max = _max_coverage_with_digit_balance(predictions, 5)
+    plan_10_max, cov_10_max = _max_coverage_with_digit_balance(predictions, 10)
+
+    # 3. ハイブリッドプラン（ボックス3口 + ミニ2口 = 1000円）
+    hybrid_5 = _generate_hybrid_plan(predictions, num_box_slots=3, num_mini_slots=2)
+    # ボックス5口 + ミニ5口 = 2000円
+    hybrid_10 = _generate_hybrid_plan(predictions, num_box_slots=5, num_mini_slots=5)
+
+    # 4. 期待値ベースプラン
+    plan_5_ev, cov_5_ev, total_ev_5 = _expected_value_plan(predictions, 5)
+    plan_10_ev, cov_10_ev, total_ev_10 = _expected_value_plan(predictions, 10)
+
+    # 5. 分散購入プラン（2000円を2口×5回に分散）
+    distributed_plan = _generate_distributed_plan(predictions, total_budget_yen=2_000, tickets_per_session=2)
+
+    # v15推奨プランの選択: カバー率が高い方を採用
+    if cov_5_max >= cov_5_score:
+        best_plan_5, best_cov_5 = plan_5_max, cov_5_max
+        best_plan_5_label = "v15カバー最大化+数字均等"
+    else:
+        best_plan_5, best_cov_5 = plan_5_score, cov_5_score
+        best_plan_5_label = "v12スコアベース"
+
+    if cov_10_max >= cov_10_score:
+        best_plan_10, best_cov_10 = plan_10_max, cov_10_max
+        best_plan_10_label = "v15カバー最大化+数字均等"
+    else:
+        best_plan_10, best_cov_10 = plan_10_score, cov_10_score
+        best_plan_10_label = "v12スコアベース"
+
     created_at = datetime.now().isoformat()
-    
+
     return {
         'target_draw_number': target_draw,
         'created_at': created_at,
         'source_file': result['json_path'],
+        'planner_version': 'v15.0',
+        'monthly_budget_guide': monthly_budget_guide_meta(),
+        # === メインプラン（v15推奨: カバー率最大化） ===
         'plan_5': {
             'budget': '1,000円',
             'slots': 5,
-            'total_coverage': total_coverage_5,
-            'probability': f"{total_coverage_5 / 10000 * 100:.2f}%",
-            'recommendations': plan_5
+            'total_coverage': best_cov_5,
+            'coverage_note': f'{best_plan_5_label} / ボックス multiset 単位の重複を除いたユニーク通り数',
+            'probability': f"{best_cov_5 / 10000 * 100:.2f}%",
+            'recommendations': best_plan_5,
         },
         'plan_10': {
             'budget': '2,000円',
             'slots': 10,
-            'total_coverage': total_coverage_10,
-            'probability': f"{total_coverage_10 / 10000 * 100:.2f}%",
-            'recommendations': plan_10
-        }
+            'total_coverage': best_cov_10,
+            'coverage_note': f'{best_plan_10_label} / ボックス multiset 単位の重複を除いたユニーク通り数',
+            'probability': f"{best_cov_10 / 10000 * 100:.2f}%",
+            'recommendations': best_plan_10,
+        },
+        # === v15追加プラン ===
+        'hybrid_5': hybrid_5,
+        'hybrid_10': hybrid_10,
+        'expected_value_5': {
+            'budget': '1,000円',
+            'slots': 5,
+            'total_coverage': cov_5_ev,
+            'total_expected_value': round(total_ev_5, 0),
+            'probability': f"{cov_5_ev / 10000 * 100:.2f}%",
+            'recommendations': plan_5_ev,
+        },
+        'expected_value_10': {
+            'budget': '2,000円',
+            'slots': 10,
+            'total_coverage': cov_10_ev,
+            'total_expected_value': round(total_ev_10, 0),
+            'probability': f"{cov_10_ev / 10000 * 100:.2f}%",
+            'recommendations': plan_10_ev,
+        },
+        'distributed_plan': distributed_plan,
     }
+
+
+def _print_plan_table(recommendations: List[Dict]) -> None:
+    """プランのテーブルを表示する共通関数"""
+    print("| 優先度 | 番号 | 買い方 | タイプ | +通り | 理由 |")
+    print("|:---:|:---:|:---:|:---:|:---:|:---|")
+    for rec in recommendations:
+        m = rec.get("marginal_coverage", rec.get("coverage", 0))
+        print(
+            f"| {rec['priority']} | `{rec['number']}` | {rec['buy_method']} | {rec['box_type']} | {m} | {rec['reason']} |"
+        )
 
 
 def print_budget_plans(plans: Dict) -> None:
     """プランをコンソールに表示"""
     print("\n" + "=" * 60)
-    print("💰 予算別おすすめ購入プラン")
+    print("💰 予算別おすすめ購入プラン (v15.0)")
     print("=" * 60)
     print(f"🎯 対象: 第{plans['target_draw_number']}回")
     print(f"📅 生成日時: {plans['created_at']}")
-    
+    guide = plans.get("monthly_budget_guide") or monthly_budget_guide_meta()
+    print("\n### 💳 月間の目安")
+    print(
+        f"- 上限 **{guide['max_yen_per_month']:,}円/月** / 基本 **{guide['default_per_draw_yen']:,}円・{guide['slots_for_1000yen']}口** / 最大 **{guide['max_per_draw_yen']:,}円・{guide['slots_for_2000yen']}口**"
+    )
+    print(f"- {guide.get('daily_full_month_hint', '')}")
+
+    # ========== メインプラン（v15推奨） ==========
+    print("\n" + "-" * 60)
+    print("## 🏆 推奨プラン（カバー率最大化 + 数字均等化）")
+    print("-" * 60)
+
     # 5口プラン
     print("\n### 🎫 1,000円プラン (5口)")
-    print(f"**カバー範囲: {plans['plan_5']['total_coverage']}通り** (当選確率 約{plans['plan_5']['probability']})\n")
-    print("| 優先度 | 番号 | 買い方 | タイプ | 理由 |")
-    print("|:---:|:---:|:---:|:---:|:---|")
-    for rec in plans['plan_5']['recommendations']:
-        print(f"| {rec['priority']} | `{rec['number']}` | {rec['buy_method']} | {rec['box_type']} | {rec['reason']} |")
-    
+    p5 = plans['plan_5']
+    print(
+        f"**ユニークカバー: {p5['total_coverage']}通り** "
+        f"(参考: 約{p5['probability']}) [{p5.get('coverage_note', '')}]\n"
+    )
+    _print_plan_table(p5['recommendations'])
+
     # 10口プラン
     print("\n### 🎫 2,000円プラン (10口)")
-    print(f"**カバー範囲: {plans['plan_10']['total_coverage']}通り** (当選確率 約{plans['plan_10']['probability']})\n")
-    print("| 優先度 | 番号 | 買い方 | タイプ | 理由 |")
-    print("|:---:|:---:|:---:|:---:|:---|")
-    for rec in plans['plan_10']['recommendations']:
-        print(f"| {rec['priority']} | `{rec['number']}` | {rec['buy_method']} | {rec['box_type']} | {rec['reason']} |")
-    
-    print("\n### 📝 購入のコツ")
-    print("1. **ボックス買い推奨** - ストレートより当選確率が高い!")
-    print("2. **シングル (24通り) を優先** - 1口で24パターンカバー")
-    print("3. **ダブル (12通り) も狙い目** - バランスが良い")
-    print("4. **予算に余裕があれば10口プラン** - カバー範囲が2倍!")
+    p10 = plans['plan_10']
+    print(
+        f"**ユニークカバー: {p10['total_coverage']}通り** "
+        f"(参考: 約{p10['probability']}) [{p10.get('coverage_note', '')}]\n"
+    )
+    _print_plan_table(p10['recommendations'])
+
+    # ========== ハイブリッドプラン ==========
+    hybrid_5 = plans.get('hybrid_5')
+    hybrid_10 = plans.get('hybrid_10')
+    if hybrid_5 or hybrid_10:
+        print("\n" + "-" * 60)
+        print("## 🎯 ハイブリッドプラン（ボックス＋ミニ）")
+        print("-" * 60)
+
+        if hybrid_5:
+            print(f"\n### 🎫 1,000円 ハイブリッド（ボックス{hybrid_5['box_slots']}口 + ミニ{hybrid_5['mini_slots']}口）")
+            print(f"**ボックス当選確率: {hybrid_5['box_probability']}** / **ミニ当選確率: {hybrid_5['mini_probability']}**")
+            print(f"**いずれか当選確率: {hybrid_5['combined_probability']}**\n")
+            print("#### ボックス:")
+            _print_plan_table(hybrid_5['box_recommendations'])
+            print("\n#### ミニ:")
+            _print_plan_table(hybrid_5['mini_recommendations'])
+
+        if hybrid_10:
+            print(f"\n### 🎫 2,000円 ハイブリッド（ボックス{hybrid_10['box_slots']}口 + ミニ{hybrid_10['mini_slots']}口）")
+            print(f"**ボックス当選確率: {hybrid_10['box_probability']}** / **ミニ当選確率: {hybrid_10['mini_probability']}**")
+            print(f"**いずれか当選確率: {hybrid_10['combined_probability']}**\n")
+            print("#### ボックス:")
+            _print_plan_table(hybrid_10['box_recommendations'])
+            print("\n#### ミニ:")
+            _print_plan_table(hybrid_10['mini_recommendations'])
+
+    # ========== 期待値プラン ==========
+    ev5 = plans.get('expected_value_5')
+    ev10 = plans.get('expected_value_10')
+    if ev5 or ev10:
+        print("\n" + "-" * 60)
+        print("## 💹 期待値重視プラン（配当×確率でランキング）")
+        print("-" * 60)
+
+        if ev5:
+            print(f"\n### 🎫 1,000円 期待値プラン")
+            print(f"**合計期待値: {ev5['total_expected_value']:+,.0f}円** / カバー: {ev5['total_coverage']}通り ({ev5['probability']})\n")
+            _print_plan_table(ev5['recommendations'])
+        if ev10:
+            print(f"\n### 🎫 2,000円 期待値プラン")
+            print(f"**合計期待値: {ev10['total_expected_value']:+,.0f}円** / カバー: {ev10['total_coverage']}通り ({ev10['probability']})\n")
+            _print_plan_table(ev10['recommendations'])
+
+    # ========== 分散購入プラン ==========
+    dist = plans.get('distributed_plan')
+    if dist:
+        print("\n" + "-" * 60)
+        print("## 📅 分散購入プラン（独立試行で確率UP）")
+        print("-" * 60)
+        print(f"\n**戦略:** {dist['strategy']}")
+        print(f"**予算:** {dist['total_budget']} → {dist['sessions']}回 × {dist['tickets_per_session']}口")
+        print(f"**累積カバー:** {dist['cumulative_unique_coverage']}通り ({dist['cumulative_probability']})")
+        print(f"**月間当選確率:** {dist['monthly_hit_probability']}")
+
+        for s in dist.get('schedule', []):
+            print(f"\n  回{s['session']}: {s['budget']} ({s['tickets']}口, +{s['session_coverage']}通り)")
+            for p in s['picks']:
+                print(f"    - `{p['number']}` {p['buy_method']} {p['box_type']} +{p['coverage']}通り")
+
+    # ========== 購入のコツ ==========
+    print("\n### 📝 購入のコツ (v15)")
+    print("1. **推奨プラン**はABCD型(24通り)を優先し、カバー率を最大化しています")
+    print("2. **ハイブリッド**はミニ(1/100)を混ぜることで「当たる体験」が増えます")
+    print("3. **分散購入**は同じ予算でも複数回に分けると月間当選確率がUPします")
+    print("4. **期待値プラン**は配当が高くなりやすい番号を優先しています")
+    print("5. **確率は参考値**（実際の当せんは券種・ルールによる）")
 
 
 def save_budget_plans_json(plans: Dict, output_path: Optional[str] = None) -> None:

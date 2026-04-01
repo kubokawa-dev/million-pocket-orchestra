@@ -28,22 +28,91 @@ export type BudgetRecommendation = {
   buy_method?: string;
   box_type?: string;
   coverage?: number;
+  /** v12: その口がユニーク通りに何通り足したか（同一ボックス型は0） */
+  marginal_coverage?: number;
   reason?: string;
+  /** v15: 期待値プランの期待値（円） */
+  expected_value?: number;
+  /** v15: ボックス配当の目安（円） */
+  box_payout?: number;
 };
 
 export type BudgetPlanSlice = {
   budget?: string;
   slots?: number;
   total_coverage?: number;
+  /** v12: ユニーク通りの意味づけ */
+  coverage_note?: string;
   probability?: string;
   recommendations?: BudgetRecommendation[];
+};
+
+export type MonthlyBudgetGuideMeta = {
+  max_yen_per_month?: number;
+  default_per_draw_yen?: number;
+  max_per_draw_yen?: number;
+  yen_per_ticket?: number;
+  slots_for_1000yen?: number;
+  slots_for_2000yen?: number;
+  daily_full_month_hint?: string;
+};
+
+/** v15: ハイブリッドプラン（ボックス＋ミニ） */
+export type HybridPlanPayload = {
+  strategy?: string;
+  total_budget?: string;
+  box_slots?: number;
+  mini_slots?: number;
+  box_coverage?: number;
+  box_probability?: string;
+  mini_unique_tails?: number;
+  mini_probability?: string;
+  combined_probability?: string;
+  box_recommendations?: BudgetRecommendation[];
+  mini_recommendations?: BudgetRecommendation[];
+};
+
+/** v15: 分散購入プランのセッション */
+export type DistributedSession = {
+  session?: number;
+  budget?: string;
+  tickets?: number;
+  session_coverage?: number;
+  picks?: BudgetRecommendation[];
+};
+
+/** v15: 分散購入プラン */
+export type DistributedPlanPayload = {
+  strategy?: string;
+  total_budget?: string;
+  sessions?: number;
+  tickets_per_session?: number;
+  cumulative_unique_coverage?: number;
+  cumulative_probability?: string;
+  monthly_hit_probability?: string;
+  schedule?: DistributedSession[];
+};
+
+/** v15: 期待値プラン */
+export type ExpectedValuePlanSlice = BudgetPlanSlice & {
+  total_expected_value?: number;
 };
 
 export type BudgetPlanPayload = {
   target_draw_number?: number;
   created_at?: string;
+  planner_version?: string;
+  monthly_budget_guide?: MonthlyBudgetGuideMeta;
   plan_5?: BudgetPlanSlice;
   plan_10?: BudgetPlanSlice;
+  /** v15: ハイブリッドプラン（ボックス＋ミニ） */
+  hybrid_5?: HybridPlanPayload;
+  hybrid_10?: HybridPlanPayload;
+  /** v15: 期待値プラン */
+  expected_value_5?: ExpectedValuePlanSlice;
+  expected_value_10?: ExpectedValuePlanSlice;
+  /** v15: 分散購入プラン */
+  distributed_plan?: DistributedPlanPayload;
 };
 
 export type MethodTopPrediction = {
