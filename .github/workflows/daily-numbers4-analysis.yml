@@ -233,7 +233,13 @@ jobs:
           
           # 2. 手法別予測の精度評価と重み更新
           echo "📈 Evaluating method-specific predictions..."
-          python numbers4/evaluate_methods.py --draw "$DRAW_NUMBER" || {
+          python numbers4/evaluate_methods.py \
+            --draw "$DRAW_NUMBER" \
+            --window 40 \
+            --half-life 20 \
+            --base-lr 0.10 \
+            --lr-min 0.05 \
+            --lr-max 0.20 || {
             echo "⚠️ Method evaluation script not found or failed, skipping..."
           }
           
