@@ -1,0 +1,167 @@
+name: Numbers4 Target Number Check
+
+on:
+  schedule:
+    # 平日 JST 12:35（予測完了後）= UTC 03:35
+    - cron: '35 3 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      draw:
+        description: '対象回号（空欄なら最新）'
+        required: false
+        default: ''
+      target_preset:
+        description: '固定チェック対象のプリセット（おすすめ: 標準=日常運用 / 攻め=広く拾う / コールド狙い=穴狙い）'
+        required: false
+        type: choice
+        default: '標準'
+        options:
+          - 標準
+          - 攻め
+          - コールド狙い
+          - カスタム
+      numbers:
+        description: '検証する4桁番号（カンマ区切り / preset=custom のとき使用）'
+        required: false
+        default: '4111,1263,2404'
+      method_preset:
+        description: '固定チェック対象メソッドのプリセット（おすすめ: 標準×ボックス重視 / 攻め×全方位）'
+        required: false
+        type: choice
+        default: '標準'
+        options:
+          - 標準
+          - ボックス重視
+          - 全方位
+          - カスタム
+      methods:
+        description: 'カンマ区切りの手法名（method_preset=カスタム のとき使用）'
+        required: false
+        default: 'box_model,cold_revival'
+      preset_guide:
+        description: 'おすすめ組み合わせ（表示専用）'
+        required: false
+        type: choice
+        default: '標準 × ボックス重視（安定運用）'
+        options:
+          - 標準 × ボックス重視（安定運用）
+          - 攻め × 全方位（取りこぼし抑制）
+          - コールド狙い × 標準（穴狙い）
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Resolve arguments
+        id: args
+        run: |
+          DRAW="${{ github.event.inputs.draw }}"
+          TARGET_PRESET="${{ github.event.inputs.target_preset }}"
+          METHOD_PRESET="${{ github.event.inputs.method_preset }}"
+          NUMBERS="${{ github.event.inputs.numbers }}"
+          METHODS="${{ github.event.inputs.methods }}"
+
+          if [ -z "$TARGET_PRESET" ]; then
+            TARGET_PRESET="標準"
+          fi
+
+          case "$TARGET_PRESET" in
+            standard|標準)
+              NUMBERS="4111,1263,2404"
+              ;;
+            aggressive|攻め)
+              NUMBERS="4111,1263,2404,6376,8958,0100"
+              ;;
+            cold_focus|コールド狙い)
+              NUMBERS="2214,1404,6001,3957,3381"
+              ;;
+            custom|カスタム)
+              if [ -z "$NUMBERS" ]; then
+                NUMBERS="4111,1263,2404"
+              fi
+              ;;
+            *)
+              echo "⚠️ Unknown preset '$TARGET_PRESET'. Fallback to 標準."
+              TARGET_PRESET="標準"
+              NUMBERS="4111,1263,2404"
+              ;;
+          esac
+
+          if [ -z "$NUMBERS" ]; then
+            NUMBERS="4111,1263,2404"
+          fi
+          if [ -z "$METHOD_PRESET" ]; then
+            METHOD_PRESET="標準"
+          fi
+
+          case "$METHOD_PRESET" in
+            standard|標準)
+              METHODS="box_model,cold_revival"
+              ;;
+            box_focus|ボックス重視)
+              METHODS="box_model,cold_revival,box_pattern,digit_freq_box,hot_pair,lgbm_box"
+              ;;
+            all_round|全方位)
+              METHODS="box_model,cold_revival,box_pattern,digit_freq_box,hot_pair,lgbm_box,global_frequency,state_chain,lightgbm,ml_neighborhood,adjacent_digit,even_odd_pattern,low_sum_specialist,sequential_pattern"
+              ;;
+            custom|カスタム)
+              if [ -z "$METHODS" ]; then
+                METHODS="box_model,cold_revival"
+              fi
+              ;;
+            *)
+              echo "⚠️ Unknown method preset '$METHOD_PRESET'. Fallback to 標準."
+              METHOD_PRESET="標準"
+              METHODS="box_model,cold_revival"
+              ;;
+          esac
+
+          if [ -z "$METHODS" ]; then
+            METHODS="box_model,cold_revival"
+          fi
+          NUMBERS_SLUG=$(echo "$NUMBERS" | tr ',' '_' | tr -d ' ')
+
+          echo "draw=$DRAW" >> "$GITHUB_OUTPUT"
+          echo "target_preset=$TARGET_PRESET" >> "$GITHUB_OUTPUT"
+          echo "method_preset=$METHOD_PRESET" >> "$GITHUB_OUTPUT"
+          echo "numbers=$NUMBERS" >> "$GITHUB_OUTPUT"
+          echo "numbers_slug=$NUMBERS_SLUG" >> "$GITHUB_OUTPUT"
+          echo "methods=$METHODS" >> "$GITHUB_OUTPUT"
+
+      - name: Run target check
+        run: |
+          DRAW_ARG=""
+          if [ -n "${{ steps.args.outputs.draw }}" ]; then
+            DRAW_ARG="--draw ${{ steps.args.outputs.draw }}"
+          fi
+
+          python tools/check_numbers4_target_number.py \
+            $DRAW_ARG \
+            --numbers "${{ steps.args.outputs.numbers }}" \
+            --methods "${{ steps.args.outputs.methods }}" \
+            --output "reports/target_number_check_${{ steps.args.outputs.numbers_slug }}.md"
+
+      - name: Publish summary
+        run: |
+          echo "## Numbers4 Target Check" >> "$GITHUB_STEP_SUMMARY"
+          echo "- recommended_combo: \`${{ github.event.inputs.preset_guide }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- preset: \`${{ steps.args.outputs.target_preset }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- method_preset: \`${{ steps.args.outputs.method_preset }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- numbers: \`${{ steps.args.outputs.numbers }}\`" >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "${{ steps.args.outputs.draw }}" ]; then
+            echo "- draw: \`${{ steps.args.outputs.draw }}\`" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "- draw: \`latest\`" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "- methods: \`${{ steps.args.outputs.methods }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          cat "reports/target_number_check_${{ steps.args.outputs.numbers_slug }}.md" >> "$GITHUB_STEP_SUMMARY"

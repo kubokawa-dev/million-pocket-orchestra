@@ -6,6 +6,44 @@ on:
     # JST 12:00 = UTC 03:00
     - cron: '0 3 * * 1-5'
   workflow_dispatch:  # 手動実行も可能
+    inputs:
+      target_preset:
+        description: '固定チェック対象のプリセット（おすすめ: 標準=日常運用 / 攻め=広く拾う / コールド狙い=穴狙い）'
+        required: false
+        type: choice
+        default: '標準'
+        options:
+          - 標準
+          - 攻め
+          - コールド狙い
+          - カスタム
+      target_numbers:
+        description: '固定チェック対象番号（カンマ区切り / preset=custom のとき使用）'
+        required: false
+        default: '4111,1263,2404'
+      method_preset:
+        description: '固定チェック対象メソッドのプリセット（おすすめ: 標準×ボックス重視 / 攻め×全方位）'
+        required: false
+        type: choice
+        default: '標準'
+        options:
+          - 標準
+          - ボックス重視
+          - 全方位
+          - カスタム
+      target_methods:
+        description: '固定チェック対象メソッド（カンマ区切り / method_preset=カスタム のとき使用）'
+        required: false
+        default: 'box_model,cold_revival'
+      preset_guide:
+        description: 'おすすめ組み合わせ（表示専用）'
+        required: false
+        type: choice
+        default: '標準 × ボックス重視（安定運用）'
+        options:
+          - 標準 × ボックス重視（安定運用）
+          - 攻め × 全方位（取りこぼし抑制）
+          - コールド狙い × 標準（穴狙い）
 
 jobs:
   summarize:
@@ -159,6 +197,111 @@ jobs:
               --methods-dir "predictions/daily/methods"
           fi
           echo "output_file=$OUTPUT_FILE" >> $GITHUB_OUTPUT
+
+      - name: Add target-number check section
+        if: steps.check_methods.outputs.all_methods_ready == 'true'
+        id: target_check
+        run: |
+          DRAW_NUMBER="${{ steps.draw.outputs.draw_number }}"
+          TARGET_PRESET="${{ github.event.inputs.target_preset }}"
+          METHOD_PRESET="${{ github.event.inputs.method_preset }}"
+          TARGET_NUMBERS="${{ github.event.inputs.target_numbers }}"
+          TARGET_METHODS="${{ github.event.inputs.target_methods }}"
+
+          # スケジュール実行時など input が空なら standard 扱い
+          if [ -z "$TARGET_PRESET" ]; then
+            TARGET_PRESET="標準"
+          fi
+
+          # プリセットに応じて番号セットを決定
+          case "$TARGET_PRESET" in
+            standard|標準)
+              TARGET_NUMBERS="4111,1263,2404"
+              ;;
+            aggressive|攻め)
+              TARGET_NUMBERS="4111,1263,2404,6376,8958,0100"
+              ;;
+            cold_focus|コールド狙い)
+              TARGET_NUMBERS="2214,1404,6001,3957,3381"
+              ;;
+            custom|カスタム)
+              if [ -z "$TARGET_NUMBERS" ]; then
+                TARGET_NUMBERS="4111,1263,2404"
+              fi
+              ;;
+            *)
+              echo "⚠️ Unknown preset '$TARGET_PRESET'. Fallback to 標準."
+              TARGET_PRESET="標準"
+              TARGET_NUMBERS="4111,1263,2404"
+              ;;
+          esac
+
+          if [ -z "$TARGET_NUMBERS" ]; then
+            TARGET_NUMBERS="4111,1263,2404"
+          fi
+
+          # メソッドプリセットを決定
+          if [ -z "$METHOD_PRESET" ]; then
+            METHOD_PRESET="標準"
+          fi
+
+          case "$METHOD_PRESET" in
+            standard|標準)
+              TARGET_METHODS="box_model,cold_revival"
+              ;;
+            box_focus|ボックス重視)
+              TARGET_METHODS="box_model,cold_revival,box_pattern,digit_freq_box,hot_pair,lgbm_box"
+              ;;
+            all_round|全方位)
+              TARGET_METHODS="box_model,cold_revival,box_pattern,digit_freq_box,hot_pair,lgbm_box,global_frequency,state_chain,lightgbm,ml_neighborhood,adjacent_digit,even_odd_pattern,low_sum_specialist,sequential_pattern"
+              ;;
+            custom|カスタム)
+              if [ -z "$TARGET_METHODS" ]; then
+                TARGET_METHODS="box_model,cold_revival"
+              fi
+              ;;
+            *)
+              echo "⚠️ Unknown method preset '$METHOD_PRESET'. Fallback to 標準."
+              METHOD_PRESET="標準"
+              TARGET_METHODS="box_model,cold_revival"
+              ;;
+          esac
+
+          if [ -z "$TARGET_METHODS" ]; then
+            TARGET_METHODS="box_model,cold_revival"
+          fi
+          TMP_REPORT="/tmp/numbers4_target_check.md"
+
+          if [ -n "$DRAW_NUMBER" ]; then
+            python tools/check_numbers4_target_number.py \
+              --draw "$DRAW_NUMBER" \
+              --numbers "$TARGET_NUMBERS" \
+              --methods "$TARGET_METHODS" \
+              --output "$TMP_REPORT"
+          else
+            python tools/check_numbers4_target_number.py \
+              --numbers "$TARGET_NUMBERS" \
+              --methods "$TARGET_METHODS" \
+              --output "$TMP_REPORT"
+          fi
+
+          # 生成済みの日次サマリー末尾に追記
+          {
+            echo ""
+            echo "## 🎯 固定ターゲット番号チェック（CI自動判定）"
+            echo ""
+            cat "$TMP_REPORT"
+          } >> "${{ steps.summary.outputs.output_file }}"
+
+          # Actionsサマリーにも載せる
+          echo "## 固定ターゲット番号チェック" >> "$GITHUB_STEP_SUMMARY"
+          echo "- recommended_combo: \`${{ github.event.inputs.preset_guide }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- preset: \`$TARGET_PRESET\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- method_preset: \`$METHOD_PRESET\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- numbers: \`$TARGET_NUMBERS\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- methods: \`$TARGET_METHODS\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          cat "$TMP_REPORT" >> "$GITHUB_STEP_SUMMARY"
       
       - name: Generate budget plan (5-slot & 10-slot)
         if: steps.check_methods.outputs.all_methods_ready == 'true'
