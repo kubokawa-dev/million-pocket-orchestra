@@ -9,6 +9,8 @@ import {
   ListOrderedIcon,
   SparklesIcon,
   TargetIcon,
+  FlameIcon,
+  ArrowRightIcon,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -1069,6 +1071,7 @@ export async function Numbers4PredictionsHub({
         .sort((a, b) => b[1] - a[1])
         .slice(0, 14)
     : [];
+  const hotModels = latest?.hot_models || [];
 
   const consensus = buildMethodConsensus(data.methodRows, 3);
 
@@ -1494,6 +1497,66 @@ export async function Numbers4PredictionsHub({
                       })
                     )}
                   </div>
+
+                  {hotModels.length > 0 && (
+                    <div className="mt-8">
+                      <div
+                        className="text-orange-600 dark:text-orange-400 mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide"
+                        title="直近50回の成績から算出したトレンドスコア"
+                      >
+                        <FlameIcon className="size-3.5" />
+                        Hot Model トレンド
+                      </div>
+                      <p className="text-muted-foreground mb-3 text-[0.7rem] leading-snug">
+                        直近50回で最も成績が良かったモデルのランキングです。上位モデルには予測時にボーナスが加算されます。
+                      </p>
+                      <div className="max-h-64 space-y-2.5 overflow-y-auto pr-1">
+                        {hotModels.slice(0, 5).map((item, index) => {
+                          const maxScore = hotModels[0].score || 1;
+                          const percentage = Math.max(2, (item.score / maxScore) * 100);
+                          const ja = getEnsembleWeightJaLabel(item.model);
+                          
+                          let medal = "✨";
+                          if (index === 0) medal = "🥇";
+                          else if (index === 1) medal = "🥈";
+                          else if (index === 2) medal = "🥉";
+
+                          return (
+                            <div key={item.model} className="space-y-1">
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-foreground min-w-0 flex-1 leading-snug break-words flex items-center gap-1.5">
+                                  <span className="w-4 text-center">{medal}</span>
+                                  <span className="font-mono">{item.model}</span>
+                                </span>
+                                <span className="text-muted-foreground shrink-0 tabular-nums">
+                                  {item.score.toFixed(1)}
+                                </span>
+                              </div>
+                              <div className="bg-muted h-1.5 w-full overflow-hidden rounded-full ml-5.5">
+                                <div
+                                  className={cn(
+                                    "h-full rounded-full transition-all",
+                                    index === 0 ? "bg-orange-500" : 
+                                    index < 3 ? "bg-orange-400/70" : "bg-primary/40"
+                                  )}
+                                  style={{ width: `${percentage}%` }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className="mt-3">
+                        <Link
+                          href="/numbers4/trend"
+                          className="text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300 text-xs font-medium flex items-center gap-1"
+                        >
+                          すべてのトレンドを見る
+                          <ArrowRightIcon className="size-3" />
+                        </Link>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>
