@@ -39,8 +39,10 @@ import {
 } from "@/lib/numbers4-predictions/ensemble-contributors";
 import { getEnsembleWeightJaLabel } from "@/lib/numbers4-predictions/ensemble-weight-labels";
 import {
+  buildWinningModelHitsForDrawList,
   fetchNumbers4DrawFullRow,
   fetchNumbers4DrawResult,
+  fetchOfficialWinningDrawsBeforeTarget,
   getLatestEnsembleRun,
   loadNumbers4PredictionBundle,
   loadNumbers4PredictionBundleForDraw,
@@ -67,6 +69,7 @@ import type {
 } from "@/lib/numbers4-predictions/types";
 import { cn } from "@/lib/utils";
 
+import { Numbers4RecentModelHits } from "./result/numbers4-recent-model-hits";
 import { EnsembleContributorCell } from "./ensemble-contributor-cell";
 import { Numbers4OfficialDrawDetail } from "./numbers4-official-draw-detail";
 
@@ -1089,6 +1092,14 @@ export async function Numbers4PredictionsHub({
       ? contributorsForEnsembleNumber(winningNorm, data.methodRows)
       : null;
 
+  const officialPastFiveDraws = await fetchOfficialWinningDrawsBeforeTarget(
+    data.targetDrawNumber,
+    5,
+  );
+  const officialPastFiveHits = await buildWinningModelHitsForDrawList(
+    officialPastFiveDraws,
+  );
+
   return (
     <div className="flex flex-1 flex-col">
       <div className="mx-auto w-full max-w-[1600px] flex-1 space-y-8 px-4 py-8 sm:space-y-10 sm:px-6 sm:py-10">
@@ -1190,6 +1201,37 @@ export async function Numbers4PredictionsHub({
           </CardContent>
         </Card>
 
+        <Numbers4RecentModelHits
+          hits={officialPastFiveHits}
+          emphasizeOfficial
+          title={`第 ${data.targetDrawNumber} 回の直前 · 公式当選5回 × モデル照合`}
+          description={
+            <>
+              <span className="block">
+                いま見ている対象が第 {data.targetDrawNumber} 回なので、
+                <strong className="text-foreground">
+                  その一つ前の回からさかのぼって最大5回分
+                </strong>
+                （いずれも第 {data.targetDrawNumber} 回より前で、すでに当選番号が{" "}
+                <code className="font-mono text-xs">numbers4_draws</code>{" "}
+                に入っている回だけ）の
+                <strong className="text-foreground">実際の当選4桁</strong>
+                を1行ずつ取り、
+                <strong className="text-foreground">同じ回号の</strong>{" "}
+                <code className="font-mono text-xs">method</code>{" "}
+                予測と突き合わせています。
+              </span>
+              <span className="block">
+                当選数字はすべて{" "}
+                <code className="font-mono text-xs">numbers4_draws</code>{" "}
+                の抽選結果です。下のアンサンブル上位から数字を選んでいるわけではありません。
+              </span>
+            </>
+          }
+          bannerLead={`表示順は新しい回が上です（全 ${officialPastFiveHits.length} 行）。`}
+          emptyMessage="直前5回の公式当選がまだ DB に無いか、Supabase に接続できていません。"
+        />
+
         {winningNorm ? (
           <Card className="border-border/80 shadow-sm ring-1 ring-black/5 dark:ring-white/10">
             <CardHeader className="border-border/60 border-b pb-3">
@@ -1197,13 +1239,23 @@ export async function Numbers4PredictionsHub({
                 <LayersIcon className="text-muted-foreground size-5" />
                 <div>
                   <CardTitle className="text-lg">
-                    当選番号が載っていたモデル（この回の method 候補と照合）
+                    第 {data.targetDrawNumber} 回の公式当選が、各モデル候補に載っていたか
                   </CardTitle>
                   <CardDescription className="text-pretty mt-1 text-sm">
-                    各 <code className="font-mono text-xs">method</code>{" "}
-                    の直近ラン上位候補（最大96件）に、当選{" "}
-                    <span className="font-mono">{winningNorm}</span>{" "}
-                    が含まれていたかを一覧にしています（下の「モデル別」カードと同じデータ源）。
+                    <span className="block">
+                      照合の左側にある当選{" "}
+                      <span className="font-mono">{winningNorm}</span> は{" "}
+                      <code className="font-mono text-xs">numbers4_draws</code>{" "}
+                      の<strong className="text-foreground">実抽選結果</strong>
+                      です。
+                    </span>
+                    <span className="block">
+                      各 <code className="font-mono text-xs">method</code> の
+                      <strong className="text-foreground">
+                        この回向け
+                      </strong>
+                      直近ラン上位候補（最大96件）に、その数字が含まれていたかを出しています（下の「モデル別」と同じデータ）。
+                    </span>
                   </CardDescription>
                 </div>
               </div>

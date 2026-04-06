@@ -135,7 +135,11 @@ export default async function Numbers4ResultPage({ searchParams }: PageProps) {
         </Card>
 
         {winningModelHits.length > 0 ? (
-          <Numbers4RecentModelHits hits={winningModelHits} />
+          <Numbers4RecentModelHits
+            hits={winningModelHits}
+            emphasizeOfficial
+            title="直近100回 · 公式当選番号が各モデル候補に載っていたか"
+          />
         ) : null}
       </div>
     </div>

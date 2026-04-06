@@ -379,6 +379,43 @@ export async function fetchNumbers4DrawFullRow(
  * 当選番号が入っている回を新しい順に最大 `limit` 件返す（統計ページ用）。
  * Supabase 未設定・エラー時は空配列。
  */
+/**
+ * 指定した対象回より前で、公式当選番号が登録されている回を新しい順に最大 `limit` 件。
+ * （例: target=6955, limit=5 → 6954,6953,6952,6951,6950）
+ */
+export async function fetchOfficialWinningDrawsBeforeTarget(
+  targetDrawNumber: number,
+  limit: number,
+): Promise<{ draw_number: number; numbers: string }[]> {
+  if (!Number.isFinite(targetDrawNumber) || targetDrawNumber < 1) return [];
+  if (!Number.isFinite(limit) || limit < 1) return [];
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("numbers4_draws")
+      .select("draw_number, numbers")
+      .lt("draw_number", targetDrawNumber)
+      .not("numbers", "is", null)
+      .order("draw_number", { ascending: false })
+      .limit(limit);
+    if (error || !data?.length) return [];
+    return data
+      .filter(
+        (r) =>
+          r.draw_number != null &&
+          r.numbers != null &&
+          String(r.numbers).trim() !== "",
+      )
+      .map((r) => ({
+        draw_number: Number(r.draw_number),
+        numbers: String(r.numbers),
+      }))
+      .filter((r) => Number.isFinite(r.draw_number) && r.draw_number > 0);
+  } catch {
+    return [];
+  }
+}
+
 export async function fetchRecentNumbers4DrawNumbersWithResults(
   limit: number,
 ): Promise<number[]> {
