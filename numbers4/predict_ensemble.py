@@ -550,6 +550,34 @@ def generate_ensemble_prediction(progress_callback=None):
     
     report_progress(0.994, f"学習済み重みを反映（ブレンド率: {LEARNING_BLEND_RATIO*100:.0f}%）")
     
+    # === Hot Model 戦略の組み込み ===
+    try:
+        from numbers4.predict_hot_models import analyze_hot_models
+        latest_draw = int(all_draws_df['draw_number'].max())
+        target_draw = latest_draw + 1
+        
+        report_progress(0.995, f"直近5回のトレンド（Hot Model）を分析中...")
+        hot_models = analyze_hot_models(target_draw, lookback=5, top_k=100, quiet=True)
+        
+        if hot_models and hot_models[0][1] > 0:
+            top_model = hot_models[0][0]
+            
+            # 1位のモデルには特別ボーナス（元の重みの1.5倍、最大+20.0）
+            if top_model in ensemble_weights:
+                bonus = min(20.0, ensemble_weights[top_model] * 0.5)
+                ensemble_weights[top_model] += bonus
+                report_progress(0.996, f"🔥 Hot Model【{top_model}】にボーナス +{bonus:.1f} を付与！")
+                
+            # 2位のモデルにも少しボーナス
+            if len(hot_models) > 1 and hot_models[1][1] > 0:
+                second_model = hot_models[1][0]
+                if second_model in ensemble_weights:
+                    bonus = min(10.0, ensemble_weights[second_model] * 0.2)
+                    ensemble_weights[second_model] += bonus
+                    report_progress(0.996, f"✨ 2位 Model【{second_model}】にボーナス +{bonus:.1f} を付与！")
+    except Exception as e:
+        print(f"Hot Model分析中にエラー: {e}")
+        
     predictions_by_model = {
         'basic_stats': predictions_basic,
         'advanced_heuristics': predictions_advanced,

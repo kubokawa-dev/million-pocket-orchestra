@@ -65,7 +65,7 @@ export default async function Numbers4Page() {
                 アンサンブル・手法別に、当選番号が予測リストの何位以内にボックス一致したかを表で確認できます。
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex flex-col gap-3 sm:flex-row">
               <Link
                 href="/numbers4/stats"
                 className={cn(
@@ -74,6 +74,16 @@ export default async function Numbers4Page() {
                 )}
               >
                 統計ページを開く
+                <ArrowRightIcon className="size-4" />
+              </Link>
+              <Link
+                href="/numbers4/trend"
+                className={cn(
+                  buttonVariants({ variant: "outline", size: "lg" }),
+                  "w-full justify-center gap-2 sm:w-auto border-orange-500/30 text-orange-600 hover:bg-orange-500/10 dark:text-orange-400",
+                )}
+              >
+                🔥 Hot Model トレンド分析
                 <ArrowRightIcon className="size-4" />
               </Link>
             </CardContent>
