@@ -189,5 +189,13 @@ export type Numbers4PredictionBundle = {
   methodRows: MethodPredictionRow[];
 };
 
+/** 当選番号が各 method の候補リスト（最大96件）に含まれていたかの集計 */
+export type Numbers4DrawWinningModelHit = {
+  draw_number: number;
+  numbers_normalized: string | null;
+  exact_slugs: string[];
+  box_only_slugs: string[];
+};
+
 /** @deprecated 互換名 */
 export type PredictionBundle6949 = Numbers4PredictionBundle;

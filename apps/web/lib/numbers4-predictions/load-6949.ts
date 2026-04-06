@@ -10,12 +10,15 @@ import {
   FALLBACK_METHOD_ROWS,
   FALLBACK_TARGET_DRAW,
 } from "./fallback-6949";
+import { contributorsForEnsembleNumber } from "./ensemble-contributors";
+import { normalizeNumbers4 } from "./prediction-hit-utils";
 import { summarizeMethodPayload } from "./summarize-method";
 import type {
   BudgetPlanPayload,
   EnsemblePayload,
   EnsemblePredictionRun,
   MethodPredictionRow,
+  Numbers4DrawWinningModelHit,
   Numbers4PredictionBundle,
 } from "./types";
 
@@ -145,6 +148,111 @@ async function scanMethodsForDraw(
     /* methods なし */
   }
   return rows.sort((a, b) => a.slug.localeCompare(b.slug));
+}
+
+type DbMethodDocRow = {
+  target_draw_number: number;
+  method_slug: string | null;
+  payload: unknown;
+  relative_path: string | null;
+};
+
+/**
+ * 複数回分の method ドキュメントをまとめて取得（DB 一括 → 欠けはリポジトリ JSON で補完）。
+ */
+async function fetchMethodRowsGroupedByDraw(
+  drawNumbers: number[],
+): Promise<Map<number, MethodPredictionRow[]>> {
+  const uniq = [...new Set(drawNumbers)].filter(
+    (n) => Number.isFinite(n) && n > 0,
+  ) as number[];
+  const map = new Map<number, MethodPredictionRow[]>();
+  for (const d of uniq) map.set(d, []);
+
+  if (uniq.length === 0) return map;
+
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("numbers4_daily_prediction_documents")
+      .select("target_draw_number, method_slug, payload, relative_path")
+      .eq("doc_kind", "method")
+      .in("target_draw_number", uniq);
+
+    if (!error && data?.length) {
+      for (const row of data as DbMethodDocRow[]) {
+        const tn = row.target_draw_number;
+        if (!row.method_slug || !Number.isFinite(tn)) continue;
+        const cur = map.get(tn) ?? [];
+        cur.push({
+          slug: row.method_slug,
+          relativePath: row.relative_path,
+          ...summarizeMethodPayload(row.payload),
+        });
+        map.set(tn, cur);
+      }
+      for (const tn of uniq) {
+        const cur = map.get(tn) ?? [];
+        cur.sort((a, b) => a.slug.localeCompare(b.slug));
+        map.set(tn, cur);
+      }
+    }
+  } catch {
+    /* FS で補完 */
+  }
+
+  const repoRoot = path.join(process.cwd(), "..", "..");
+  const missing = uniq.filter((d) => (map.get(d) ?? []).length === 0);
+  const batchSize = 8;
+  for (let i = 0; i < missing.length; i += batchSize) {
+    const chunk = missing.slice(i, i + batchSize);
+    const results = await Promise.all(
+      chunk.map(async (d) => {
+        const rows = await scanMethodsForDraw(repoRoot, d);
+        return [d, rows] as const;
+      }),
+    );
+    for (const [d, rows] of results) {
+      map.set(d, rows);
+    }
+  }
+
+  return map;
+}
+
+/**
+ * 当選番号ごとに、各モデル候補（最大96件）へストレート／ボックスで入っていた slug を列挙する。
+ */
+export async function buildWinningModelHitsForDrawList(
+  draws: { draw_number: number; numbers: string | null | undefined }[],
+): Promise<Numbers4DrawWinningModelHit[]> {
+  const nums = draws.map((d) => d.draw_number);
+  const methodMap = await fetchMethodRowsGroupedByDraw(nums);
+
+  return draws.map((d) => {
+    const norm = normalizeNumbers4(
+      d.numbers != null ? String(d.numbers) : "",
+    );
+    const rows = methodMap.get(d.draw_number) ?? [];
+    if (!norm || rows.length === 0) {
+      return {
+        draw_number: d.draw_number,
+        numbers_normalized: norm,
+        exact_slugs: [],
+        box_only_slugs: [],
+      };
+    }
+    const { exactSlugs, boxOnlySlugs } = contributorsForEnsembleNumber(
+      norm,
+      rows,
+    );
+    return {
+      draw_number: d.draw_number,
+      numbers_normalized: norm,
+      exact_slugs: exactSlugs,
+      box_only_slugs: boxOnlySlugs,
+    };
+  });
 }
 
 async function loadBundleFromFilesystem(

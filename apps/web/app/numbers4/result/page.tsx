@@ -12,8 +12,11 @@ import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/server";
 import { NUMBERS4_PAGE_SIZE, type Numbers4DrawRow } from "@/lib/numbers4";
 
+import { buildWinningModelHitsForDrawList } from "@/lib/numbers4-predictions/load-6949";
+
 import { Numbers4DrawsTable } from "./numbers4-draws-table";
 import { Numbers4Pagination } from "./numbers4-pagination";
+import { Numbers4RecentModelHits } from "./numbers4-recent-model-hits";
 
 export const dynamic = "force-dynamic";
 
@@ -70,9 +73,31 @@ export default async function Numbers4ResultPage({ searchParams }: PageProps) {
 
   const rows = (data ?? []) as Numbers4DrawRow[];
 
+  const { data: recentForHits, error: recentHitsError } = await supabase
+    .from("numbers4_draws")
+    .select("draw_number, numbers")
+    .not("numbers", "is", null)
+    .order("draw_number", { ascending: false })
+    .limit(100);
+
+  if (recentHitsError) {
+    throw new Error(recentHitsError.message);
+  }
+
+  const recentHitRows = (recentForHits ?? []) as Pick<
+    Numbers4DrawRow,
+    "draw_number" | "numbers"
+  >[];
+  const winningModelHits = await buildWinningModelHitsForDrawList(
+    recentHitRows.map((r) => ({
+      draw_number: r.draw_number,
+      numbers: r.numbers,
+    })),
+  );
+
   return (
     <div className="flex flex-1 flex-col">
-      <div className="mx-auto w-full max-w-[1600px] flex-1 px-4 py-8 sm:px-6 sm:py-10">
+      <div className="mx-auto w-full max-w-[1600px] flex-1 space-y-8 px-4 py-8 sm:space-y-10 sm:px-6 sm:py-10">
         <Card className="border-border/80 shadow-sm ring-1 ring-black/5 dark:ring-white/10">
           <CardHeader className="border-border/60 space-y-4 border-b pb-6 sm:pb-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -108,6 +133,10 @@ export default async function Numbers4ResultPage({ searchParams }: PageProps) {
             </div>
           </CardContent>
         </Card>
+
+        {winningModelHits.length > 0 ? (
+          <Numbers4RecentModelHits hits={winningModelHits} />
+        ) : null}
       </div>
     </div>
   );

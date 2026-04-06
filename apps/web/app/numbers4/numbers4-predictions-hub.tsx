@@ -33,7 +33,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { buildMethodConsensus } from "@/lib/numbers4-predictions/consensus";
-import { contributorsForEnsembleNumber } from "@/lib/numbers4-predictions/ensemble-contributors";
+import {
+  contributorsForEnsembleNumber,
+  formatContributorSlugLine,
+} from "@/lib/numbers4-predictions/ensemble-contributors";
 import { getEnsembleWeightJaLabel } from "@/lib/numbers4-predictions/ensemble-weight-labels";
 import {
   fetchNumbers4DrawFullRow,
@@ -1081,6 +1084,11 @@ export async function Numbers4PredictionsHub({
 
   const consensus = buildMethodConsensus(data.methodRows, 3);
 
+  const winningModelContrib =
+    winningNorm && data.methodRows.length > 0
+      ? contributorsForEnsembleNumber(winningNorm, data.methodRows)
+      : null;
+
   return (
     <div className="flex flex-1 flex-col">
       <div className="mx-auto w-full max-w-[1600px] flex-1 space-y-8 px-4 py-8 sm:space-y-10 sm:px-6 sm:py-10">
@@ -1181,6 +1189,79 @@ export async function Numbers4PredictionsHub({
             )}
           </CardContent>
         </Card>
+
+        {winningNorm ? (
+          <Card className="border-border/80 shadow-sm ring-1 ring-black/5 dark:ring-white/10">
+            <CardHeader className="border-border/60 border-b pb-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <LayersIcon className="text-muted-foreground size-5" />
+                <div>
+                  <CardTitle className="text-lg">
+                    当選番号が載っていたモデル（この回の method 候補と照合）
+                  </CardTitle>
+                  <CardDescription className="text-pretty mt-1 text-sm">
+                    各 <code className="font-mono text-xs">method</code>{" "}
+                    の直近ラン上位候補（最大96件）に、当選{" "}
+                    <span className="font-mono">{winningNorm}</span>{" "}
+                    が含まれていたかを一覧にしています（下の「モデル別」カードと同じデータ源）。
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="pb-6 pt-2">
+              {winningModelContrib == null ? (
+                <p className="text-muted-foreground text-sm">
+                  この回の method 予測が無いため、モデル別との照合はできません。
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-muted-foreground mb-2 text-xs font-medium uppercase tracking-wide">
+                      ストレート一致
+                    </p>
+                    {winningModelContrib.exactSlugs.length === 0 ? (
+                      <p className="text-muted-foreground text-sm">該当なし</p>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5">
+                        {winningModelContrib.exactSlugs.map((s) => (
+                          <Badge
+                            key={s}
+                            variant="outline"
+                            className="border-emerald-600/40 bg-emerald-500/10 font-mono text-[0.7rem] font-normal text-emerald-950 dark:text-emerald-100"
+                            title={formatContributorSlugLine(s)}
+                          >
+                            {s}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground mb-2 text-xs font-medium uppercase tracking-wide">
+                      ボックス相当のみ（完全一致の候補は無いが並び替えはリスト内）
+                    </p>
+                    {winningModelContrib.boxOnlySlugs.length === 0 ? (
+                      <p className="text-muted-foreground text-sm">該当なし</p>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5">
+                        {winningModelContrib.boxOnlySlugs.map((s) => (
+                          <Badge
+                            key={s}
+                            variant="outline"
+                            className="border-amber-600/40 bg-amber-500/10 font-mono text-[0.7rem] font-normal text-amber-950 dark:text-amber-100"
+                            title={formatContributorSlugLine(s)}
+                          >
+                            {s}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ) : null}
 
         {consensus.length > 0 && (
           <Card className="border-border/80 shadow-sm ring-1 ring-black/5 dark:ring-white/10">
