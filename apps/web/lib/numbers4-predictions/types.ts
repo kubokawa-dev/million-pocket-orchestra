@@ -13,6 +13,8 @@ export type EnsemblePredictionRun = {
   ensemble_weights?: Record<string, number>;
   top_predictions?: EnsembleTopPrediction[];
   hot_models?: { model: string; score: number }[];
+  recent_flow?: { draw: number; model: string; score: number }[];
+  next_model_predictions?: { model: string; probability: number; count: number; total: number }[];
 };
 
 export type EnsemblePayload = {

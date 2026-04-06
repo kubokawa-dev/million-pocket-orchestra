@@ -18,11 +18,12 @@ from numbers4.evaluate_methods import (
     evaluate_method
 )
 
-def analyze_hot_models(target_draw: int, lookback: int = 5, top_k: int = 100, quiet: bool = False) -> List[Tuple[str, float]]:
+def analyze_hot_models(target_draw: int, lookback: int = 5, top_k: int = 100, quiet: bool = False) -> Tuple[List[Tuple[str, float]], List[Dict]]:
     """
-    指定した回の直前N回分の成績を分析し、Hot Modelのスコアを計算する
+    指定した回の直前N回分の成績を分析し、Hot Modelのスコアと各回の最強モデルの履歴（flow）を返す
     """
     method_scores = {method: 0.0 for method in ALL_METHODS}
+    flow = []
     
     start_draw = target_draw - lookback
     end_draw = target_draw - 1
@@ -37,17 +38,28 @@ def analyze_hot_models(target_draw: int, lookback: int = 5, top_k: int = 100, qu
                 print(f"⚠️ 第{draw}回の結果が見つからないからスキップするね！")
             continue
             
+        best_draw_model = None
+        best_draw_score = -1
+            
         for method in ALL_METHODS:
             predictions = load_method_predictions(draw, method)
             if not predictions:
                 continue
                 
             eval_result = evaluate_method(predictions, actual, top_k=top_k)
-            method_scores[method] += eval_result['score']
+            score = eval_result['score']
+            method_scores[method] += score
+            
+            if score > best_draw_score:
+                best_draw_score = score
+                best_draw_model = method
+                
+        if best_draw_model and best_draw_score > 0:
+            flow.append({"draw": draw, "model": best_draw_model, "score": best_draw_score})
             
     # スコアが高い順にソート
     sorted_methods = sorted(method_scores.items(), key=lambda x: x[1], reverse=True)
-    return sorted_methods
+    return sorted_methods, flow
 
 def run_backtest(latest_draw: int, lookback: int = 5, backtest_count: int = 50, top_k: int = 100):
     """
@@ -68,7 +80,7 @@ def run_backtest(latest_draw: int, lookback: int = 5, backtest_count: int = 50, 
             continue
             
         # その回の直前lookback回で一番キテるモデルを探す
-        hot_models = analyze_hot_models(draw, lookback, top_k, quiet=True)
+        hot_models, _ = analyze_hot_models(draw, lookback, top_k, quiet=True)
         if not hot_models or hot_models[0][1] == 0:
             continue
             
@@ -143,11 +155,38 @@ def main():
         run_backtest(args.target, args.lookback, args.backtest, args.top_k)
         return
     else:
-        hot_models = analyze_hot_models(args.target, args.lookback, args.top_k, quiet=args.json)
+        hot_models, flow = analyze_hot_models(args.target, args.lookback, args.top_k, quiet=args.json)
         
         if args.json:
             import json
-            print(json.dumps([{"model": m, "score": s} for m, s in hot_models]))
+            from collections import Counter
+            
+            # 遷移分析
+            transitions = []
+            for i in range(len(flow)-1):
+                transitions.append((flow[i]["model"], flow[i+1]["model"]))
+                
+            last_model = flow[-1]["model"] if flow else None
+            next_counts = Counter([next_m for prev_m, next_m in transitions if prev_m == last_model])
+            total_transitions = sum(next_counts.values())
+            
+            next_preds = []
+            if total_transitions > 0:
+                for m, c in next_counts.most_common(3):
+                    next_preds.append({
+                        "model": m,
+                        "probability": c / total_transitions,
+                        "count": c,
+                        "total": total_transitions
+                    })
+                    
+            result = {
+                "hot_models": [{"model": m, "score": s} for m, s in hot_models],
+                "recent_flow": flow[-10:],
+                "last_model": last_model,
+                "next_model_predictions": next_preds
+            }
+            print(json.dumps(result))
             return
             
         print("\n🏆 🔥 Hot Model ランキング 🔥 🏆")

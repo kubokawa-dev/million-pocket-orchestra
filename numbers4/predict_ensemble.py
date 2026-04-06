@@ -557,7 +557,7 @@ def generate_ensemble_prediction(progress_callback=None):
         target_draw = latest_draw + 1
         
         report_progress(0.995, f"直近5回のトレンド（Hot Model）を分析中...")
-        hot_models = analyze_hot_models(target_draw, lookback=5, top_k=100, quiet=True)
+        hot_models, _ = analyze_hot_models(target_draw, lookback=5, top_k=100, quiet=True)
         
         if hot_models and hot_models[0][1] > 0:
             top_model = hot_models[0][0]

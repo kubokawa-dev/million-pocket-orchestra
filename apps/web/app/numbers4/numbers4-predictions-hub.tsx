@@ -11,6 +11,7 @@ import {
   TargetIcon,
   FlameIcon,
   ArrowRightIcon,
+  LightbulbIcon,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -1072,6 +1073,7 @@ export async function Numbers4PredictionsHub({
         .slice(0, 14)
     : [];
   const hotModels = latest?.hot_models || [];
+  const nextPredictions = latest?.next_model_predictions || [];
 
   const consensus = buildMethodConsensus(data.methodRows, 3);
 
@@ -1554,6 +1556,45 @@ export async function Numbers4PredictionsHub({
                           すべてのトレンドを見る
                           <ArrowRightIcon className="size-3" />
                         </Link>
+                      </div>
+                    </div>
+                  )}
+
+                  {nextPredictions.length > 0 && (
+                    <div className="mt-8 border-t border-border/60 pt-6">
+                      <div
+                        className="text-blue-600 dark:text-blue-400 mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide"
+                        title="過去の遷移パターンから算出した次回当たりやすいモデル"
+                      >
+                        <LightbulbIcon className="size-3.5" />
+                        次回（第 {data.targetDrawNumber} 回）の最強モデル予測
+                      </div>
+                      <p className="text-muted-foreground mb-3 text-[0.7rem] leading-snug">
+                        過去50回の遷移パターンから、前回（第 {data.targetDrawNumber - 1} 回）の最強モデルの次に当たりやすいモデルを予測しています。
+                      </p>
+                      <div className="space-y-2.5">
+                        {nextPredictions.map((pred, i) => (
+                          <div key={pred.model} className="space-y-1">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-foreground min-w-0 flex-1 leading-snug break-words flex items-center gap-1.5">
+                                <span className="w-4 text-center">{i === 0 ? "🎯" : "✨"}</span>
+                                <span className="font-mono">{pred.model}</span>
+                              </span>
+                              <span className="text-muted-foreground text-[0.65rem]">
+                                確率: {(pred.probability * 100).toFixed(1)}%
+                              </span>
+                            </div>
+                            <div className="bg-muted h-1 w-full overflow-hidden rounded-full ml-5.5">
+                              <div
+                                className={cn(
+                                  "h-full rounded-full transition-all",
+                                  i === 0 ? "bg-blue-500" : "bg-blue-400/50"
+                                )}
+                                style={{ width: `${Math.max(2, pred.probability * 100)}%` }}
+                              />
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}

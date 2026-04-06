@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ArrowLeftIcon, FlameIcon } from "lucide-react";
+import { ArrowLeftIcon, FlameIcon, ArrowRightIcon, WavesIcon, LightbulbIcon } from "lucide-react";
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
@@ -21,24 +21,28 @@ export const metadata: Metadata = {
   description: "直近50回の成績から、いま一番「キテる」モデルを分析します。",
 };
 
-async function fetchHotModels(targetDraw: number) {
+async function fetchTrendData(targetDraw: number) {
   try {
     const bundle = await loadNumbers4PredictionBundleForDraw(targetDraw);
     if (!bundle || !bundle.ensemble || !bundle.ensemble.predictions) {
-      return [];
+      return { hotModels: [], recentFlow: [], nextPredictions: [] };
     }
     const preds = bundle.ensemble.predictions;
     const lastRun = preds[preds.length - 1];
-    return lastRun.hot_models || [];
+    return {
+      hotModels: lastRun.hot_models || [],
+      recentFlow: lastRun.recent_flow || [],
+      nextPredictions: lastRun.next_model_predictions || []
+    };
   } catch (error) {
-    console.error("Failed to fetch hot models:", error);
-    return [];
+    console.error("Failed to fetch trend data:", error);
+    return { hotModels: [], recentFlow: [], nextPredictions: [] };
   }
 }
 
 export default async function HotModelTrendPage() {
   const latestDraw = await resolveTargetDrawNumber();
-  const hotModels = await fetchHotModels(latestDraw);
+  const { hotModels, recentFlow, nextPredictions } = await fetchTrendData(latestDraw);
 
   return (
     <div className="flex flex-1 flex-col">
@@ -128,6 +132,77 @@ export default async function HotModelTrendPage() {
                 </div>
               </CardContent>
             </Card>
+
+            {recentFlow.length > 0 && (
+              <Card className="border-border/80 shadow-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <WavesIcon className="size-5 text-blue-500" />
+                    直近10回の最強モデルのながれ
+                  </CardTitle>
+                  <CardDescription>
+                    各回で最も成績が良かったモデルの履歴です。モデルの「連チャン」や「遷移パターン」を読むヒントになります。
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {recentFlow.map((flow, i) => (
+                      <div key={flow.draw} className="flex items-center gap-4 text-sm">
+                        <span className="text-muted-foreground font-mono w-16">第{flow.draw}回</span>
+                        <div className="flex-1 flex items-center gap-2">
+                          <span className="font-medium text-foreground bg-muted px-2 py-0.5 rounded-md text-xs font-mono">
+                            {flow.model}
+                          </span>
+                          <span className="text-muted-foreground text-xs">
+                            (スコア: {flow.score.toFixed(1)})
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {nextPredictions.length > 0 && (
+              <Card className="border-border/80 shadow-sm border-blue-500/20 bg-blue-500/5">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg text-blue-600 dark:text-blue-400">
+                    <LightbulbIcon className="size-5" />
+                    次回（第 {latestDraw} 回）の最強モデル予測
+                  </CardTitle>
+                  <CardDescription className="text-blue-700/80 dark:text-blue-300/80">
+                    過去50回の遷移パターンから、前回（第 {latestDraw - 1} 回）の最強モデル「{recentFlow[recentFlow.length - 1]?.model}」の次に当たりやすいモデルを予測しています。
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {nextPredictions.map((pred, i) => (
+                      <div key={pred.model} className="space-y-1.5">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="font-medium flex items-center gap-2">
+                            <span className="w-6 text-center">{i === 0 ? "🎯" : "✨"}</span>
+                            {pred.model}
+                          </span>
+                          <span className="text-muted-foreground text-xs">
+                            確率: {(pred.probability * 100).toFixed(1)}% ({pred.count}/{pred.total}回)
+                          </span>
+                        </div>
+                        <div className="bg-muted h-2 w-full overflow-hidden rounded-full">
+                          <div
+                            className={cn(
+                              "h-full rounded-full transition-all",
+                              i === 0 ? "bg-blue-500" : "bg-blue-400/50"
+                            )}
+                            style={{ width: `${Math.max(2, pred.probability * 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         ) : (
           <Card className="border-border/80 shadow-sm">

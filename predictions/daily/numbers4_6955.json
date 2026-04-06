@@ -2403,6 +2403,72 @@
           "model": "lgbm_box",
           "score": 0.0
         }
+      ],
+      "recent_flow": [
+        {
+          "draw": 6940,
+          "model": "cold_revival",
+          "score": 40.25
+        },
+        {
+          "draw": 6941,
+          "model": "low_sum_specialist",
+          "score": 51.74999999999999
+        },
+        {
+          "draw": 6942,
+          "model": "box_model",
+          "score": 79.35
+        },
+        {
+          "draw": 6943,
+          "model": "state_chain",
+          "score": 80.21249999999999
+        },
+        {
+          "draw": 6944,
+          "model": "cold_revival",
+          "score": 60.37499999999999
+        },
+        {
+          "draw": 6945,
+          "model": "cold_revival",
+          "score": 51.74999999999999
+        },
+        {
+          "draw": 6946,
+          "model": "cold_revival",
+          "score": 82.8
+        },
+        {
+          "draw": 6947,
+          "model": "state_chain",
+          "score": 84.52499999999999
+        },
+        {
+          "draw": 6948,
+          "model": "cold_revival",
+          "score": 68.13749999999999
+        },
+        {
+          "draw": 6949,
+          "model": "digit_freq_box",
+          "score": 79.35
+        }
+      ],
+      "next_model_predictions": [
+        {
+          "model": "global_frequency",
+          "probability": 0.5,
+          "count": 1,
+          "total": 2
+        },
+        {
+          "model": "sequential_pattern",
+          "probability": 0.5,
+          "count": 1,
+          "total": 2
+        }
       ]
     }
   ],
