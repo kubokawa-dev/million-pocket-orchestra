@@ -26,6 +26,7 @@ const LABELS: Record<string, string> = {
   basic_stats: "基本統計",
   ml_model_new: "機械学習（新）",
   lightgbm: "LightGBM",
+  lgbm_box: "ボックスレベル LightGBM",
   demo: "デモ",
 };
 

@@ -53,6 +53,32 @@ export default async function Numbers4Page() {
         </header>
 
         <div className="grid gap-4 sm:grid-cols-2">
+          <Card className="border-border/80 shadow-sm ring-1 ring-black/5 dark:ring-white/10 sm:col-span-2">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <BarChart3Icon className="text-muted-foreground size-5" />
+                <CardTitle className="text-lg">
+                  ボックス順位の統計（直近の回を集計）
+                </CardTitle>
+              </div>
+              <CardDescription>
+                アンサンブル・手法別に、当選番号が予測リストの何位以内にボックス一致したかを表で確認できます。
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Link
+                href="/numbers4/stats"
+                className={cn(
+                  buttonVariants({ variant: "secondary", size: "lg" }),
+                  "w-full justify-center gap-2 sm:w-auto",
+                )}
+              >
+                統計ページを開く
+                <ArrowRightIcon className="size-4" />
+              </Link>
+            </CardContent>
+          </Card>
+
           <Card className="border-border/80 shadow-sm ring-1 ring-black/5 dark:ring-white/10">
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">

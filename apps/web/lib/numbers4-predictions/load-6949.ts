@@ -267,6 +267,37 @@ export async function fetchNumbers4DrawFullRow(
   }
 }
 
+/**
+ * 当選番号が入っている回を新しい順に最大 `limit` 件返す（統計ページ用）。
+ * Supabase 未設定・エラー時は空配列。
+ */
+export async function fetchRecentNumbers4DrawNumbersWithResults(
+  limit: number,
+): Promise<number[]> {
+  if (!Number.isFinite(limit) || limit < 1) return [];
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("numbers4_draws")
+      .select("draw_number, numbers")
+      .not("numbers", "is", null)
+      .order("draw_number", { ascending: false })
+      .limit(limit);
+    if (error || !data?.length) return [];
+    return data
+      .filter(
+        (r) =>
+          r.draw_number != null &&
+          r.numbers != null &&
+          String(r.numbers).trim() !== "",
+      )
+      .map((r) => Number(r.draw_number))
+      .filter((n) => Number.isFinite(n) && n > 0);
+  } catch {
+    return [];
+  }
+}
+
 export function getLatestEnsembleRun(
   payload: EnsemblePayload | null,
 ): EnsemblePredictionRun | null {
