@@ -551,30 +551,56 @@ def generate_ensemble_prediction(progress_callback=None):
     report_progress(0.994, f"学習済み重みを反映（ブレンド率: {LEARNING_BLEND_RATIO*100:.0f}%）")
     
     # === Hot Model 戦略の組み込み ===
+    hot_models_short = None
+    hot_models_for_json = None
+    json_recent_flow = None
+    json_next_model_predictions = None
     try:
-        from numbers4.predict_hot_models import analyze_hot_models
-        latest_draw = int(all_draws_df['draw_number'].max())
+        from numbers4.predict_hot_models import (
+            analyze_hot_models,
+            next_model_predictions_from_flow,
+        )
+
+        latest_draw = int(all_draws_df["draw_number"].max())
         target_draw = latest_draw + 1
-        
+
         report_progress(0.995, f"直近5回のトレンド（Hot Model）を分析中...")
-        hot_models, _ = analyze_hot_models(target_draw, lookback=5, top_k=100, quiet=True)
-        
-        if hot_models and hot_models[0][1] > 0:
-            top_model = hot_models[0][0]
-            
+        hot_models_short, _ = analyze_hot_models(
+            target_draw, lookback=5, top_k=100, quiet=True
+        )
+
+        if hot_models_short and hot_models_short[0][1] > 0:
+            top_model = hot_models_short[0][0]
+
             # 1位のモデルには特別ボーナス（元の重みの1.5倍、最大+20.0）
             if top_model in ensemble_weights:
                 bonus = min(20.0, ensemble_weights[top_model] * 0.5)
                 ensemble_weights[top_model] += bonus
-                report_progress(0.996, f"🔥 Hot Model【{top_model}】にボーナス +{bonus:.1f} を付与！")
-                
+                report_progress(
+                    0.996,
+                    f"🔥 Hot Model【{top_model}】にボーナス +{bonus:.1f} を付与！",
+                )
+
             # 2位のモデルにも少しボーナス
-            if len(hot_models) > 1 and hot_models[1][1] > 0:
-                second_model = hot_models[1][0]
+            if len(hot_models_short) > 1 and hot_models_short[1][1] > 0:
+                second_model = hot_models_short[1][0]
                 if second_model in ensemble_weights:
                     bonus = min(10.0, ensemble_weights[second_model] * 0.2)
                     ensemble_weights[second_model] += bonus
-                    report_progress(0.996, f"✨ 2位 Model【{second_model}】にボーナス +{bonus:.1f} を付与！")
+                    report_progress(
+                        0.996,
+                        f"✨ 2位 Model【{second_model}】にボーナス +{bonus:.1f} を付与！",
+                    )
+
+        try:
+            hot_models_for_json, flow_json = analyze_hot_models(
+                target_draw, lookback=50, top_k=100, quiet=True
+            )
+            if flow_json:
+                json_recent_flow = flow_json[-11:]
+            json_next_model_predictions = next_model_predictions_from_flow(flow_json)
+        except Exception as e_json:
+            print(f"Hot Model（JSON用・直近50回の履歴）分析中にエラー: {e_json}")
     except Exception as e:
         print(f"Hot Model分析中にエラー: {e}")
         
@@ -725,7 +751,11 @@ def generate_ensemble_prediction(progress_callback=None):
                 ensemble_weights=ensemble_weights,
                 target_draw_number=target_draw,
                 similar_patterns=similar_patterns_dict,
-                hot_models=hot_models if 'hot_models' in locals() else None
+                hot_models=hot_models_for_json
+                if hot_models_for_json is not None
+                else hot_models_short,
+                recent_flow=json_recent_flow,
+                next_model_predictions=json_next_model_predictions,
             )
     except Exception as e:
         # 履歴保存に失敗しても予測結果は返す

@@ -5,7 +5,7 @@
 import os
 import sys
 import argparse
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
@@ -60,6 +60,36 @@ def analyze_hot_models(target_draw: int, lookback: int = 5, top_k: int = 100, qu
     # スコアが高い順にソート
     sorted_methods = sorted(method_scores.items(), key=lambda x: x[1], reverse=True)
     return sorted_methods, flow
+
+
+def next_model_predictions_from_flow(flow: List[Dict[str, Any]], top_n: int = 3) -> List[Dict[str, Any]]:
+    """各回の最強モデル履歴から、直近の最強モデルの「次」に来やすいモデルを集計する（predict_hot_models --json と同ロジック）"""
+    from collections import Counter
+
+    if not flow or len(flow) < 2:
+        return []
+    transitions: List[Tuple[str, str]] = []
+    for i in range(len(flow) - 1):
+        transitions.append((flow[i]["model"], flow[i + 1]["model"]))
+    last_model = flow[-1]["model"]
+    next_counts = Counter(
+        next_m for prev_m, next_m in transitions if prev_m == last_model
+    )
+    total_transitions = sum(next_counts.values())
+    if total_transitions == 0:
+        return []
+    next_preds: List[Dict[str, Any]] = []
+    for m, c in next_counts.most_common(top_n):
+        next_preds.append(
+            {
+                "model": m,
+                "probability": c / total_transitions,
+                "count": c,
+                "total": total_transitions,
+            }
+        )
+    return next_preds
+
 
 def run_backtest(latest_draw: int, lookback: int = 5, backtest_count: int = 50, top_k: int = 100):
     """
@@ -159,30 +189,13 @@ def main():
         
         if args.json:
             import json
-            from collections import Counter
-            
-            # 遷移分析
-            transitions = []
-            for i in range(len(flow)-1):
-                transitions.append((flow[i]["model"], flow[i+1]["model"]))
-                
+
             last_model = flow[-1]["model"] if flow else None
-            next_counts = Counter([next_m for prev_m, next_m in transitions if prev_m == last_model])
-            total_transitions = sum(next_counts.values())
-            
-            next_preds = []
-            if total_transitions > 0:
-                for m, c in next_counts.most_common(3):
-                    next_preds.append({
-                        "model": m,
-                        "probability": c / total_transitions,
-                        "count": c,
-                        "total": total_transitions
-                    })
-                    
+            next_preds = next_model_predictions_from_flow(flow, top_n=3)
+
             result = {
                 "hot_models": [{"model": m, "score": s} for m, s in hot_models],
-                "recent_flow": flow[-10:],
+                "recent_flow": flow[-11:],
                 "last_model": last_model,
                 "next_model_predictions": next_preds
             }

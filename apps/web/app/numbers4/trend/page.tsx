@@ -31,8 +31,10 @@ async function fetchTrendData(targetDraw: number) {
     const lastRun = preds[preds.length - 1];
     return {
       hotModels: lastRun.hot_models || [],
-      recentFlow: lastRun.recent_flow || [],
-      nextPredictions: lastRun.next_model_predictions || []
+      recentFlow: [...(lastRun.recent_flow || [])].sort(
+        (a, b) => (a.draw ?? 0) - (b.draw ?? 0),
+      ),
+      nextPredictions: lastRun.next_model_predictions || [],
     };
   } catch (error) {
     console.error("Failed to fetch trend data:", error);
@@ -138,28 +140,28 @@ export default async function HotModelTrendPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <WavesIcon className="size-5 text-blue-500" />
-                    直近10回の最強モデルのながれ
+                    直近の最強モデルのながれ
                   </CardTitle>
                   <CardDescription>
-                    各回で最も成績が良かったモデルの履歴です。モデルの「連チャン」や「遷移パターン」を読むヒントになります。
+                    各回で最も成績が良かったモデルの履歴です（JSON では直近11回分を保存）。
+                    モデルの「連チャン」や「遷移パターン」を読むヒントになります。
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
-                    {recentFlow.map((flow, i) => (
-                      <div key={flow.draw} className="flex items-center gap-4 text-sm">
-                        <span className="text-muted-foreground font-mono w-16">第{flow.draw}回</span>
-                        <div className="flex-1 flex items-center gap-2">
-                          <span className="font-medium text-foreground bg-muted px-2 py-0.5 rounded-md text-xs font-mono">
-                            {flow.model}
-                          </span>
-                          <span className="text-muted-foreground text-xs">
-                            (スコア: {flow.score.toFixed(1)})
-                          </span>
-                        </div>
-                      </div>
+                  <ul className="space-y-2 font-mono text-sm">
+                    {recentFlow.map((flow) => (
+                      <li
+                        key={flow.draw}
+                        className="text-foreground flex flex-wrap items-baseline gap-x-2"
+                      >
+                        <span className="text-muted-foreground">• 第{flow.draw}回:</span>
+                        <span>{flow.model}</span>
+                        <span className="text-muted-foreground font-sans text-xs tabular-nums">
+                          (スコア: {flow.score.toFixed(1)})
+                        </span>
+                      </li>
                     ))}
-                  </div>
+                  </ul>
                 </CardContent>
               </Card>
             )}

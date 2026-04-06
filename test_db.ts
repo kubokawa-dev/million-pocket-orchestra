@@ -16,6 +16,7 @@ async function main() {
     const payload = data[0].payload;
     const preds = payload.predictions;
     const lastRun = preds[preds.length - 1];
+    console.log(lastRun.hot_models);
     console.log(lastRun.next_model_predictions);
   }
 }

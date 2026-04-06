@@ -12,6 +12,7 @@ import {
   FlameIcon,
   ArrowRightIcon,
   LightbulbIcon,
+  WavesIcon,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -1073,6 +1074,9 @@ export async function Numbers4PredictionsHub({
         .slice(0, 14)
     : [];
   const hotModels = latest?.hot_models || [];
+  const recentFlow = [...(latest?.recent_flow ?? [])].sort(
+    (a, b) => (a.draw ?? 0) - (b.draw ?? 0),
+  );
   const nextPredictions = latest?.next_model_predictions || [];
 
   const consensus = buildMethodConsensus(data.methodRows, 3);
@@ -1557,6 +1561,51 @@ export async function Numbers4PredictionsHub({
                           <ArrowRightIcon className="size-3" />
                         </Link>
                       </div>
+                    </div>
+                  )}
+
+                  {recentFlow.length > 0 && (
+                    <div className="mt-8 border-t border-border/60 pt-6">
+                      <div
+                        className="text-muted-foreground mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide"
+                        title="各抽選回で評価スコアが最も高かったモデル（直近の履歴）"
+                      >
+                        <WavesIcon className="size-3.5 text-sky-500" />
+                        直近の各回チャンプ
+                      </div>
+                      <p className="text-muted-foreground mb-3 text-[0.7rem] leading-snug">
+                        回ごとに「その回の当選に対して一番当たりが良かった」モデルIDです。箇条書きは{" "}
+                        <code className="font-mono text-[0.65rem]">第○回: slug</code>{" "}
+                        の形（トレンドページでも同じデータを見られます）。
+                      </p>
+                      <ul className="max-h-56 space-y-1.5 overflow-y-auto pr-1 font-mono text-[0.7rem] leading-relaxed">
+                        {recentFlow.map((flow) => {
+                          const ja = getEnsembleWeightJaLabel(flow.model);
+                          return (
+                            <li
+                              key={flow.draw}
+                              className="text-foreground flex flex-wrap items-baseline gap-x-2 gap-y-0.5"
+                            >
+                              <span className="text-muted-foreground shrink-0">
+                                • 第{flow.draw}回:
+                              </span>
+                              <span className="text-foreground">{flow.model}</span>
+                              {ja != null && ja !== "" ? (
+                                <span className="text-muted-foreground font-sans text-[0.65rem]">
+                                  ({ja})
+                                </span>
+                              ) : null}
+                              {flow.score != null ? (
+                                <span className="text-muted-foreground font-sans text-[0.65rem] tabular-nums">
+                                  {flow.score.toLocaleString("ja-JP", {
+                                    maximumFractionDigits: 2,
+                                  })}
+                                </span>
+                              ) : null}
+                            </li>
+                          );
+                        })}
+                      </ul>
                     </div>
                   )}
 
