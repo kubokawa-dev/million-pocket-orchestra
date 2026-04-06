@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.4",
+  "checkpoint_id": "144c7346788f",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    ".omc/state/hud-state.json"
+  ],
+  "sessions": [
+    {
+      "metadata": "/14/4c7346788f/0/metadata.json",
+      "transcript": "/14/4c7346788f/0/full.jsonl",
+      "context": "/14/4c7346788f/0/context.md",
+      "content_hash": "/14/4c7346788f/0/content_hash.txt",
+      "prompt": "/14/4c7346788f/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 4,
+    "cache_creation_tokens": 10269,
+    "cache_read_tokens": 28457,
+    "output_tokens": 583,
+    "api_call_count": 2
+  }
+}
