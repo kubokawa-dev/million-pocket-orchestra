@@ -311,6 +311,43 @@ with tabs[1]:
 with tabs[2]:
     st.header("予測履歴と当選確認")
     
+    st.subheader("🔥 Hot Model トレンド (直近50回)")
+    st.write("過去50回でどのモデルが一番強かったかを分析します！")
+    
+    if st.button("トレンドを分析する！"):
+        with st.spinner("過去50回分のデータを分析中...✨"):
+            try:
+                from numbers4.predict_hot_models import analyze_hot_models
+                # 最新の回を取得
+                df_n4 = load_n4_draws(limit=1)
+                if not df_n4.empty:
+                    latest_draw = int(df_n4.iloc[0]['draw_number'])
+                    target_draw = latest_draw + 1
+                    
+                    hot_models = analyze_hot_models(target_draw, lookback=50, top_k=100, quiet=True)
+                    
+                    if hot_models:
+                        # データフレームに変換して表示
+                        import pandas as pd
+                        trend_df = pd.DataFrame(hot_models, columns=["モデル名", "トレンドスコア"])
+                        trend_df.index = range(1, len(trend_df) + 1)
+                        
+                        col1, col2 = st.columns([1, 1])
+                        with col1:
+                            st.dataframe(trend_df, use_container_width=True)
+                        
+                        with col2:
+                            top_model = hot_models[0][0]
+                            st.success(f"💖 今一番キテるのは【{top_model}】だよ！")
+                            st.info("※ このスコアは毎回の予測時に自動で計算されて、上位モデルにはボーナスポイントが加算されるよ！")
+                            
+                            # 棒グラフで可視化
+                            st.bar_chart(trend_df.set_index("モデル名"))
+            except Exception as e:
+                st.error(f"エラーが発生しました: {e}")
+                
+    st.divider()
+    
     st.subheader("Numbers 4 最新データ")
     df_n4 = load_n4_draws()
     st.dataframe(df_n4, use_container_width=True)
