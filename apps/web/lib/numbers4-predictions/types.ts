@@ -12,6 +12,7 @@ export type EnsemblePredictionRun = {
   time_jst?: string;
   ensemble_weights?: Record<string, number>;
   top_predictions?: EnsembleTopPrediction[];
+  hot_models?: { model: string; score: number }[];
 };
 
 export type EnsemblePayload = {

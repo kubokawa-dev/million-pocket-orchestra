@@ -1,7 +1,4 @@
 import type { Metadata } from "next";
-import { exec } from "child_process";
-import { promisify } from "util";
-import path from "path";
 import { ArrowLeftIcon, FlameIcon } from "lucide-react";
 import Link from "next/link";
 
@@ -14,10 +11,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { resolveTargetDrawNumber } from "@/lib/numbers4-predictions/load-6949";
+import { loadNumbers4PredictionBundleForDraw, resolveTargetDrawNumber } from "@/lib/numbers4-predictions/load-6949";
 import { cn } from "@/lib/utils";
-
-const execAsync = promisify(exec);
 
 export const dynamic = "force-dynamic";
 
@@ -28,17 +23,13 @@ export const metadata: Metadata = {
 
 async function fetchHotModels(targetDraw: number) {
   try {
-    const repoRoot = path.join(process.cwd(), "..", "..");
-    const scriptPath = path.join(repoRoot, "numbers4", "predict_hot_models.py");
-    
-    // Pythonスクリプトを--jsonフラグ付きで実行して結果を取得
-    const { stdout } = await execAsync(
-      `python ${scriptPath} --target ${targetDraw} --lookback 50 --json`,
-      { cwd: repoRoot }
-    );
-    
-    const data = JSON.parse(stdout);
-    return data as { model: string; score: number }[];
+    const bundle = await loadNumbers4PredictionBundleForDraw(targetDraw);
+    if (!bundle || !bundle.ensemble || !bundle.ensemble.predictions) {
+      return [];
+    }
+    const preds = bundle.ensemble.predictions;
+    const lastRun = preds[preds.length - 1];
+    return lastRun.hot_models || [];
   } catch (error) {
     console.error("Failed to fetch hot models:", error);
     return [];

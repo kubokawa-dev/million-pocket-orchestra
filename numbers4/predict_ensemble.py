@@ -724,7 +724,8 @@ def generate_ensemble_prediction(progress_callback=None):
                 predictions_df=final_predictions_df,
                 ensemble_weights=ensemble_weights,
                 target_draw_number=target_draw,
-                similar_patterns=similar_patterns_dict
+                similar_patterns=similar_patterns_dict,
+                hot_models=hot_models if 'hot_models' in locals() else None
             )
     except Exception as e:
         # 履歴保存に失敗しても予測結果は返す
