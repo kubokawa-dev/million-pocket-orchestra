@@ -153,12 +153,52 @@ jobs:
             fi
           fi
           
+          # DB上の最新抽選回を取得し、分析対象回を補正
+          LATEST_DB_DRAW=$(python -c "
+          import sys
+          sys.path.insert(0, '.')
+          from tools.utils import get_db_connection
+          conn = get_db_connection()
+          cur = conn.cursor()
+          cur.execute('SELECT draw_number FROM numbers4_draws ORDER BY draw_number DESC LIMIT 1')
+          row = cur.fetchone()
+          print(int(row[0]) if row else 0)
+          conn.close()
+          " 2>/dev/null || echo "0")
+          
+          ANALYSIS_DRAW="$DRAW_NUMBER"
+          if [ "$LATEST_DB_DRAW" -gt 0 ] && [ "$DRAW_NUMBER" -gt "$LATEST_DB_DRAW" ]; then
+            echo "⚠️ Target draw #${DRAW_NUMBER} result is not in DB yet (latest: #${LATEST_DB_DRAW})"
+            echo "↩️ Fallback to latest available draw #${LATEST_DB_DRAW} for analysis"
+            ANALYSIS_DRAW="$LATEST_DB_DRAW"
+          fi
+          
+          # 分析対象回号の予測ファイル存在チェック（なければスキップ）
+          ANALYSIS_PRED_FILE=""
+          if [ -f "predictions/daily/numbers4_${ANALYSIS_DRAW}.json" ]; then
+            ANALYSIS_PRED_FILE="predictions/daily/numbers4_${ANALYSIS_DRAW}.json"
+          elif [ -f "predictions/daily/${ANALYSIS_DRAW}.json" ]; then
+            ANALYSIS_PRED_FILE="predictions/daily/${ANALYSIS_DRAW}.json"
+          fi
+          
+          if [ -z "$ANALYSIS_PRED_FILE" ]; then
+            echo "⚠️ No prediction file for analysis draw #${ANALYSIS_DRAW}"
+            echo "should_run=false" >> $GITHUB_OUTPUT
+            echo "draw_number=$ANALYSIS_DRAW" >> $GITHUB_OUTPUT
+            echo "latest_db_draw=$LATEST_DB_DRAW" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          echo "should_run=true" >> $GITHUB_OUTPUT
+          echo "draw_number=$ANALYSIS_DRAW" >> $GITHUB_OUTPUT
+          echo "latest_db_draw=$LATEST_DB_DRAW" >> $GITHUB_OUTPUT
+          
           # 予測データの情報を表示
           PRED_FILE=""
-          if [ -f "predictions/daily/numbers4_${DRAW_NUMBER}.json" ]; then
-            PRED_FILE="predictions/daily/numbers4_${DRAW_NUMBER}.json"
-          elif [ -f "predictions/daily/${DRAW_NUMBER}.json" ]; then
-            PRED_FILE="predictions/daily/${DRAW_NUMBER}.json"
+          if [ -f "predictions/daily/numbers4_${ANALYSIS_DRAW}.json" ]; then
+            PRED_FILE="predictions/daily/numbers4_${ANALYSIS_DRAW}.json"
+          elif [ -f "predictions/daily/${ANALYSIS_DRAW}.json" ]; then
+            PRED_FILE="predictions/daily/${ANALYSIS_DRAW}.json"
           fi
           
           if [ -n "$PRED_FILE" ]; then
@@ -172,6 +212,7 @@ jobs:
           fi
       
       - name: Run analysis
+        if: steps.check.outputs.should_run == 'true'
         id: analysis
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -203,6 +244,7 @@ jobs:
           echo "draw_number=$DRAW_NUMBER" >> $GITHUB_OUTPUT
       
       - name: Run model learning (update weights & probabilities)
+        if: steps.check.outputs.should_run == 'true'
         id: learning
         run: |
           DRAW_NUMBER="${{ steps.analysis.outputs.draw_number }}"
@@ -246,6 +288,7 @@ jobs:
           echo "✅ Model learning completed!"
       
       - name: Upsert latest draw result to Supabase
+        if: steps.check.outputs.should_run == 'true'
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -263,6 +306,7 @@ jobs:
           echo "✅ Draw #${DRAW_NUMBER} upserted to Supabase!"
 
       - name: Commit analysis report, learning results & CSV data
+        if: steps.check.outputs.should_run == 'true'
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
@@ -286,9 +330,17 @@ jobs:
       
       - name: Summary
         run: |
-          DRAW_NUMBER="${{ steps.analysis.outputs.draw_number }}"
+          DRAW_NUMBER="${{ steps.check.outputs.draw_number }}"
+          SHOULD_RUN="${{ steps.check.outputs.should_run }}"
           echo ""
           echo "=========================================="
+          if [ "$SHOULD_RUN" != "true" ]; then
+            echo "⚠️ Numbers4 分析をスキップしました"
+            echo "   - 分析対象回号: 第${DRAW_NUMBER}回"
+            echo "   - 理由: 分析に必要な予測ファイル/当選結果が未準備"
+            echo "=========================================="
+            exit 0
+          fi
           echo "✅ Numbers4 分析 & 学習 完了！"
           echo "=========================================="
           echo "📊 分析レポート: reports/analysis_${DRAW_NUMBER}.md"
