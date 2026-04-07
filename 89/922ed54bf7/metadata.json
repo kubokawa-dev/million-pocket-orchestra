@@ -1,0 +1,51 @@
+{
+  "cli_version": "0.4.4",
+  "checkpoint_id": "89922ed54bf7",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "apps/web/app/.well-known/ai-plugin.json/route.ts",
+    "apps/web/app/api/numbers4/latest/route.ts",
+    "apps/web/app/ar/page.tsx",
+    "apps/web/app/blog/[slug]/page.tsx",
+    "apps/web/app/blog/page.tsx",
+    "apps/web/app/en/blog/page.tsx",
+    "apps/web/app/en/page.tsx",
+    "apps/web/app/es/page.tsx",
+    "apps/web/app/faq/page.tsx",
+    "apps/web/app/feed.xml/route.ts",
+    "apps/web/app/hi/page.tsx",
+    "apps/web/app/ko/page.tsx",
+    "apps/web/app/layout.tsx",
+    "apps/web/app/llms-full.txt/route.ts",
+    "apps/web/app/llms.txt/route.ts",
+    "apps/web/app/manifest.ts",
+    "apps/web/app/numbers4/page.tsx",
+    "apps/web/app/numbers4/result/page.tsx",
+    "apps/web/app/numbers4/stats/page.tsx",
+    "apps/web/app/numbers4/trend/page.tsx",
+    "apps/web/app/opengraph-image.tsx",
+    "apps/web/app/page.tsx",
+    "apps/web/app/sitemap.ts",
+    "apps/web/app/zh/page.tsx",
+    "apps/web/components/home-landing.tsx",
+    "apps/web/lib/breadcrumb-jsonld.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/89/922ed54bf7/0/metadata.json",
+      "transcript": "/89/922ed54bf7/0/full.jsonl",
+      "context": "/89/922ed54bf7/0/context.md",
+      "content_hash": "/89/922ed54bf7/0/content_hash.txt",
+      "prompt": "/89/922ed54bf7/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 2512,
+    "cache_creation_tokens": 20049,
+    "cache_read_tokens": 803031,
+    "output_tokens": 4267,
+    "api_call_count": 10
+  }
+}
