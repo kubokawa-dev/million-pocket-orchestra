@@ -122,6 +122,17 @@ export function HomeLanding() {
               FAQ
             </Link>
             <span className="text-border">|</span>
+            <Link href="/en" className="text-primary font-medium underline-offset-4 hover:underline">
+              English
+            </Link>
+            <span className="text-border">|</span>
+            <Link
+              href="/en/blog"
+              className="text-primary font-medium underline-offset-4 hover:underline"
+            >
+              Blog (EN)
+            </Link>
+            <span className="text-border">|</span>
             <Link
               href="/llms.txt"
               className="text-primary font-medium underline-offset-4 hover:underline"

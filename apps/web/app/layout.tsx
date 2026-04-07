@@ -54,6 +54,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "ja_JP",
+    alternateLocale: ["en_US"],
     url: siteOrigin,
     siteName: "宝くじAI",
     title: "宝くじAI | ナンバーズ4 抽選結果・予測",

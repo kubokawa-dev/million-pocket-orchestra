@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 
 import { blogPosts } from "@/lib/blog/posts";
+import { blogPostsEn } from "@/lib/blog/posts-en";
 import { numbers4DrawDateToIsoDate } from "@/lib/numbers4-draw-page-seo";
 import { resolvePublicSupabaseConfig } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
@@ -18,6 +19,8 @@ const STATIC_PATHS: {
     { path: "/numbers4/trend", changeFrequency: "daily", priority: 0.85 },
     { path: "/blog", changeFrequency: "weekly", priority: 0.75 },
     { path: "/faq", changeFrequency: "monthly", priority: 0.7 },
+    { path: "/en", changeFrequency: "monthly", priority: 0.88 },
+    { path: "/en/blog", changeFrequency: "weekly", priority: 0.82 },
   ];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -39,6 +42,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: new Date(post.publishedAt),
       changeFrequency: "monthly",
       priority: 0.65,
+    });
+  }
+
+  for (const post of blogPostsEn) {
+    entries.push({
+      url: `${origin}/en/blog/${post.slug}`,
+      lastModified: new Date(post.publishedAt),
+      changeFrequency: "monthly",
+      priority: 0.7,
     });
   }
 

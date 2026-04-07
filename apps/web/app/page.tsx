@@ -1,10 +1,16 @@
 import type { Metadata } from "next";
 
 import { HomeLanding } from "@/components/home-landing";
-import { getSiteOrigin } from "@/lib/site";
+import { absoluteUrl, getSiteOrigin } from "@/lib/site";
 
 export const metadata: Metadata = {
-  alternates: { canonical: "/" },
+  alternates: {
+    canonical: "/",
+    languages: {
+      ja: absoluteUrl("/"),
+      en: absoluteUrl("/en"),
+    },
+  },
   openGraph: {
     url: getSiteOrigin(),
     title: "宝くじAI | ナンバーズ4の本気ダッシュボード",

@@ -9,52 +9,63 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getPostsSortedByDate } from "@/lib/blog/posts";
+import { getEnPostsSortedByDate } from "@/lib/blog/posts-en";
+import { absoluteUrl } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "ブログ",
+  title: "Blog — Numbers4 guides (English)",
   description:
-    "ナンバーズ4・当選番号一覧・予測ダッシュボードの使い方や読み方を記事にまとめています。",
-  alternates: { canonical: "/blog" },
+    "English articles: what Numbers4 is, how to use the results list, and how to read predictions, stats, and trends on Takarakuji AI.",
+  alternates: {
+    canonical: "/en/blog",
+    languages: {
+      ja: absoluteUrl("/blog"),
+      en: absoluteUrl("/en/blog"),
+    },
+  },
   openGraph: {
-    title: "ブログ | 宝くじAI",
+    title: "Blog (English) | Takarakuji AI",
     description:
-      "サイトの使い方、予測・統計ページの見方など、SEO向けの解説記事を掲載しています。",
-    url: "/blog",
+      "Guides for international readers: Numbers4 basics and how to navigate this dashboard.",
+    url: absoluteUrl("/en/blog"),
+    locale: "en_US",
+    alternateLocale: ["ja_JP"],
+    type: "website",
   },
 };
 
-export default function BlogIndexPage() {
-  const posts = getPostsSortedByDate();
+export default function EnglishBlogIndexPage() {
+  const posts = getEnPostsSortedByDate();
 
   return (
-    <div className="flex flex-1 flex-col">
+    <div lang="en" className="flex flex-1 flex-col">
       <div className="mx-auto w-full max-w-2xl flex-1 space-y-10 px-4 py-10 sm:px-6 sm:py-14">
         <header className="space-y-3">
           <Badge variant="secondary" className="mb-1">
             <BookOpenIcon data-icon="inline-start" className="size-3.5" />
-            Blog
+            Blog · English
           </Badge>
           <h1 className="text-foreground font-heading text-3xl font-semibold tracking-tight sm:text-4xl">
-            ブログ
+            English articles
           </h1>
           <p className="text-muted-foreground text-sm leading-relaxed sm:text-base">
-            宝くじAIの使い方や、ナンバーズ4の結果・予測まわりの読み方を整理した記事です。
-            海外向けの英語解説は{" "}
+            Short guides for overseas visitors and LLM-friendly context. The
+            app UI is mostly Japanese; these posts explain how to use it
+            responsibly.{" "}
             <Link
-              href="/en/blog"
+              href="/blog"
               className="text-primary font-medium underline-offset-4 hover:underline"
             >
-              English blog
+              Japanese blog
             </Link>
-            からどうぞ。
+            .
           </p>
         </header>
 
         <ul className="space-y-4">
           {posts.map((post) => (
             <li key={post.slug}>
-              <Link href={`/blog/${post.slug}`} className="group block">
+              <Link href={`/en/blog/${post.slug}`} className="group block">
                 <Card className="border-border/80 transition-shadow group-hover:shadow-md">
                   <CardHeader className="pb-4">
                     <p className="text-muted-foreground mb-1 text-xs">
@@ -67,7 +78,7 @@ export default function BlogIndexPage() {
                       {post.description}
                     </CardDescription>
                     <span className="text-primary mt-2 inline-flex items-center gap-1 text-sm font-medium">
-                      続きを読む
+                      Read more
                       <ArrowRightIcon className="size-4 transition-transform group-hover:translate-x-0.5" />
                     </span>
                   </CardHeader>

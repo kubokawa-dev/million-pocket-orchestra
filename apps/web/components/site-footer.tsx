@@ -4,6 +4,8 @@ const footerLinks = [
   { href: "/blog", label: "ブログ" },
   { href: "/faq", label: "よくある質問" },
   { href: "/numbers4", label: "ナンバーズ4" },
+  { href: "/en", label: "English" },
+  { href: "/en/blog", label: "Blog (EN)" },
   { href: "/llms.txt", label: "llms.txt（AI向け要約）" },
 ] as const;
 
