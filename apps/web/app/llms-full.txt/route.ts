@@ -80,8 +80,11 @@ Takarakuji AI is an **unofficial** web dashboard for Japan's Numbers4 (ナンバ
 
 ## API endpoints
 
+- ${o}/data-sources — Official verification links + machine-readable URL index
 - ${o}/api/numbers4/latest — Latest draw results and predictions (JSON)
-- ${o}/feed.xml — RSS feed of blog articles
+- ${o}/api/openapi.json — OpenAPI 3.1 specification
+- ${o}/api/oembed — oEmbed for draw pages (query: url, format=json)
+- ${o}/feed.xml — RSS feed of blog articles (categories per item)
 - ${o}/sitemap.xml — XML sitemap with hreflang
 - ${o}/llms.txt — Short LLM summary
 - ${o}/llms-full.txt — This file (full context)

@@ -2,6 +2,10 @@ import type { MetadataRoute } from "next";
 
 import { blogPosts } from "@/lib/blog/posts";
 import { blogPostsEn } from "@/lib/blog/posts-en";
+import {
+  getLatestBlogLastModified,
+  resolveSiteHubLastModified,
+} from "@/lib/content-last-modified";
 import { numbers4DrawDateToIsoDate } from "@/lib/numbers4-draw-page-seo";
 import { resolvePublicSupabaseConfig } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
@@ -19,6 +23,7 @@ const STATIC_PATHS: {
     { path: "/numbers4/trend", changeFrequency: "daily", priority: 0.85 },
     { path: "/blog", changeFrequency: "weekly", priority: 0.75 },
     { path: "/faq", changeFrequency: "monthly", priority: 0.7 },
+    { path: "/data-sources", changeFrequency: "monthly", priority: 0.62 },
     { path: "/en", changeFrequency: "monthly", priority: 0.88 },
     { path: "/en/blog", changeFrequency: "weekly", priority: 0.82 },
     { path: "/zh", changeFrequency: "monthly", priority: 0.85 },
@@ -31,6 +36,8 @@ const STATIC_PATHS: {
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const origin = getSiteOrigin();
   const lastModified = new Date();
+  const blogLastMod = getLatestBlogLastModified();
+  const hubLastMod = await resolveSiteHubLastModified(lastModified);
 
   // Pages that have multilingual alternates
   const allLangAlternates: Record<string, string> = {
@@ -62,15 +69,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   };
 
   const entries: MetadataRoute.Sitemap = STATIC_PATHS.map(
-    ({ path, changeFrequency, priority }) => ({
-      url: path === "" ? origin : `${origin}${path}`,
-      lastModified,
-      changeFrequency,
-      priority,
-      ...(hreflangMap[path]
-        ? { alternates: { languages: hreflangMap[path] } }
-        : {}),
-    }),
+    ({ path, changeFrequency, priority }) => {
+      const isBlogIndex = path === "/blog" || path === "/en/blog";
+      const lastMod = isBlogIndex ? blogLastMod : hubLastMod;
+      return {
+        url: path === "" ? origin : `${origin}${path}`,
+        lastModified: lastMod,
+        changeFrequency,
+        priority,
+        ...(hreflangMap[path]
+          ? { alternates: { languages: hreflangMap[path] } }
+          : {}),
+      };
+    },
   );
 
   for (const post of blogPosts) {

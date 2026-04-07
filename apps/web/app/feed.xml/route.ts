@@ -12,16 +12,21 @@ export function GET() {
   const latestDate = allPosts[0]?.publishedAt ?? new Date().toISOString().slice(0, 10);
 
   const items = allPosts
-    .map(
-      (post) => `    <item>
+    .map((post) => {
+      const category =
+        post.lang === "en" ? "English" : "日本語";
+      return `    <item>
       <title><![CDATA[${post.title}]]></title>
       <link>${origin}${post.urlPrefix}/${post.slug}</link>
       <guid isPermaLink="true">${origin}${post.urlPrefix}/${post.slug}</guid>
       <description><![CDATA[${post.description}]]></description>
       <pubDate>${new Date(post.publishedAt).toUTCString()}</pubDate>
       <dc:language>${post.lang}</dc:language>
-    </item>`,
-    )
+      <category><![CDATA[${category}]]></category>
+      <category><![CDATA[Numbers4]]></category>
+      <category><![CDATA[Takarakuji AI]]></category>
+    </item>`;
+    })
     .join("\n");
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>

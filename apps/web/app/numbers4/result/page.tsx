@@ -25,7 +25,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "ナンバーズ4 当選番号一覧",
   description:
-    "ナンバーズ4の過去の抽選結果（当選番号・等級別口数・払戻金）を一覧表示します。",
+    "ナンバーズ4の過去の抽選結果（当選番号・等級別口数・払戻金）を一覧表示します。 EN: Past Numbers4 winning numbers list (unofficial; verify with Mizuho / official sources).",
   alternates: { canonical: "/numbers4/result" },
   openGraph: {
     title: "ナンバーズ4 当選番号一覧 | 宝くじAI",

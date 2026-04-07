@@ -19,7 +19,8 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Hot Model トレンド分析 | ナンバーズ4",
-  description: "直近50回の成績から、いま一番「キテる」モデルを分析します。",
+  description:
+    "直近50回の成績から、いま一番「キテる」モデルを分析します。 EN: Hot model trend view for Numbers4 predictions (unofficial).",
   alternates: { canonical: "/numbers4/trend" },
   openGraph: {
     title: "Hot Model トレンド分析 | ナンバーズ4",

@@ -27,7 +27,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "ボックス順位の統計 | ナンバーズ4",
   description:
-    "直近の開催回について、アンサンブル・手法別の予測リスト内で当選番号（ボックス一致）が何位以内に入ったかを集計します。",
+    "直近の開催回について、アンサンブル・手法別の予測リスト内で当選番号（ボックス一致）が何位以内に入ったかを集計します。 EN: Box-rank stats for recent Numbers4 draws (unofficial).",
   alternates: { canonical: "/numbers4/stats" },
   openGraph: {
     title: "ボックス順位の統計 | ナンバーズ4",

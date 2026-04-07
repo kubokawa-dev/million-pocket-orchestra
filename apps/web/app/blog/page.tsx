@@ -12,6 +12,8 @@ import {
 import { buildBreadcrumbJsonLd } from "@/lib/breadcrumb-jsonld";
 import { getPostsSortedByDate } from "@/lib/blog/posts";
 
+export const revalidate = 3600;
+
 export const metadata: Metadata = {
   title: "ブログ",
   description:

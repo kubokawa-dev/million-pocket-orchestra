@@ -14,6 +14,8 @@ import { cn } from "@/lib/utils";
 
 type PageProps = { params: Promise<{ slug: string }> };
 
+export const revalidate = 3600;
+
 export function generateStaticParams() {
   return getAllEnBlogSlugs().map((slug) => ({ slug }));
 }

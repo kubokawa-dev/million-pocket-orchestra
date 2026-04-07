@@ -13,6 +13,8 @@ import { buildBreadcrumbJsonLd } from "@/lib/breadcrumb-jsonld";
 import { getEnPostsSortedByDate } from "@/lib/blog/posts-en";
 import { absoluteUrl } from "@/lib/site";
 
+export const revalidate = 3600;
+
 export const metadata: Metadata = {
   title: "Blog — Numbers4 guides (English)",
   description:

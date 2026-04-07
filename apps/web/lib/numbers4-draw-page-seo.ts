@@ -25,3 +25,8 @@ export function buildNumbers4DrawPageDescription(
 
   return `ナンバーズ4 第${drawNumber}回の${datePart}${winningPart}アンサンブル・手法別・予算プランの日次予測と照合を宝くじAIで一覧できます。`;
 }
+
+/** メタ description 用の英語サフィックス（検索・SNS 向け） */
+export function numbers4DrawEnglishMetaSuffix(drawNumber: number): string {
+  return ` EN: Unofficial Japan Numbers4 draw #${drawNumber} — results & model predictions; always verify on official lottery sites.`;
+}

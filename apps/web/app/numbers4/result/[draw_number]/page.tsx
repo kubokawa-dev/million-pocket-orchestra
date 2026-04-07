@@ -1,11 +1,17 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { Numbers4DrawPageChrome } from "@/components/numbers4-draw-page-chrome";
 import { Numbers4PredictionsHub } from "../../numbers4-predictions-hub";
 import {
   buildNumbers4DrawPageDescription,
   numbers4DrawDateToIsoDate,
+  numbers4DrawEnglishMetaSuffix,
 } from "@/lib/numbers4-draw-page-seo";
+import {
+  fetchAdjacentDrawNumbers,
+  fetchSameMonthDrawNumbers,
+} from "@/lib/numbers4-draw-neighbors";
 import { getCachedNumbers4DrawFullRow } from "@/lib/numbers4-predictions/load-6949";
 import { getSiteOrigin } from "@/lib/site";
 
@@ -25,7 +31,8 @@ export async function generateMetadata({
   }
 
   const row = await getCachedNumbers4DrawFullRow(n);
-  const description = buildNumbers4DrawPageDescription(n, row);
+  const description =
+    buildNumbers4DrawPageDescription(n, row) + numbers4DrawEnglishMetaSuffix(n);
   const title = `第${n}回 ナンバーズ4 予測・当選照合`;
   const ogDate = numbers4DrawDateToIsoDate(row?.draw_date);
 
@@ -50,7 +57,7 @@ export async function generateMetadata({
       ...(ogDate ? { publishedTime: ogDate } : {}),
     },
     twitter: {
-      card: "summary",
+      card: "summary_large_image",
       title: `${title} | 宝くじAI`,
       description,
     },
@@ -67,6 +74,10 @@ export default async function Numbers4ResultDrawPredictionsPage({
   }
 
   const row = await getCachedNumbers4DrawFullRow(drawNumber);
+  const [adjacent, sameMonthDraws] = await Promise.all([
+    fetchAdjacentDrawNumbers(drawNumber),
+    fetchSameMonthDrawNumbers(row?.draw_date, drawNumber),
+  ]);
   const origin = getSiteOrigin();
   const description = buildNumbers4DrawPageDescription(drawNumber, row);
   const pageName = `第${drawNumber}回 ナンバーズ4 予測・当選照合`;
@@ -124,6 +135,13 @@ export default async function Numbers4ResultDrawPredictionsPage({
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <Numbers4DrawPageChrome
+        drawNumber={drawNumber}
+        row={row}
+        prevDraw={adjacent.prev}
+        nextDraw={adjacent.next}
+        sameMonthDraws={sameMonthDraws}
       />
       <Numbers4PredictionsHub
         targetDrawNumber={drawNumber}

@@ -3,6 +3,7 @@ import Link from "next/link";
 const footerLinks = [
   { href: "/blog", label: "ブログ" },
   { href: "/faq", label: "よくある質問" },
+  { href: "/data-sources", label: "データ・API" },
   { href: "/numbers4", label: "ナンバーズ4" },
   { href: "/en", label: "English" },
   { href: "/en/blog", label: "Blog (EN)" },

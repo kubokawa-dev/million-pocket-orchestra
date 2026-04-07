@@ -28,7 +28,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "ナンバーズ4",
   description:
-    "日次予測（アンサンブル・モデル別・予算プラン）と当選番号一覧への入口です。",
+    "日次予測（アンサンブル・モデル別・予算プラン）と当選番号一覧への入口です。 EN: Unofficial Numbers4 hub — predictions, stats, and results (verify officially).",
   alternates: { canonical: "/numbers4" },
   openGraph: {
     title: "ナンバーズ4 | 宝くじAI",

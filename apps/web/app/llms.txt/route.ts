@@ -45,9 +45,12 @@ export function GET() {
 
 ## Machine-readable endpoints
 
+- ${o}/data-sources — Human-readable list of sources, official links, and APIs
 - ${o}/llms-full.txt — Full context with blog article texts
-- ${o}/feed.xml — RSS feed
+- ${o}/feed.xml — RSS feed (per-item categories: language, Numbers4, Takarakuji AI)
 - ${o}/api/numbers4/latest — Latest draw results (JSON, CORS-enabled)
+- ${o}/api/openapi.json — OpenAPI 3.1 description of public endpoints
+- ${o}/api/oembed?url={canonical_draw_page}&format=json — oEmbed for /numbers4/result/{n}
 - ${o}/.well-known/ai-plugin.json — AI plugin manifest
 - ${o}/sitemap.xml — XML sitemap with hreflang
 
