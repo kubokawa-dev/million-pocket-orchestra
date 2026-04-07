@@ -9,9 +9,9 @@ export type BlogPost = {
 export const blogPosts: BlogPost[] = [
   {
     slug: "numbers4-results-and-list",
-    title: "ナンバーズ4の当選番号を一覧で見る（Million Pocketの使い方）",
+    title: "ナンバーズ4の当選番号を一覧で見る（宝くじAIの使い方）",
     description:
-      "当選番号一覧の見方、ページ送り、スマホでの横スクロールまで。たからくじAI（Million Pocket）の基本操作をまとめます。",
+      "当選番号一覧の見方、ページ送り、スマホでの横スクロールまで。宝くじAIの基本操作をまとめます。",
     publishedAt: "2026-04-01",
     bodyMarkdown: `
 ## この記事でわかること

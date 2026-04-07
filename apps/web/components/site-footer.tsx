@@ -12,9 +12,8 @@ export function SiteFooter() {
     <footer className="border-border/60 bg-background/80 mt-auto border-t">
       <div className="text-muted-foreground mx-auto flex max-w-[1600px] flex-col gap-4 px-4 py-8 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <p className="text-sm">
-          <span className="text-foreground font-medium">Million Pocket</span>
-          <span className="mx-1.5">·</span>
-          たからくじAI（ナンバーズ4）
+          <span className="text-foreground font-medium">宝くじAI</span>
+          <span className="text-muted-foreground">（ナンバーズ4）</span>
         </p>
         <nav aria-label="フッターナビゲーション">
           <ul className="flex flex-wrap gap-x-4 gap-y-2 text-sm">

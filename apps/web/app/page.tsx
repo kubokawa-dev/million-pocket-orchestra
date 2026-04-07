@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
   openGraph: {
     url: getSiteOrigin(),
-    title: "Million Pocket（たからくじAI）| ナンバーズ4の本気ダッシュボード",
+    title: "宝くじAI | ナンバーズ4の本気ダッシュボード",
     description:
       "当選番号一覧からマルチモデル予測、統計・トレンドまで。Numbers4好きのためのWebアプリ。スマホ最適化UIで数字遊びを加速。",
   },
@@ -20,8 +20,8 @@ const homeJsonLd = {
       "@type": "WebSite",
       "@id": `${getSiteOrigin()}/#website`,
       url: getSiteOrigin(),
-      name: "Million Pocket",
-      alternateName: ["たからくじAI", "Takarakuji AI", "takarakuji-ai.space"],
+      name: "宝くじAI",
+      alternateName: ["Takarakuji AI", "takarakuji-ai.space"],
       description:
         "ナンバーズ4の当選番号・抽選結果の閲覧と、複数モデルによる日次予測・統計・トレンド可視化をまとめたWebアプリ。",
       inLanguage: "ja",
@@ -30,7 +30,7 @@ const homeJsonLd = {
     {
       "@type": "Organization",
       "@id": `${getSiteOrigin()}/#organization`,
-      name: "Million Pocket",
+      name: "宝くじAI",
       url: getSiteOrigin(),
       sameAs: [] as string[],
     },

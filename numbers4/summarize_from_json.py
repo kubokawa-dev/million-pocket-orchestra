@@ -1145,7 +1145,7 @@ def generate_markdown(
     # フッター
     md.append("---")
     md.append("")
-    md.append(f"*Generated at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} by Million Pocket 🎰*")
+    md.append(f"*Generated at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} by 宝くじAI 🎰*")
     
     return "\n".join(md)
 

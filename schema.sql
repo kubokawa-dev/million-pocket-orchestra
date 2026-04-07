@@ -1,4 +1,4 @@
--- Million Pocket SQLite Schema
+-- 宝くじAI SQLite Schema
 -- 宝くじ予測システム用データベーススキーマ
 
 -- ============================================

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Noto_Sans_JP } from "next/font/google";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
+import { Analytics } from "@vercel/analytics/next";
 
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
@@ -32,37 +33,36 @@ const siteVerification = buildSiteVerification();
 export const metadata: Metadata = {
   metadataBase: new URL(siteOrigin),
   title: {
-    default: "Million Pocket（たからくじAI）| ナンバーズ4 抽選結果・予測",
-    template: "%s · Million Pocket",
+    default: "宝くじAI | ナンバーズ4 抽選結果・予測",
+    template: "%s · 宝くじAI",
   },
   description:
     "ナンバーズ4の当選番号・抽選結果を一覧でチェック。複数のAI・統計モデルによる日次予測やボックス順位の統計もまとめて閲覧できます。（takarakuji-ai.space）",
-  applicationName: "Million Pocket",
+  applicationName: "宝くじAI",
   keywords: [
     "ナンバーズ4",
     "宝くじ",
     "抽選結果",
     "当選番号",
     "予測",
-    "たからくじAI",
-    "Million Pocket",
+    "宝くじAI",
     "ブログ",
     "FAQ",
   ],
-  authors: [{ name: "Million Pocket" }],
-  creator: "Million Pocket",
+  authors: [{ name: "宝くじAI" }],
+  creator: "宝くじAI",
   openGraph: {
     type: "website",
     locale: "ja_JP",
     url: siteOrigin,
-    siteName: "Million Pocket（たからくじAI）",
-    title: "Million Pocket（たからくじAI）| ナンバーズ4 抽選結果・予測",
+    siteName: "宝くじAI",
+    title: "宝くじAI | ナンバーズ4 抽選結果・予測",
     description:
       "ナンバーズ4の当選番号一覧と、複数モデルによる日次予測・統計をスマホでも見やすく。",
   },
   twitter: {
     card: "summary",
-    title: "Million Pocket（たからくじAI）",
+    title: "宝くじAI",
     description:
       "ナンバーズ4の抽選結果と予測ダッシュボード。当選番号をすっきり一覧で。",
   },
@@ -98,6 +98,7 @@ export default function RootLayout({
             <SiteFooter />
           </div>
         </NuqsAdapter>
+        <Analytics />
       </body>
     </html>
   );

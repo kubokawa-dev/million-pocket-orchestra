@@ -23,7 +23,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     description: post.description,
     alternates: { canonical: `/blog/${post.slug}` },
     openGraph: {
-      title: `${post.title} · Million Pocket`,
+      title: `${post.title} · 宝くじAI`,
       description: post.description,
       url: `/blog/${post.slug}`,
       type: "article",
@@ -44,8 +44,8 @@ export default async function BlogPostPage({ params }: PageProps) {
     description: post.description,
     datePublished: post.publishedAt,
     inLanguage: "ja",
-    author: { "@type": "Organization", name: "Million Pocket" },
-    publisher: { "@type": "Organization", name: "Million Pocket" },
+    author: { "@type": "Organization", name: "宝くじAI" },
+    publisher: { "@type": "Organization", name: "宝くじAI" },
   };
 
   return (

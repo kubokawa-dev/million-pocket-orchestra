@@ -412,7 +412,7 @@ def generate_report_markdown(analysis: Dict, weight_adjustments: Dict, ai_analys
     # フッター
     md.append("---")
     md.append("")
-    md.append("*Powered by Million Pocket 🎰*")
+    md.append("*Powered by 宝くじAI 🎰*")
     
     return "\n".join(md)
 

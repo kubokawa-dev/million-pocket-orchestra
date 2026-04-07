@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     "ナンバーズ4・当選番号一覧・予測ダッシュボードの使い方や読み方を記事にまとめています。",
   alternates: { canonical: "/blog" },
   openGraph: {
-    title: "ブログ | Million Pocket（たからくじAI）",
+    title: "ブログ | 宝くじAI",
     description:
       "サイトの使い方、予測・統計ページの見方など、SEO向けの解説記事を掲載しています。",
     url: "/blog",
@@ -39,7 +39,7 @@ export default function BlogIndexPage() {
             ブログ
           </h1>
           <p className="text-muted-foreground text-sm leading-relaxed sm:text-base">
-            Million Pocket（たからくじAI）の使い方や、ナンバーズ4の結果・予測まわりの読み方を整理した記事です。
+            宝くじAIの使い方や、ナンバーズ4の結果・予測まわりの読み方を整理した記事です。
           </p>
         </header>
 

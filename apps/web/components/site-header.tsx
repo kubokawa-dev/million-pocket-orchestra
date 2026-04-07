@@ -10,7 +10,7 @@ export function SiteHeader() {
           href="/"
           className="text-foreground hover:text-foreground/80 shrink-0 text-base font-semibold tracking-tight transition-colors"
         >
-          Million Pocket
+          宝くじAI
         </Link>
         <SiteNav />
       </div>

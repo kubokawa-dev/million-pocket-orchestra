@@ -42,4 +42,4 @@
 
 ---
 
-*Powered by Million Pocket 🎰*
+*Powered by 宝くじAI 🎰*

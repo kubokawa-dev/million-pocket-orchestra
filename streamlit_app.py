@@ -16,7 +16,7 @@ load_dotenv()
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 PY = sys.executable or 'python'
 
-st.set_page_config(page_title="Million Pocket - AI Prediction System", layout="wide")
+st.set_page_config(page_title="宝くじAI - AI Prediction System", layout="wide")
 
 def get_db_connection():
     db_url = os.environ.get('DATABASE_URL')
@@ -98,7 +98,7 @@ def load_loto6_predictions(limit: int = 500) -> pd.DataFrame:
 
 # --- UI Components ---
 
-st.title("💰 Million Pocket: AI Lottery Prediction")
+st.title("💰 宝くじAI: AI Lottery Prediction")
 st.markdown("### ナンバーズ4 & ロト6 最強予測システム (v10.0 / Ultimate)")
 
 tabs = st.tabs(["🔢 Numbers 4", "🎱 Loto 6", "📊 History & Stats"])
@@ -361,4 +361,4 @@ with tabs[2]:
     # Simple Hit Check Logic could be added here similar to previous app
     # For now, just showing raw data is a good start.
 
-st.sidebar.info("Developed by Kubocchi Million Pocket Project")
+st.sidebar.info("Developed by Kubocchi 宝くじAI Project")

@@ -11,10 +11,10 @@ import { faqItems } from "@/lib/faq-content";
 export const metadata: Metadata = {
   title: "よくある質問（FAQ）",
   description:
-    "Million Pocket（たからくじAI）の使い方、データの出所、予測の位置づけなどよくある質問と回答。",
+    "宝くじAIの使い方、データの出所、予測の位置づけなどよくある質問と回答。",
   alternates: { canonical: "/faq" },
   openGraph: {
-    title: "よくある質問 | Million Pocket（たからくじAI）",
+    title: "よくある質問 | 宝くじAI",
     description:
       "ナンバーズ4・当選番号・予測についてのFAQ。構造化データ（FAQPage）対応。",
     url: "/faq",
@@ -47,7 +47,7 @@ export default function FaqPage() {
             よくある質問
           </h1>
           <p className="text-muted-foreground text-sm leading-relaxed sm:text-base">
-            Million Pocket（たからくじAI）について、よくいただく内容をまとめました。
+            宝くじAIについて、よくいただく内容をまとめました。
           </p>
         </header>
 

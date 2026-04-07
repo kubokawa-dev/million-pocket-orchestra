@@ -15,7 +15,7 @@
 3. 予測数を絞り込んで精度を上げる
 4. ボックス買いを前提に、カバー範囲を最大化
 
-Created with 💕 by Million Pocket
+Created with 💕 by 宝くじAI
 """
 
 import os

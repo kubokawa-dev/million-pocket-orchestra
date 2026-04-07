@@ -2,7 +2,7 @@ export type FaqItem = { question: string; answer: string };
 
 export const faqItems: FaqItem[] = [
   {
-    question: "Million Pocket（たからくじAI）は何のサイトですか？",
+    question: "宝くじAIは何のサイトですか？",
     answer:
       "ナンバーズ4の当選番号・抽選結果を一覧しやすく表示し、複数のモデルによる日次予測や統計・トレンドをまとめて閲覧できるWebアプリです。宝くじの購入を勧めるサービスではありません。",
   },

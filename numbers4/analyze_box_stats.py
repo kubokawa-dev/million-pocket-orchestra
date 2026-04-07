@@ -246,7 +246,7 @@ def generate_markdown_report(results):
     # フッター
     lines.append("---")
     lines.append("")
-    lines.append(f"*Generated at {now.strftime('%Y-%m-%d %H:%M:%S')} by Million Pocket 📊*")
+    lines.append(f"*Generated at {now.strftime('%Y-%m-%d %H:%M:%S')} by 宝くじAI 📊*")
     
     return "\n".join(lines)
 

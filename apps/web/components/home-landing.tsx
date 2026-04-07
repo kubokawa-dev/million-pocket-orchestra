@@ -70,7 +70,7 @@ export function HomeLanding() {
           <div className="mb-5 flex flex-wrap items-center justify-center gap-2">
             <Badge className="gap-1 border-0 bg-gradient-to-r from-violet-600 to-cyan-600 px-3 py-1 text-white shadow-sm">
               <SparklesIcon className="size-3.5" />
-              たからくじAI
+              宝くじAI
             </Badge>
             <Badge variant="secondary" className="font-medium">
               Numbers4 特化
@@ -86,7 +86,7 @@ export function HomeLanding() {
             ここが本気のメインステージ。
           </h1>
           <p className="text-muted-foreground mx-auto mt-5 max-w-xl text-pretty text-base leading-relaxed sm:text-lg">
-            <strong className="text-foreground font-semibold">Million Pocket</strong>
+            <strong className="text-foreground font-semibold">宝くじAI</strong>
             は、当選番号の閲覧から複数AI・統計モデルの予測、成績の見える化までをまとめた
             <strong className="text-foreground font-semibold">ナンバーズ4専用ダッシュボード</strong>
             。Xで語れるネタも、じっくり検証も、どっちもアリ。
@@ -209,7 +209,7 @@ export function HomeLanding() {
           <Card className="border-border/70 lg:col-span-3 lg:shadow-sm">
             <CardHeader>
               <CardTitle className="font-heading text-lg sm:text-xl">
-                Million Pocket って何者？
+                宝くじAI って何者？
               </CardTitle>
               <CardDescription className="text-sm leading-relaxed">
                 略して「数字とにらめっこするための、ちゃんとしたWebアプリ」です。

@@ -39,12 +39,11 @@ export async function generateMetadata({
       "当選番号",
       "アンサンブル",
       "ボックス",
-      "たからくじAI",
-      "Million Pocket",
+      "宝くじAI",
     ],
     alternates: { canonical: `/numbers4/result/${n}` },
     openGraph: {
-      title: `${title} | Million Pocket`,
+      title: `${title} | 宝くじAI`,
       description,
       url: `/numbers4/result/${n}`,
       type: "article",
@@ -52,7 +51,7 @@ export async function generateMetadata({
     },
     twitter: {
       card: "summary",
-      title: `${title} | Million Pocket`,
+      title: `${title} | 宝くじAI`,
       description,
     },
   };
