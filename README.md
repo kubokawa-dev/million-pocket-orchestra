@@ -2,6 +2,16 @@
 
 ナンバーズ3・ナンバーズ4・ロト6の過去データをもとに、複数モデルによる予測・可視化・分析を行うPythonベースのアプリケーションです。
 
+## Discoverability / 検索・海外向け
+
+英語圏・中東などの検索エンジンや GitHub 探索で見つけやすくするためのキーワードです（コンテンツの本質は変えません）。
+
+### English (for search engines & GitHub)
+
+**Million Pocket Orchestra** — Open-source Python toolkit for **Japan Takarakuji** lottery analytics: **Numbers3**, **Numbers4**, and **Loto6** using historical draws, **ensemble machine learning** (e.g. LightGBM), SQLite workflows, optional **Streamlit** UI, and **GitHub Actions** for scheduled pipelines. For research and transparency; not gambling advice and not affiliated with any official operator.
+
+**Suggested GitHub Topics** (set in repo Settings → General → Topics): `python`, `machine-learning`, `ensemble-learning`, `lightgbm`, `streamlit`, `github-actions`, `sqlite`, `takarakuji`, `numbers4`, `loto6`, `japan-lottery`, `lottery-analysis`, `data-science`.
+
 ## ✨ 主な機能
 
 - 📊 過去の抽選データ・予測データの管理（SQLiteデータベース）
@@ -13,7 +23,7 @@
 ## 📁 ディレクトリ構成
 
 ```
-million-pocket/
+million-pocket-orchestra/
 ├── numbers3/                    # ナンバーズ3予測ロジック
 ├── numbers4/                    # ナンバーズ4予測ロジック
 ├── loto6/                       # ロト6予測ロジック
@@ -42,7 +52,7 @@ million-pocket/
 ```bash
 # リポジトリをクローン
 git clone <your-repo-url>
-cd million-pocket
+cd million-pocket-orchestra
 
 # Python仮想環境を作成（推奨）
 python -m venv .venv

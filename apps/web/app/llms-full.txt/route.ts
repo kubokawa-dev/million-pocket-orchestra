@@ -63,6 +63,14 @@ Takarakuji AI is an **unofficial** web dashboard for Japan's Numbers4 (ナンバ
 - Hindi: ${o}/hi
 - Arabic: ${o}/ar
 
+## Arabic overview (ملخص بالعربية)
+
+> **تاكاراكوجي AI** — موقع وتحليلات **غير رسمية** ليانصيب **Numbers4** في اليابان: قوائم نتائج السحب العلنية، إحصائيات واتجاهات، وتنبؤات يومية من عدة نماذج (بيانات تاريخية عامة). **ليس** تابعًا لميزوهو بنك أو أي مشغّل يانصيب رسمي. التنبؤات للبحث والاطلاع فقط وليست نصيحة مالية أو مقامرة.
+>
+> **نقطة الدخول بالعربية:** ${o}/ar
+>
+> **روابط مفيدة (واجهة يابانية أساسًا):** ${o}/numbers4 — ${o}/numbers4/result — ${o}/numbers4/stats — ${o}/numbers4/trend
+
 ## Technical stack
 
 - Framework: Next.js (App Router)

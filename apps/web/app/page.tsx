@@ -32,9 +32,15 @@ const homeJsonLd = {
       "@id": `${getSiteOrigin()}/#website`,
       url: getSiteOrigin(),
       name: "宝くじAI",
-      alternateName: ["Takarakuji AI", "takarakuji-ai.space", "تاكاراكوجي AI"],
+      alternateName: [
+        "Takarakuji AI",
+        "takarakuji-ai.space",
+        "تاكاراكوجي AI",
+        "Japan Numbers4 lottery dashboard",
+        "لوحة يانصيب أرقام اليابان",
+      ],
       description:
-        "ナンバーズ4の当選番号・抽選結果の閲覧と、複数モデルによる日次予測・統計・トレンド可視化をまとめたWebアプリ。",
+        "ナンバーズ4の当選番号・抽選結果の閲覧と、複数モデルによる日次予測・統計・トレンド可視化をまとめたWebアプリ。 English: Unofficial Japan Numbers4 results and analytics; see /en and /ar for overviews.",
       inLanguage: "ja",
       publisher: { "@id": `${getSiteOrigin()}/#organization` },
     },

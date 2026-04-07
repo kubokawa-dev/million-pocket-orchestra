@@ -34,6 +34,20 @@ const pageDescription =
 export const metadata: Metadata = {
   title: "تاكاراكوجي AI — نتائج وتنبؤات Numbers4 (نظرة عامة)",
   description: pageDescription,
+  keywords: [
+    "Numbers4",
+    "نمبرز 4",
+    "اليانصيب الياباني",
+    "يانصيب اليابان",
+    "نتائج السحب",
+    "الأرقام الفائزة",
+    "تاكاراكوجي",
+    "Takarakuji AI",
+    "Japan lottery",
+    "Japanese lottery",
+    "lottery statistics",
+    "draw results",
+  ],
   alternates: {
     canonical: "/ar",
     languages: {

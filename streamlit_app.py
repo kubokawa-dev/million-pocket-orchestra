@@ -16,7 +16,11 @@ load_dotenv()
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 PY = sys.executable or 'python'
 
-st.set_page_config(page_title="宝くじAI - AI Prediction System", layout="wide")
+st.set_page_config(
+    page_title="Takarakuji AI — Numbers4 / Loto6 prediction (宝くじAI)",
+    page_icon="🎰",
+    layout="wide",
+)
 
 def get_db_connection():
     db_url = os.environ.get('DATABASE_URL')
