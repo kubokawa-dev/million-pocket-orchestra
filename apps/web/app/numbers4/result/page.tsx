@@ -9,7 +9,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { buildBreadcrumbJsonLd } from "@/lib/breadcrumb-jsonld";
 import { createClient } from "@/lib/supabase/server";
+import { getSiteOrigin } from "@/lib/site";
 import { NUMBERS4_PAGE_SIZE, type Numbers4DrawRow } from "@/lib/numbers4";
 
 import { buildWinningModelHitsForDrawList } from "@/lib/numbers4-predictions/load-6949";
@@ -102,8 +104,55 @@ export default async function Numbers4ResultPage({ searchParams }: PageProps) {
     })),
   );
 
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd([
+    { name: "ナンバーズ4", path: "/numbers4" },
+    { name: "当選番号一覧", path: "/numbers4/result" },
+  ]);
+
+  const origin = getSiteOrigin();
+  const datasetJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Dataset",
+    name: "ナンバーズ4 当選番号データセット",
+    alternateName: "Numbers4 Draw Results Dataset",
+    description:
+      "日本のナンバーズ4の過去の抽選結果（当選番号・等級別口数・払戻金）を収録したデータセット。公開データから取得。",
+    url: `${origin}/numbers4/result`,
+    license: "https://creativecommons.org/publicdomain/zero/1.0/",
+    creator: {
+      "@type": "Organization",
+      name: "宝くじAI",
+      url: origin,
+    },
+    distribution: [
+      {
+        "@type": "DataDownload",
+        encodingFormat: "application/json",
+        contentUrl: `${origin}/api/numbers4/latest`,
+      },
+    ],
+    temporalCoverage: "..",
+    keywords: [
+      "Numbers4",
+      "ナンバーズ4",
+      "lottery",
+      "宝くじ",
+      "draw results",
+      "当選番号",
+      "Japan",
+    ],
+  };
+
   return (
     <div className="flex flex-1 flex-col">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(datasetJsonLd) }}
+      />
       <div className="mx-auto w-full max-w-[1600px] flex-1 space-y-8 px-4 py-8 sm:space-y-10 sm:px-6 sm:py-10">
         <Card className="border-border/80 shadow-sm ring-1 ring-black/5 dark:ring-white/10">
           <CardHeader className="border-border/60 space-y-4 border-b pb-6 sm:pb-6">

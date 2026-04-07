@@ -21,11 +21,45 @@ const STATIC_PATHS: {
     { path: "/faq", changeFrequency: "monthly", priority: 0.7 },
     { path: "/en", changeFrequency: "monthly", priority: 0.88 },
     { path: "/en/blog", changeFrequency: "weekly", priority: 0.82 },
+    { path: "/zh", changeFrequency: "monthly", priority: 0.85 },
+    { path: "/ko", changeFrequency: "monthly", priority: 0.85 },
+    { path: "/es", changeFrequency: "monthly", priority: 0.85 },
+    { path: "/hi", changeFrequency: "monthly", priority: 0.85 },
+    { path: "/ar", changeFrequency: "monthly", priority: 0.85 },
   ];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const origin = getSiteOrigin();
   const lastModified = new Date();
+
+  // Pages that have multilingual alternates
+  const allLangAlternates: Record<string, string> = {
+    ja: origin,
+    en: `${origin}/en`,
+    zh: `${origin}/zh`,
+    ko: `${origin}/ko`,
+    es: `${origin}/es`,
+    hi: `${origin}/hi`,
+    ar: `${origin}/ar`,
+  };
+
+  const hreflangMap: Record<string, Record<string, string>> = {
+    "": allLangAlternates,
+    "/en": allLangAlternates,
+    "/zh": allLangAlternates,
+    "/ko": allLangAlternates,
+    "/es": allLangAlternates,
+    "/hi": allLangAlternates,
+    "/ar": allLangAlternates,
+    "/blog": {
+      ja: `${origin}/blog`,
+      en: `${origin}/en/blog`,
+    },
+    "/en/blog": {
+      ja: `${origin}/blog`,
+      en: `${origin}/en/blog`,
+    },
+  };
 
   const entries: MetadataRoute.Sitemap = STATIC_PATHS.map(
     ({ path, changeFrequency, priority }) => ({
@@ -33,6 +67,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified,
       changeFrequency,
       priority,
+      ...(hreflangMap[path]
+        ? { alternates: { languages: hreflangMap[path] } }
+        : {}),
     }),
   );
 

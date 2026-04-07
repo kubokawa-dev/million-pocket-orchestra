@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { buildBreadcrumbJsonLd } from "@/lib/breadcrumb-jsonld";
 import { getEnPostsSortedByDate } from "@/lib/blog/posts-en";
 import { absoluteUrl } from "@/lib/site";
 
@@ -36,9 +37,17 @@ export const metadata: Metadata = {
 
 export default function EnglishBlogIndexPage() {
   const posts = getEnPostsSortedByDate();
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd([
+    { name: "English", path: "/en" },
+    { name: "Blog", path: "/en/blog" },
+  ]);
 
   return (
     <div lang="en" className="flex flex-1 flex-col">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
       <div className="mx-auto w-full max-w-2xl flex-1 space-y-10 px-4 py-10 sm:px-6 sm:py-14">
         <header className="space-y-3">
           <Badge variant="secondary" className="mb-1">

@@ -9,6 +9,11 @@ export const metadata: Metadata = {
     languages: {
       ja: absoluteUrl("/"),
       en: absoluteUrl("/en"),
+      zh: absoluteUrl("/zh"),
+      ko: absoluteUrl("/ko"),
+      es: absoluteUrl("/es"),
+      hi: absoluteUrl("/hi"),
+      ar: absoluteUrl("/ar"),
     },
   },
   openGraph: {
@@ -27,7 +32,7 @@ const homeJsonLd = {
       "@id": `${getSiteOrigin()}/#website`,
       url: getSiteOrigin(),
       name: "宝くじAI",
-      alternateName: ["Takarakuji AI", "takarakuji-ai.space"],
+      alternateName: ["Takarakuji AI", "takarakuji-ai.space", "تاكاراكوجي AI"],
       description:
         "ナンバーズ4の当選番号・抽選結果の閲覧と、複数モデルによる日次予測・統計・トレンド可視化をまとめたWebアプリ。",
       inLanguage: "ja",

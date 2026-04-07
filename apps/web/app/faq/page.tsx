@@ -6,6 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { buildBreadcrumbJsonLd } from "@/lib/breadcrumb-jsonld";
 import { faqItems } from "@/lib/faq-content";
 
 export const metadata: Metadata = {
@@ -22,6 +23,10 @@ export const metadata: Metadata = {
 };
 
 export default function FaqPage() {
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd([
+    { name: "よくある質問", path: "/faq" },
+  ]);
+
   const faqJsonLd = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -37,6 +42,10 @@ export default function FaqPage() {
 
   return (
     <div className="flex flex-1 flex-col">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}

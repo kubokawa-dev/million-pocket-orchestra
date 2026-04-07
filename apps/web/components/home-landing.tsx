@@ -133,6 +133,26 @@ export function HomeLanding() {
               Blog (EN)
             </Link>
             <span className="text-border">|</span>
+            <Link href="/zh" className="text-primary font-medium underline-offset-4 hover:underline">
+              中文
+            </Link>
+            <span className="text-border">|</span>
+            <Link href="/ko" className="text-primary font-medium underline-offset-4 hover:underline">
+              한국어
+            </Link>
+            <span className="text-border">|</span>
+            <Link href="/es" className="text-primary font-medium underline-offset-4 hover:underline">
+              Español
+            </Link>
+            <span className="text-border">|</span>
+            <Link href="/hi" className="text-primary font-medium underline-offset-4 hover:underline">
+              हिन्दी
+            </Link>
+            <span className="text-border">|</span>
+            <Link href="/ar" className="text-primary font-medium underline-offset-4 hover:underline">
+              العربية
+            </Link>
+            <span className="text-border">|</span>
             <Link
               href="/llms.txt"
               className="text-primary font-medium underline-offset-4 hover:underline"

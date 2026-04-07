@@ -19,6 +19,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { buildBreadcrumbJsonLd } from "@/lib/breadcrumb-jsonld";
 import { resolveTargetDrawNumber } from "@/lib/numbers4-predictions/load-6949";
 import { cn } from "@/lib/utils";
 
@@ -41,8 +42,16 @@ export default async function Numbers4Page() {
   const latestDraw = await resolveTargetDrawNumber();
   const latestHref = `/numbers4/result/${latestDraw}`;
 
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd([
+    { name: "ナンバーズ4", path: "/numbers4" },
+  ]);
+
   return (
     <div className="flex flex-1 flex-col">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
       <div className="mx-auto w-full max-w-3xl flex-1 space-y-10 px-4 py-10 sm:space-y-12 sm:px-6 sm:py-14">
         <header className="space-y-4 text-center sm:text-left">
           <Badge variant="secondary" className="mb-1">

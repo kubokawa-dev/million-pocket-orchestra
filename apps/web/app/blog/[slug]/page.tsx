@@ -5,6 +5,7 @@ import { ArrowLeftIcon } from "lucide-react";
 
 import { MarkdownBody } from "@/components/markdown-body";
 import { buttonVariants } from "@/components/ui/button-variants";
+import { buildBreadcrumbJsonLd } from "@/lib/breadcrumb-jsonld";
 import { getAllBlogSlugs, getPostBySlug } from "@/lib/blog/posts";
 import { cn } from "@/lib/utils";
 
@@ -37,6 +38,11 @@ export default async function BlogPostPage({ params }: PageProps) {
   const post = getPostBySlug(slug);
   if (!post) notFound();
 
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd([
+    { name: "ブログ", path: "/blog" },
+    { name: post.title, path: `/blog/${post.slug}` },
+  ]);
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "BlogPosting",
@@ -50,6 +56,10 @@ export default async function BlogPostPage({ params }: PageProps) {
 
   return (
     <div className="flex flex-1 flex-col">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

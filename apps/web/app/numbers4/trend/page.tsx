@@ -11,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { buildBreadcrumbJsonLd } from "@/lib/breadcrumb-jsonld";
 import { loadNumbers4PredictionBundleForDraw, resolveTargetDrawNumber } from "@/lib/numbers4-predictions/load-6949";
 import { cn } from "@/lib/utils";
 
@@ -53,8 +54,17 @@ export default async function HotModelTrendPage() {
   const latestDraw = await resolveTargetDrawNumber();
   const { hotModels, recentFlow, nextPredictions } = await fetchTrendData(latestDraw);
 
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd([
+    { name: "ナンバーズ4", path: "/numbers4" },
+    { name: "Hot Model トレンド分析", path: "/numbers4/trend" },
+  ]);
+
   return (
     <div className="flex flex-1 flex-col">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
       <div className="mx-auto w-full max-w-3xl flex-1 space-y-8 px-4 py-10 sm:px-6 sm:py-14">
         <div className="flex items-start gap-4">
           <Link

@@ -18,6 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { buildBreadcrumbJsonLd } from "@/lib/breadcrumb-jsonld";
 import { computeBoxRankStats } from "@/lib/numbers4-predictions/box-rank-stats";
 import { cn } from "@/lib/utils";
 
@@ -59,8 +60,17 @@ export default async function Numbers4StatsPage({ searchParams }: PageProps) {
   const mkHref = (l: number, k: number) =>
     `/numbers4/stats?last=${l}&topK=${k}`;
 
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd([
+    { name: "ナンバーズ4", path: "/numbers4" },
+    { name: "ボックス順位の統計", path: "/numbers4/stats" },
+  ]);
+
   return (
     <div className="flex flex-1 flex-col">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
       <div className="mx-auto w-full max-w-6xl flex-1 space-y-8 px-4 py-10 sm:px-6 sm:py-14">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-2">

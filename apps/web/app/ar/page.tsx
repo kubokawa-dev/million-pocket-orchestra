@@ -1,42 +1,41 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { getEnPostsSortedByDate } from "@/lib/blog/posts-en";
 import { absoluteUrl, getSiteOrigin } from "@/lib/site";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 
-const enFaq = [
+const arFaq = [
   {
-    question: "What is Takarakuji AI?",
+    question: "ما هو تاكاراكوجي AI؟",
     answer:
-      "An unofficial web app focused on Japan’s Numbers4 lottery: browse official draw results, explore statistics and trends, and compare multiple daily prediction models. The interface is mostly Japanese; this page summarizes the service in English for international visitors and AI systems.",
+      "تطبيق ويب غير رسمي يركّز على يانصيب Numbers4 الياباني: تصفّح نتائج السحب الرسمية، واستكشف الإحصائيات والاتجاهات، وقارن بين نماذج التنبّؤ اليومية المتعددة. الواجهة باللغة اليابانية بشكل أساسي؛ تلخّص هذه الصفحة الخدمة بالعربية للزوّار الدوليين.",
   },
   {
-    question: "Is this official or affiliated with the lottery?",
+    question: "هل هذا الموقع رسمي أو تابع للقرعة؟",
     answer:
-      "No. It is not affiliated with Mizuho Bank, the Japan Lottery, or any operator. Always verify results with official sources before relying on them.",
+      "لا. لا علاقة له ببنك ميزوهو أو اليانصيب الياباني أو أي مشغّل رسمي. تحقّق دائمًا من النتائج عبر المصادر الرسمية قبل الاعتماد عليها.",
   },
   {
-    question: "Do predictions guarantee wins?",
+    question: "هل التنبؤات تضمن الفوز؟",
     answer:
-      "No. Predictions are experimental and based on public historical data. They are for research and entertainment only, not financial or gambling advice.",
+      "لا. التنبؤات تجريبية ومبنية على بيانات تاريخية عامة. وهي للبحث والترفيه فقط، وليست نصيحة مالية أو تشجيعًا على المقامرة.",
   },
   {
-    question: "Where can I see winning numbers?",
+    question: "أين يمكنني رؤية الأرقام الفائزة؟",
     answer:
-      "Use the results index at /numbers4/result or per-draw pages linked from the hub. Primary UI labels are in Japanese.",
+      "استخدم فهرس النتائج في /numbers4/result أو صفحات كل سحب المرتبطة بالمركز. العناوين الأساسية باللغة اليابانية.",
   },
 ] as const;
 
 const pageDescription =
-  "Unofficial Numbers4 (Japan) dashboard: official-style results listing, statistics, trends, and multi-model daily predictions. English overview; app UI is mainly Japanese.";
+  "لوحة معلومات غير رسمية لنمبرز 4 (اليابان): قوائم النتائج، الإحصائيات، الاتجاهات، والتنبؤات اليومية متعددة النماذج. نظرة عامة بالعربية؛ واجهة التطبيق يابانية بشكل أساسي.";
 
 export const metadata: Metadata = {
-  title: "Takarakuji AI — Numbers4 results & predictions (overview)",
+  title: "تاكاراكوجي AI — نتائج وتنبؤات Numbers4 (نظرة عامة)",
   description: pageDescription,
   alternates: {
-    canonical: "/en",
+    canonical: "/ar",
     languages: {
       ja: absoluteUrl("/"),
       en: absoluteUrl("/en"),
@@ -49,29 +48,28 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: "website",
-    locale: "en_US",
-    alternateLocale: ["ja_JP", "ar_SA"],
-    url: absoluteUrl("/en"),
-    title: "Takarakuji AI — Numbers4 results & predictions",
+    locale: "ar_SA",
+    alternateLocale: ["ja_JP", "en_US"],
+    url: absoluteUrl("/ar"),
+    title: "تاكاراكوجي AI — نتائج وتنبؤات Numbers4",
     description:
-      "Browse Numbers4 draw results, stats, and model predictions. Unofficial fan/analytics site; not affiliated with any lottery operator.",
+      "تصفّح نتائج سحب Numbers4، الإحصائيات، وتنبؤات النماذج. موقع تحليلي غير رسمي؛ غير مرتبط بأي مشغّل يانصيب.",
   },
   twitter: {
     card: "summary",
-    title: "Takarakuji AI — Numbers4",
+    title: "تاكاراكوجي AI — Numbers4",
     description:
-      "Unofficial Numbers4 results & prediction dashboard (Japan). English overview page.",
+      "لوحة نتائج وتنبؤات Numbers4 غير رسمية (اليابان). صفحة نظرة عامة بالعربية.",
   },
 };
 
-export default function EnglishOverviewPage() {
+export default function ArabicOverviewPage() {
   const origin = getSiteOrigin();
-  const enPosts = getEnPostsSortedByDate();
   const faqJsonLd = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-    inLanguage: "en",
-    mainEntity: enFaq.map((item) => ({
+    inLanguage: "ar",
+    mainEntity: arFaq.map((item) => ({
       "@type": "Question",
       name: item.question,
       acceptedAnswer: {
@@ -84,22 +82,22 @@ export default function EnglishOverviewPage() {
   const webPageJsonLd = {
     "@context": "https://schema.org",
     "@type": "WebPage",
-    "@id": `${origin}/en#webpage`,
-    url: `${origin}/en`,
-    name: "Takarakuji AI — English overview",
+    "@id": `${origin}/ar#webpage`,
+    url: `${origin}/ar`,
+    name: "تاكاراكوجي AI — نظرة عامة بالعربية",
     description: pageDescription,
-    inLanguage: "en",
+    inLanguage: "ar",
     isPartOf: { "@id": `${origin}/#website` },
     about: {
       "@type": "Thing",
       name: "Numbers4",
       description:
-        "A numbers-style lottery game in Japan (four digits). This site is unofficial.",
+        "لعبة يانصيب أرقام في اليابان (أربعة أرقام). هذا الموقع غير رسمي.",
     },
   };
 
   return (
-    <div lang="en" className="flex flex-1 flex-col">
+    <div lang="ar" dir="rtl" className="flex flex-1 flex-col">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
@@ -110,24 +108,31 @@ export default function EnglishOverviewPage() {
       />
       <div className="mx-auto w-full max-w-2xl flex-1 space-y-10 px-4 py-10 sm:px-6 sm:py-14">
         <header className="space-y-3">
-          <p className="text-muted-foreground text-sm font-medium tracking-wide uppercase">
-            English overview · LLM-friendly summary
+          <p className="text-muted-foreground text-sm font-medium tracking-wide">
+            نظرة عامة بالعربية · ملخص صديق للذكاء الاصطناعي
           </p>
           <h1 className="text-foreground font-heading text-3xl font-semibold tracking-tight sm:text-4xl">
-            Takarakuji AI
+            تاكاراكوجي AI
           </h1>
           <p className="text-muted-foreground text-base leading-relaxed">
-            Unofficial{" "}
-            <strong className="text-foreground">Numbers4</strong> (Japan)
-            dashboard: winning numbers, statistics, trends, and multiple daily
-            prediction models—built from public data.{" "}
-            <strong className="text-foreground">Not</strong> affiliated with any
-            lottery operator.{" "}
+            لوحة معلومات غير رسمية لـ{" "}
+            <strong className="text-foreground">Numbers4</strong> (اليابان):
+            الأرقام الفائزة، الإحصائيات، الاتجاهات، ونماذج تنبؤ يومية متعددة
+            — مبنية على بيانات عامة.{" "}
+            <strong className="text-foreground">غير</strong> مرتبط بأي مشغّل
+            يانصيب.{" "}
             <Link
               href="/"
               className="text-primary font-medium underline-offset-4 hover:underline"
             >
-              Japanese home
+              الصفحة الرئيسية (يابانية)
+            </Link>
+            {" · "}
+            <Link
+              href="/en"
+              className="text-primary font-medium underline-offset-4 hover:underline"
+            >
+              English
             </Link>
             .
           </p>
@@ -135,7 +140,7 @@ export default function EnglishOverviewPage() {
 
         <section className="space-y-3">
           <h2 className="text-foreground text-lg font-semibold">
-            Key pages (Japanese UI)
+            الصفحات الرئيسية (واجهة يابانية)
           </h2>
           <ul className="text-muted-foreground list-inside list-disc space-y-2 text-sm leading-relaxed sm:text-base">
             <li>
@@ -145,7 +150,7 @@ export default function EnglishOverviewPage() {
               >
                 /numbers4
               </Link>{" "}
-              — hub for predictions and tools
+              — مركز التنبؤات والأدوات
             </li>
             <li>
               <Link
@@ -154,7 +159,7 @@ export default function EnglishOverviewPage() {
               >
                 /numbers4/result
               </Link>{" "}
-              — results index
+              — فهرس النتائج
             </li>
             <li>
               <Link
@@ -163,14 +168,14 @@ export default function EnglishOverviewPage() {
               >
                 /numbers4/stats
               </Link>
-              ,{" "}
+              ،{" "}
               <Link
                 href="/numbers4/trend"
                 className="text-primary font-medium underline-offset-4 hover:underline"
               >
                 /numbers4/trend
               </Link>{" "}
-              — analytics
+              — التحليلات
             </li>
             <li>
               <Link
@@ -179,42 +184,17 @@ export default function EnglishOverviewPage() {
               >
                 /llms.txt
               </Link>{" "}
-              — machine-readable site summary
+              — ملخص الموقع للآلات
             </li>
           </ul>
         </section>
 
-        <section className="space-y-3">
-          <h2 className="text-foreground text-lg font-semibold">
-            English guides (blog)
-          </h2>
-          <p className="text-muted-foreground text-sm leading-relaxed sm:text-base">
-            Longer explainers for international readers and search/LLM context.{" "}
-            <Link
-              href="/en/blog"
-              className="text-primary font-medium underline-offset-4 hover:underline"
-            >
-              All English articles →
-            </Link>
-          </p>
-          <ul className="text-muted-foreground list-inside list-disc space-y-2 text-sm leading-relaxed sm:text-base">
-            {enPosts.map((post) => (
-              <li key={post.slug}>
-                <Link
-                  href={`/en/blog/${post.slug}`}
-                  className="text-primary font-medium underline-offset-4 hover:underline"
-                >
-                  {post.title}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-
         <section className="space-y-4">
-          <h2 className="text-foreground text-lg font-semibold">FAQ</h2>
+          <h2 className="text-foreground text-lg font-semibold">
+            الأسئلة الشائعة
+          </h2>
           <div className="space-y-6">
-            {enFaq.map((item) => (
+            {arFaq.map((item) => (
               <div key={item.question} className="space-y-2">
                 <h3 className="text-foreground text-base font-medium">
                   {item.question}
@@ -235,7 +215,7 @@ export default function EnglishOverviewPage() {
               "bg-gradient-to-r from-violet-600 to-cyan-600 text-white shadow-md hover:from-violet-500 hover:to-cyan-500",
             )}
           >
-            Open Numbers4 hub
+            افتح مركز Numbers4
           </Link>
         </div>
       </div>

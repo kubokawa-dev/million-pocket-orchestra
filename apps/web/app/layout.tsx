@@ -54,7 +54,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "ja_JP",
-    alternateLocale: ["en_US"],
+    alternateLocale: ["en_US", "zh_CN", "ko_KR", "es_ES", "hi_IN", "ar_SA"],
     url: siteOrigin,
     siteName: "宝くじAI",
     title: "宝くじAI | ナンバーズ4 抽選結果・予測",
@@ -62,10 +62,15 @@ export const metadata: Metadata = {
       "ナンバーズ4の当選番号一覧と、複数モデルによる日次予測・統計をスマホでも見やすく。",
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "宝くじAI",
     description:
       "ナンバーズ4の抽選結果と予測ダッシュボード。当選番号をすっきり一覧で。",
+  },
+  alternates: {
+    types: {
+      "application/rss+xml": "/feed.xml",
+    },
   },
   robots: {
     index: true,
