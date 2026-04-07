@@ -1120,7 +1120,7 @@ export async function Numbers4PredictionsHub({
           <div className="space-y-3">
             <SourceBadges data={data} />
             <h1 className="text-foreground font-heading text-3xl font-semibold tracking-tight sm:text-4xl">
-              ナンバーズ4 予測
+              第 {data.targetDrawNumber} 回 ナンバーズ4｜予測と当選照合
             </h1>
             <p className="text-muted-foreground max-w-2xl text-sm leading-relaxed sm:text-base">
               Supabase の{" "}

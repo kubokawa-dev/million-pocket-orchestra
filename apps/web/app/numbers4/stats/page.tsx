@@ -27,6 +27,13 @@ export const metadata: Metadata = {
   title: "ボックス順位の統計 | ナンバーズ4",
   description:
     "直近の開催回について、アンサンブル・手法別の予測リスト内で当選番号（ボックス一致）が何位以内に入ったかを集計します。",
+  alternates: { canonical: "/numbers4/stats" },
+  openGraph: {
+    title: "ボックス順位の統計 | ナンバーズ4",
+    description:
+      "予測リスト内での当選番号の順位を、モデル別に集計して比較できます。",
+    url: "/numbers4/stats",
+  },
 };
 
 type PageProps = {

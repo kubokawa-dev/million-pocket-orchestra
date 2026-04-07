@@ -1,5 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { cache } from "react";
 
 import { createClient } from "@/lib/supabase/server";
 import type { Numbers4DrawRow } from "@/lib/numbers4";
@@ -450,3 +451,6 @@ export function getLatestEnsembleRun(
   if (!preds?.length) return null;
   return preds[preds.length - 1] ?? null;
 }
+
+/** 同一リクエスト内で generateMetadata とページ本体の二重取得を避ける */
+export const getCachedNumbers4DrawFullRow = cache(fetchNumbers4DrawFullRow);

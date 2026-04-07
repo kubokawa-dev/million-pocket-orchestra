@@ -19,6 +19,13 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Hot Model トレンド分析 | ナンバーズ4",
   description: "直近50回の成績から、いま一番「キテる」モデルを分析します。",
+  alternates: { canonical: "/numbers4/trend" },
+  openGraph: {
+    title: "Hot Model トレンド分析 | ナンバーズ4",
+    description:
+      "直近の予測成績から注目モデルを可視化。ナンバーズ4の予測トレンドをチェック。",
+    url: "/numbers4/trend",
+  },
 };
 
 async function fetchTrendData(targetDraw: number) {

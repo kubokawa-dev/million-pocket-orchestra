@@ -24,6 +24,13 @@ export const metadata: Metadata = {
   title: "ナンバーズ4 当選番号一覧",
   description:
     "ナンバーズ4の過去の抽選結果（当選番号・等級別口数・払戻金）を一覧表示します。",
+  alternates: { canonical: "/numbers4/result" },
+  openGraph: {
+    title: "ナンバーズ4 当選番号一覧 | Million Pocket",
+    description:
+      "過去の抽選結果を一覧で確認。予測モデルとの照合表示にも対応。",
+    url: "/numbers4/result",
+  },
 };
 
 type PageProps = {

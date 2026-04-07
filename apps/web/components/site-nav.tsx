@@ -8,6 +8,8 @@ import { cn } from "@/lib/utils";
 const links = [
   { href: "/", label: "ホーム" },
   { href: "/numbers4", label: "ナンバーズ4" },
+  { href: "/blog", label: "ブログ" },
+  { href: "/faq", label: "FAQ" },
 ] as const;
 
 export function SiteNav() {

@@ -1,0 +1,27 @@
+# Million Pocket（たからくじAI / takarakuji-ai.space）
+
+ナンバーズ4の当選番号・抽選結果の閲覧と、複数モデルによる日次予測（アンサンブル・手法別・予算プラン）をまとめたWebアプリです。宝くじの購入を推奨するものではなく、公開データに基づく情報整理と分析のためのサイトです。
+
+## 主要URL
+
+- https://takarakuji-ai.space/ — トップ（サービス紹介）
+- https://takarakuji-ai.space/numbers4 — ナンバーズ4ゾーン入口（予測・統計へのハブ）
+- https://takarakuji-ai.space/numbers4/result — 過去の当選番号一覧
+- https://takarakuji-ai.space/numbers4/stats — ボックス順位などの集計統計
+- https://takarakuji-ai.space/numbers4/trend — モデル別トレンド分析
+- https://takarakuji-ai.space/blog — 使い方・読み方の記事一覧
+- https://takarakuji-ai.space/faq — よくある質問（FAQ）
+
+## 回別予測ページ
+
+`/numbers4/result/{回号}` … その回を対象とした予測ダッシュボード（JSONで取り込んだ予測データを表示）。
+
+## 技術・データ
+
+- フレームワーク: Next.js（App Router）
+- 抽選結果: Supabase の `numbers4_draws` 等に同期された公式結果に基づく
+- 予測: リポジトリ内の日次ジョブで生成された予測JSONを参照
+
+## 連絡・ポリシー
+
+サイト運営者の連絡先や利用規約は、サイト上に掲載がある場合はそちらを優先してください。

@@ -28,6 +28,13 @@ export const metadata: Metadata = {
   title: "ナンバーズ4",
   description:
     "日次予測（アンサンブル・モデル別・予算プラン）と当選番号一覧への入口です。",
+  alternates: { canonical: "/numbers4" },
+  openGraph: {
+    title: "ナンバーズ4 | Million Pocket（たからくじAI）",
+    description:
+      "複数のAI・統計モデルによるナンバーズ4の日次予測と、当選番号・統計ページへのハブ。",
+    url: "/numbers4",
+  },
 };
 
 export default async function Numbers4Page() {
