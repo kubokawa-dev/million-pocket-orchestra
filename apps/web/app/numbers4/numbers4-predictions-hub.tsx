@@ -50,6 +50,7 @@ import {
 import {
   classifyHit,
   createWinningDigitPool,
+  digitsSortedKey,
   hitLabel,
   normalizeNumbers4,
   type HitKind,
@@ -84,6 +85,51 @@ const ENSEMBLE_CONTRIBUTOR_HEAD_TITLE =
 
 const ENSEMBLE_WEIGHTS_HEAD_TITLE =
   "アンサンブル集計時に各モデルへ掛け合わせる重みです。学習結果とデフォルト値が混ざっている場合があります。";
+
+type MethodBoxComboRankRow = {
+  boxKey: string;
+  count: number;
+  modelCount: number;
+  models: string[];
+};
+
+function buildMethodBoxComboRanking(
+  methodRows: MethodPredictionRow[],
+): MethodBoxComboRankRow[] {
+  const acc = new Map<
+    string,
+    { count: number; models: Set<string> }
+  >();
+
+  for (const row of methodRows) {
+    for (const pred of row.topPredictions) {
+      const normalized = normalizeNumbers4(pred.number);
+      const boxKey = digitsSortedKey(normalized);
+      if (!boxKey) continue;
+      const hit = acc.get(boxKey);
+      if (hit) {
+        hit.count += 1;
+        hit.models.add(row.slug);
+      } else {
+        acc.set(boxKey, { count: 1, models: new Set([row.slug]) });
+      }
+    }
+  }
+
+  return [...acc.entries()]
+    .map(([boxKey, v]) => ({
+      boxKey,
+      count: v.count,
+      modelCount: v.models.size,
+      models: [...v.models].sort((a, b) => a.localeCompare(b)),
+    }))
+    .sort(
+      (a, b) =>
+        b.count - a.count ||
+        b.modelCount - a.modelCount ||
+        a.boxKey.localeCompare(b.boxKey),
+    );
+}
 
 export type Numbers4PredictionsHubProps = {
   /** 指定時はその回の予測のみ読み込み（無ければ公式当選のみ or 404） */
@@ -1086,6 +1132,7 @@ export async function Numbers4PredictionsHub({
   const nextPredictions = latest?.next_model_predictions || [];
 
   const consensus = buildMethodConsensus(data.methodRows, 3);
+  const methodBoxComboRank = buildMethodBoxComboRanking(data.methodRows);
 
   const winningModelContrib =
     winningNorm && data.methodRows.length > 0
@@ -1346,6 +1393,81 @@ export async function Numbers4PredictionsHub({
             </CardContent>
           </Card>
         )}
+
+        <Card className="border-border/80 shadow-sm ring-1 ring-black/5 dark:ring-white/10">
+          <CardHeader className="border-border/60 border-b">
+            <div className="flex items-center gap-2">
+              <ListOrderedIcon className="text-muted-foreground size-5" />
+              <div>
+                <CardTitle className="text-lg">
+                  モデル横断 BOX組み合わせランキング
+                </CardTitle>
+                <CardDescription>
+                  各 <code className="font-mono text-xs">method</code> の候補番号を
+                  BOX（順不同）として集約し、出現数の多い順で表示します。
+                  例: 1234 と 4321 は同じ組み合わせとして数えます。
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="px-0 pb-4 pt-0">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="text-muted-foreground w-12 px-3 text-xs">
+                    #
+                  </TableHead>
+                  <TableHead className="text-muted-foreground px-3 text-xs">
+                    BOXキー
+                  </TableHead>
+                  <TableHead className="text-muted-foreground px-3 text-right text-xs">
+                    出現回数
+                  </TableHead>
+                  <TableHead className="text-muted-foreground px-3 text-right text-xs">
+                    出現モデル数
+                  </TableHead>
+                  <TableHead className="text-muted-foreground hidden px-3 text-xs md:table-cell">
+                    モデル
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {methodBoxComboRank.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={5}
+                      className="text-muted-foreground h-20 text-center text-sm"
+                    >
+                      集計対象の method 候補がありません
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  methodBoxComboRank.slice(0, 40).map((row, i) => (
+                    <TableRow key={row.boxKey} className="border-border/60">
+                      <TableCell className="text-muted-foreground px-3 py-2.5 text-xs tabular-nums">
+                        {i + 1}
+                      </TableCell>
+                      <TableCell className="px-3 py-2.5">
+                        <span className="font-mono text-sm font-semibold">
+                          {row.boxKey}
+                        </span>
+                      </TableCell>
+                      <TableCell className="px-3 py-2.5 text-right text-xs tabular-nums">
+                        {row.count}
+                      </TableCell>
+                      <TableCell className="px-3 py-2.5 text-right text-xs tabular-nums">
+                        {row.modelCount}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground hidden px-3 py-2.5 text-xs md:table-cell">
+                        {row.models.join(", ")}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
 
         <div className="grid gap-6 lg:grid-cols-2">
           <Card className="border-border/80 shadow-sm ring-1 ring-black/5 dark:ring-white/10 lg:col-span-2">
