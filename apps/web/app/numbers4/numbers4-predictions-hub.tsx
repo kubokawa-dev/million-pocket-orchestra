@@ -50,6 +50,7 @@ import {
 import {
   classifyHit,
   createWinningDigitPool,
+  digitsSortedKey,
   hitLabel,
   normalizeNumbers4,
   type HitKind,
@@ -85,6 +86,51 @@ const ENSEMBLE_CONTRIBUTOR_HEAD_TITLE =
 const ENSEMBLE_WEIGHTS_HEAD_TITLE =
   "アンサンブル集計時に各モデルへ掛け合わせる重みです。学習結果とデフォルト値が混ざっている場合があります。";
 
+type MethodBoxComboRankRow = {
+  boxKey: string;
+  count: number;
+  modelCount: number;
+  models: string[];
+};
+
+function buildMethodBoxComboRanking(
+  methodRows: MethodPredictionRow[],
+): MethodBoxComboRankRow[] {
+  const acc = new Map<
+    string,
+    { count: number; models: Set<string> }
+  >();
+
+  for (const row of methodRows) {
+    for (const pred of row.topPredictions) {
+      const normalized = normalizeNumbers4(pred.number);
+      const boxKey = digitsSortedKey(normalized);
+      if (!boxKey) continue;
+      const hit = acc.get(boxKey);
+      if (hit) {
+        hit.count += 1;
+        hit.models.add(row.slug);
+      } else {
+        acc.set(boxKey, { count: 1, models: new Set([row.slug]) });
+      }
+    }
+  }
+
+  return [...acc.entries()]
+    .map(([boxKey, v]) => ({
+      boxKey,
+      count: v.count,
+      modelCount: v.models.size,
+      models: [...v.models].sort((a, b) => a.localeCompare(b)),
+    }))
+    .sort(
+      (a, b) =>
+        b.count - a.count ||
+        b.modelCount - a.modelCount ||
+        a.boxKey.localeCompare(b.boxKey),
+    );
+}
+
 export type Numbers4PredictionsHubProps = {
   /** 指定時はその回の予測のみ読み込み（無ければ公式当選のみ or 404） */
   targetDrawNumber?: number;
@@ -95,9 +141,9 @@ export type Numbers4PredictionsHubProps = {
 function SourceBadges({ data }: { data: Numbers4PredictionBundle }) {
   const sourceLabel =
     data.source === "database"
-      ? "Supabase（numbers4_daily_prediction_documents）"
+      ? "オンラインの最新データ"
       : data.source === "repository_files"
-        ? "リポジトリ JSON"
+        ? "サイト同梱の日次ファイル"
         : "内蔵デモ";
 
   return (
@@ -1086,6 +1132,7 @@ export async function Numbers4PredictionsHub({
   const nextPredictions = latest?.next_model_predictions || [];
 
   const consensus = buildMethodConsensus(data.methodRows, 3);
+  const methodBoxComboRank = buildMethodBoxComboRanking(data.methodRows);
 
   const winningModelContrib =
     winningNorm && data.methodRows.length > 0
@@ -1123,18 +1170,12 @@ export async function Numbers4PredictionsHub({
               第 {data.targetDrawNumber} 回 ナンバーズ4｜予測と当選照合
             </h1>
             <p className="text-muted-foreground max-w-2xl text-sm leading-relaxed sm:text-base">
-              Supabase の{" "}
-              <code className="bg-muted rounded px-1 font-mono text-xs">
-                numbers4_daily_prediction_documents
-              </code>{" "}
-              と同じく、
               <strong className="text-foreground"> ensemble / method / budget_plan </strong>
-              の3種類のドキュメントを一覧しやすくまとめています。当選番号が DB
-              に入っていれば、予測との一致も表示します。
+              の3種類の予測ドキュメントを一覧しやすくまとめています。当選番号がサイトに取り込まれていれば、予測との一致も表示します。
             </p>
             {data.source !== "database" && (
               <p className="text-muted-foreground border-border/80 bg-muted/40 max-w-2xl rounded-lg border px-3 py-2 text-xs leading-relaxed">
-                該当する Supabase 行が無いため、リポジトリ内 JSON またはデモデータを表示しています。
+                オンライン側に該当データが無いため、サイト同梱の日次ファイルまたはお試し用データを表示しています。
               </p>
             )}
           </div>
@@ -1162,8 +1203,7 @@ export async function Numbers4PredictionsHub({
               <CardTitle className="text-lg">第 {data.targetDrawNumber} 回 · 当選結果</CardTitle>
             </div>
             <CardDescription>
-              <code className="text-muted-foreground text-xs">numbers4_draws.numbers</code>{" "}
-              と照合（ストレート / ボックス相当）。
+              当サイトに取り込んだ公式当選番号と照合（ストレート / ボックス相当）。
               {winningNorm
                 ? " 下の予測番号で、当選と同じ数字は出現回数の範囲内だけ左から薄い赤で強調します（例: 当選に4が1個なら予測の4は先頭1桁のみ）。"
                 : null}
@@ -1190,11 +1230,7 @@ export async function Numbers4PredictionsHub({
                   抽選前 / 未登録
                 </Badge>
                 <p className="text-muted-foreground text-sm">
-                  この回の当選番号がまだ DB に無いため、「あたり」表示はありません。開催後は{" "}
-                  <code className="bg-muted rounded px-1 font-mono text-xs">
-                    numbers4_draws
-                  </code>{" "}
-                  に取り込むと自動で照合されます。
+                  この回の当選番号がまだ取り込まれていないため、「あたり」表示はありません。開催後、公式結果がサイトに反映されると自動で照合されます。
                 </p>
               </div>
             )}
@@ -1212,9 +1248,7 @@ export async function Numbers4PredictionsHub({
                 <strong className="text-foreground">
                   その一つ前の回からさかのぼって最大5回分
                 </strong>
-                （いずれも第 {data.targetDrawNumber} 回より前で、すでに当選番号が{" "}
-                <code className="font-mono text-xs">numbers4_draws</code>{" "}
-                に入っている回だけ）の
+                （いずれも第 {data.targetDrawNumber} 回より前で、すでに当選番号がサイトに取り込まれている回だけ）の
                 <strong className="text-foreground">実際の当選4桁</strong>
                 を1行ずつ取り、
                 <strong className="text-foreground">同じ回号の</strong>{" "}
@@ -1222,14 +1256,12 @@ export async function Numbers4PredictionsHub({
                 予測と突き合わせています。
               </span>
               <span className="block">
-                当選数字はすべて{" "}
-                <code className="font-mono text-xs">numbers4_draws</code>{" "}
-                の抽選結果です。下のアンサンブル上位から数字を選んでいるわけではありません。
+                当選数字はすべて公式抽選の結果を当サイトに取り込んだ値です。下のアンサンブル上位から数字を選んでいるわけではありません。
               </span>
             </>
           }
           bannerLead={`表示順は新しい回が上です（全 ${officialPastFiveHits.length} 行）。`}
-          emptyMessage="直前5回の公式当選がまだ DB に無いか、Supabase に接続できていません。"
+          emptyMessage="直前5回の公式当選がまだ取り込まれていないか、データを読み込めませんでした。"
         />
 
         {winningNorm ? (
@@ -1244,10 +1276,9 @@ export async function Numbers4PredictionsHub({
                   <CardDescription className="text-pretty mt-1 text-sm">
                     <span className="block">
                       照合の左側にある当選{" "}
-                      <span className="font-mono">{winningNorm}</span> は{" "}
-                      <code className="font-mono text-xs">numbers4_draws</code>{" "}
-                      の<strong className="text-foreground">実抽選結果</strong>
-                      です。
+                      <span className="font-mono">{winningNorm}</span> は
+                      <strong className="text-foreground">公式抽選の当選番号</strong>
+                      （当サイトに取り込んだ値）です。
                     </span>
                     <span className="block">
                       各 <code className="font-mono text-xs">method</code> の
@@ -1362,6 +1393,81 @@ export async function Numbers4PredictionsHub({
             </CardContent>
           </Card>
         )}
+
+        <Card className="border-border/80 shadow-sm ring-1 ring-black/5 dark:ring-white/10">
+          <CardHeader className="border-border/60 border-b">
+            <div className="flex items-center gap-2">
+              <ListOrderedIcon className="text-muted-foreground size-5" />
+              <div>
+                <CardTitle className="text-lg">
+                  モデル横断 BOX組み合わせランキング
+                </CardTitle>
+                <CardDescription>
+                  各 <code className="font-mono text-xs">method</code> の候補番号を
+                  BOX（順不同）として集約し、出現数の多い順で表示します。
+                  例: 1234 と 4321 は同じ組み合わせとして数えます。
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="px-0 pb-4 pt-0">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="text-muted-foreground w-12 px-3 text-xs">
+                    #
+                  </TableHead>
+                  <TableHead className="text-muted-foreground px-3 text-xs">
+                    BOXキー
+                  </TableHead>
+                  <TableHead className="text-muted-foreground px-3 text-right text-xs">
+                    出現回数
+                  </TableHead>
+                  <TableHead className="text-muted-foreground px-3 text-right text-xs">
+                    出現モデル数
+                  </TableHead>
+                  <TableHead className="text-muted-foreground hidden px-3 text-xs md:table-cell">
+                    モデル
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {methodBoxComboRank.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={5}
+                      className="text-muted-foreground h-20 text-center text-sm"
+                    >
+                      集計対象の method 候補がありません
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  methodBoxComboRank.slice(0, 40).map((row, i) => (
+                    <TableRow key={row.boxKey} className="border-border/60">
+                      <TableCell className="text-muted-foreground px-3 py-2.5 text-xs tabular-nums">
+                        {i + 1}
+                      </TableCell>
+                      <TableCell className="px-3 py-2.5">
+                        <span className="font-mono text-sm font-semibold">
+                          {row.boxKey}
+                        </span>
+                      </TableCell>
+                      <TableCell className="px-3 py-2.5 text-right text-xs tabular-nums">
+                        {row.count}
+                      </TableCell>
+                      <TableCell className="px-3 py-2.5 text-right text-xs tabular-nums">
+                        {row.modelCount}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground hidden px-3 py-2.5 text-xs md:table-cell">
+                        {row.models.join(", ")}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
 
         <div className="grid gap-6 lg:grid-cols-2">
           <Card className="border-border/80 shadow-sm ring-1 ring-black/5 dark:ring-white/10 lg:col-span-2">

@@ -81,7 +81,7 @@ export function Numbers4OfficialDrawDetail({ row }: Props) {
           <CardHeader className="border-border/60 border-b pb-4">
             <CardTitle className="text-base sm:text-lg">全項目</CardTitle>
             <CardDescription>
-              データベースの列と同じ項目を表示しています。
+              内部で保持している当選情報の各項目を、そのまま一覧表示しています。
             </CardDescription>
           </CardHeader>
           <CardContent className="px-0 pb-0 pt-0">

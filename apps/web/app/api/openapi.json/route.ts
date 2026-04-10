@@ -20,7 +20,7 @@ export async function GET() {
         get: {
           summary: "Latest Numbers4 draws snapshot",
           description:
-            "Returns recent draw rows from Supabase when configured; otherwise 503.",
+            "Returns recent draw rows when the live data backend is configured; otherwise 503.",
           responses: {
             "200": {
               description: "JSON payload with latest_draws and navigation links",
@@ -30,7 +30,7 @@ export async function GET() {
                 },
               },
             },
-            "503": { description: "Database not configured" },
+            "503": { description: "Live draw data not configured" },
           },
         },
       },
