@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { LucideIcon } from "lucide-react";
 import {
   ArrowRightIcon,
   BarChart3Icon,
@@ -20,48 +21,25 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import type { HomeLandingCopy } from "@/lib/home-landing-copy";
+import { homeLandingCopyJa } from "@/lib/home-landing-copy";
 import { cn } from "@/lib/utils";
 
-const featureCards = [
-  {
-    href: "/numbers4/result",
-    icon: ListOrderedIcon,
-    title: "当選番号を一気見せ",
-    tag: "公式結果",
-    description:
-      "過去の抽選を表でサクッと追跡。スマホは横スクロールで全列いける、見やすさガチ勢。",
-    accent: "from-violet-500/15 to-transparent",
-  },
-  {
-    href: "/numbers4",
-    icon: LayersIcon,
-    title: "マルチモデル予測ハブ",
-    tag: "アンサンブル",
-    description:
-      "統計・ML・パターン系など、複数の頭脳をぶち込んだ日次予測を1画面にダッシュボード表示。",
-    accent: "from-cyan-500/15 to-transparent",
-  },
-  {
-    href: "/numbers4/stats",
-    icon: BarChart3Icon,
-    title: "ボックス順位の統計",
-    tag: "検証モード",
-    description:
-      "「予測リストのどのあたりに当たりがいた？」をモデル別に集計。数字オタク歓喜のビュー。",
-    accent: "from-amber-500/15 to-transparent",
-  },
-  {
-    href: "/numbers4/trend",
-    icon: FlameIcon,
-    title: "Hot Model トレンド",
-    tag: "今どれがアツい？",
-    description:
-      "直近の成績から“いま推しのモデル”を可視化。盛り上がりたい日のお供に。",
-    accent: "from-rose-500/15 to-transparent",
-  },
-] as const;
+const featureIconByHref: Record<string, LucideIcon> = {
+  "/numbers4/result": ListOrderedIcon,
+  "/numbers4": LayersIcon,
+  "/numbers4/stats": BarChart3Icon,
+  "/numbers4/trend": FlameIcon,
+};
 
-export function HomeLanding() {
+type HomeLandingProps = {
+  copy?: HomeLandingCopy;
+};
+
+export function HomeLanding({ copy = homeLandingCopyJa }: HomeLandingProps) {
+  const { hero, pitchLabels, features, story, disclaimer, blogCard, bottomCta } =
+    copy;
+
   return (
     <div className="flex flex-1 flex-col">
       {/* Hero */}
@@ -70,26 +48,36 @@ export function HomeLanding() {
           <div className="mb-5 flex flex-wrap items-center justify-center gap-2">
             <Badge className="gap-1 border-0 bg-gradient-to-r from-violet-600 to-cyan-600 px-3 py-1 text-white shadow-sm">
               <SparklesIcon className="size-3.5" />
-              宝くじAI
+              {hero.badgeBrand}
             </Badge>
             <Badge variant="secondary" className="font-medium">
-              Numbers4 特化
+              {hero.badgeFocus}
             </Badge>
           </div>
           <h1 className="text-foreground font-heading text-balance text-4xl font-bold tracking-tight sm:text-5xl sm:leading-[1.1] lg:text-[2.75rem]">
-            ナンバーズ4の
+            {hero.titleLine1}
             <span className="bg-gradient-to-r from-violet-600 via-fuchsia-600 to-cyan-600 bg-clip-text text-transparent dark:from-violet-400 dark:via-fuchsia-400 dark:to-cyan-400">
-              数字遊び
+              {hero.titleHighlight}
             </span>
-            、
-            <br className="hidden sm:block" />
-            ここが本気のメインステージ。
+            {hero.titleLine2}
+            {hero.titleLine3 ? (
+              <>
+                {hero.titleLineBreakBeforeLine3 ? (
+                  <br className="hidden sm:block" />
+                ) : null}
+                {hero.titleLine3}
+              </>
+            ) : null}
           </h1>
           <p className="text-muted-foreground mx-auto mt-5 max-w-xl text-pretty text-base leading-relaxed sm:text-lg">
-            <strong className="text-foreground font-semibold">宝くじAI</strong>
-            は、当選番号の閲覧から複数AI・統計モデルの予測、成績の見える化までをまとめた
-            <strong className="text-foreground font-semibold">ナンバーズ4専用ダッシュボード</strong>
-            。Xで語れるネタも、じっくり検証も、どっちもアリ。
+            <strong className="text-foreground font-semibold">{hero.introLead}</strong>
+            {hero.introMid}
+            {hero.introEmphasis ? (
+              <strong className="text-foreground font-semibold">
+                {hero.introEmphasis}
+              </strong>
+            ) : null}
+            {hero.introTail}
           </p>
           <div className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
             <Link
@@ -100,7 +88,7 @@ export function HomeLanding() {
               )}
             >
               <ZapIcon className="size-4" />
-              いま一番アツいゾーンへ
+              {hero.ctaPrimary}
               <ArrowRightIcon className="size-4" />
             </Link>
             <Link
@@ -110,55 +98,29 @@ export function HomeLanding() {
                 "justify-center border-border/80 bg-background/60 backdrop-blur-sm sm:min-w-[200px]",
               )}
             >
-              当選番号一覧
+              {hero.ctaSecondary}
             </Link>
           </div>
           <p className="text-muted-foreground mt-8 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs sm:text-sm">
-            <Link href="/blog" className="text-primary font-medium underline-offset-4 hover:underline">
-              使い方ブログ
-            </Link>
-            <span className="text-border">|</span>
-            <Link href="/faq" className="text-primary font-medium underline-offset-4 hover:underline">
-              FAQ
-            </Link>
-            <span className="text-border">|</span>
-            <Link href="/en" className="text-primary font-medium underline-offset-4 hover:underline">
-              English
-            </Link>
-            <span className="text-border">|</span>
-            <Link
-              href="/en/blog"
-              className="text-primary font-medium underline-offset-4 hover:underline"
-            >
-              Blog (EN)
-            </Link>
-            <span className="text-border">|</span>
-            <Link href="/zh" className="text-primary font-medium underline-offset-4 hover:underline">
-              中文
-            </Link>
-            <span className="text-border">|</span>
-            <Link href="/ko" className="text-primary font-medium underline-offset-4 hover:underline">
-              한국어
-            </Link>
-            <span className="text-border">|</span>
-            <Link href="/es" className="text-primary font-medium underline-offset-4 hover:underline">
-              Español
-            </Link>
-            <span className="text-border">|</span>
-            <Link href="/hi" className="text-primary font-medium underline-offset-4 hover:underline">
-              हिन्दी
-            </Link>
-            <span className="text-border">|</span>
-            <Link href="/ar" className="text-primary font-medium underline-offset-4 hover:underline">
-              العربية
-            </Link>
-            <span className="text-border">|</span>
-            <Link
-              href="/llms.txt"
-              className="text-primary font-medium underline-offset-4 hover:underline"
-            >
-              AI向け要約
-            </Link>
+            {hero.languageLinks.map((link, index) => (
+              <span key={link.href} className="contents">
+                {index > 0 ? (
+                  <span className="text-border" aria-hidden>
+                    |
+                  </span>
+                ) : null}
+                {link.current ? (
+                  <span className="text-foreground font-medium">{link.label}</span>
+                ) : (
+                  <Link
+                    href={link.href}
+                    className="text-primary font-medium underline-offset-4 hover:underline"
+                  >
+                    {link.label}
+                  </Link>
+                )}
+              </span>
+            ))}
           </p>
         </div>
       </section>
@@ -166,13 +128,7 @@ export function HomeLanding() {
       {/* Pitch strip */}
       <section className="px-4 pb-10 sm:px-6">
         <div className="mx-auto flex max-w-4xl flex-wrap justify-center gap-2">
-          {[
-            "複数モデル同時表示",
-            "予算プラン付き",
-            "スマホ最適化UI",
-            "照合ハイライト",
-            "統計・トレンド付き",
-          ].map((label) => (
+          {pitchLabels.map((label) => (
             <span
               key={label}
               className="border-border/70 bg-background/80 text-foreground/85 rounded-full border px-3 py-1 text-xs font-medium shadow-sm backdrop-blur-sm sm:text-sm"
@@ -188,47 +144,53 @@ export function HomeLanding() {
         <div className="mx-auto max-w-5xl">
           <div className="mb-8 text-center">
             <h2 className="text-foreground font-heading text-2xl font-bold tracking-tight sm:text-3xl">
-              このサイトでできること
+              {features.sectionTitle}
             </h2>
             <p className="text-muted-foreground mx-auto mt-2 max-w-2xl text-sm sm:text-base">
-              ただの当選番号リストじゃ終わらない。予測・検証・トレンドまで、Numbers4好きのための機能を詰め込みました。
+              {features.sectionSubtitle}
             </p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {featureCards.map(
-              ({ href, icon: Icon, title, tag, description, accent }) => (
-                <Link key={href} href={href} className="group block h-full">
-                  <Card
-                    className={cn(
-                      "border-border/70 h-full overflow-hidden bg-gradient-to-br to-card shadow-sm ring-1 ring-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:ring-white/10",
-                      accent,
-                    )}
-                  >
-                    <CardHeader className="pb-2">
-                      <div className="mb-2 flex items-center justify-between gap-2">
-                        <div className="bg-primary/10 text-primary flex size-10 items-center justify-center rounded-xl">
-                          <Icon className="size-5" />
+            {features.cards.map(
+              ({ href, title, tag, description, accent }) => {
+                const Icon = featureIconByHref[href] ?? ListOrderedIcon;
+                return (
+                  <Link key={href} href={href} className="group block h-full">
+                    <Card
+                      className={cn(
+                        "border-border/70 h-full overflow-hidden bg-gradient-to-br to-card shadow-sm ring-1 ring-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:ring-white/10",
+                        accent,
+                      )}
+                    >
+                      <CardHeader className="pb-2">
+                        <div className="mb-2 flex items-center justify-between gap-2">
+                          <div className="bg-primary/10 text-primary flex size-10 items-center justify-center rounded-xl">
+                            <Icon className="size-5" />
+                          </div>
+                          <Badge
+                            variant="outline"
+                            className="text-[0.65rem] font-normal"
+                          >
+                            {tag}
+                          </Badge>
                         </div>
-                        <Badge variant="outline" className="text-[0.65rem] font-normal">
-                          {tag}
-                        </Badge>
-                      </div>
-                      <CardTitle className="text-base leading-snug group-hover:underline">
-                        {title}
-                      </CardTitle>
-                      <CardDescription className="text-xs leading-relaxed sm:text-sm">
-                        {description}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="pt-0">
-                      <span className="text-primary inline-flex items-center gap-1 text-xs font-semibold">
-                        ページを開く
-                        <ArrowRightIcon className="size-3.5 transition-transform group-hover:translate-x-0.5" />
-                      </span>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ),
+                        <CardTitle className="text-base leading-snug group-hover:underline">
+                          {title}
+                        </CardTitle>
+                        <CardDescription className="text-xs leading-relaxed sm:text-sm">
+                          {description}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <span className="text-primary inline-flex items-center gap-1 text-xs font-semibold">
+                          {features.openPage}
+                          <ArrowRightIcon className="size-3.5 transition-transform group-hover:translate-x-0.5" />
+                        </span>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                );
+              },
             )}
           </div>
         </div>
@@ -240,22 +202,21 @@ export function HomeLanding() {
           <Card className="border-border/70 lg:col-span-3 lg:shadow-sm">
             <CardHeader>
               <CardTitle className="font-heading text-lg sm:text-xl">
-                宝くじAI って何者？
+                {story.title}
               </CardTitle>
               <CardDescription className="text-sm leading-relaxed">
-                略して「数字とにらめっこするための、ちゃんとしたWebアプリ」です。
+                {story.subtitle}
               </CardDescription>
             </CardHeader>
             <CardContent className="text-muted-foreground space-y-3 text-sm leading-relaxed">
               <p>
-                ナンバーズ4の<strong className="text-foreground">公式に近い形の当選情報</strong>
-                を一覧しつつ、リポジトリとDBに載った
-                <strong className="text-foreground">日次予測データ</strong>
-                をダッシュボード表示。アンサンブル・手法別・予算プランなど、種類が多いほど比較が楽しくなる構成にしています。
+                {story.p1Lead}
+                <strong className="text-foreground">{story.p1Strong1}</strong>
+                {story.p1Mid}
+                <strong className="text-foreground">{story.p1Strong2}</strong>
+                {story.p1Tail}
               </p>
-              <p>
-                「バズる予感のするUI」と「じっくり数字を追う体験」、両方取りにいきました。SNSでスクショ載せたくなるくらい、見せ方にはこだわってます。
-              </p>
+              <p>{story.p2}</p>
             </CardContent>
           </Card>
           <div className="flex flex-col gap-4 lg:col-span-2">
@@ -263,12 +224,13 @@ export function HomeLanding() {
               <CardHeader className="pb-2">
                 <div className="flex items-center gap-2">
                   <CircleHelpIcon className="text-muted-foreground size-5" />
-                  <CardTitle className="text-base">ちゃんと言っておくね</CardTitle>
+                  <CardTitle className="text-base">{disclaimer.title}</CardTitle>
                 </div>
               </CardHeader>
               <CardContent className="text-muted-foreground text-xs leading-relaxed sm:text-sm">
-                予測は<strong className="text-foreground">過去データやモデルに基づく試算</strong>
-                であり、当選や的中を保証するものではありません。娯楽・学習・情報整理として楽しんでください。購入を推奨するサービスではありません。
+                {disclaimer.bodyLead}
+                <strong className="text-foreground">{disclaimer.bodyStrong}</strong>
+                {disclaimer.bodyTail}
               </CardContent>
             </Card>
             <Link
@@ -281,10 +243,10 @@ export function HomeLanding() {
               <BookOpenIcon className="size-5 shrink-0" />
               <span>
                 <span className="text-foreground block text-sm font-semibold">
-                  はじめてでも大丈夫
+                  {blogCard.title}
                 </span>
                 <span className="text-muted-foreground block text-xs font-normal">
-                  ブログで画面の読み方を解説しています
+                  {blogCard.subtitle}
                 </span>
               </span>
               <ArrowRightIcon className="text-muted-foreground ml-auto size-4 shrink-0" />
@@ -299,10 +261,10 @@ export function HomeLanding() {
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,oklch(0.7_0.2_280/0.2),transparent_50%)]" />
           <div className="relative">
             <h2 className="text-foreground font-heading text-xl font-bold sm:text-2xl">
-              さあ、第1ゲームはナンバーズ4ダッシュボード
+              {bottomCta.title}
             </h2>
             <p className="text-muted-foreground mx-auto mt-2 max-w-md text-sm sm:text-base">
-              当選を眺めるだけでも、予測を覗くだけでもOK。あなたの見たい回から飛び込んでみて。
+              {bottomCta.subtitle}
             </p>
             <div className="mt-6 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:justify-center">
               <Link
@@ -312,7 +274,7 @@ export function HomeLanding() {
                   "gap-2 shadow-md sm:min-w-[220px]",
                 )}
               >
-                ナンバーズ4ゾーンへ
+                {bottomCta.primary}
                 <ArrowRightIcon className="size-4" />
               </Link>
               <Link
@@ -322,7 +284,7 @@ export function HomeLanding() {
                   "border-background/20 bg-background/70 backdrop-blur-sm sm:min-w-[180px]",
                 )}
               >
-                当選番号から入る
+                {bottomCta.secondary}
               </Link>
             </div>
           </div>
