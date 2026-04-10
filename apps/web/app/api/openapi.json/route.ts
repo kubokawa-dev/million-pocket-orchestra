@@ -20,7 +20,7 @@ export async function GET() {
         get: {
           summary: "Latest Numbers3 draws snapshot",
           description:
-            "Returns recent Numbers3 draw rows when the live data backend is configured; otherwise 503.",
+            "Returns recent draw rows when the live data backend is configured; otherwise 503.",
           responses: {
             "200": {
               description: "JSON payload with latest_draws and navigation links",
