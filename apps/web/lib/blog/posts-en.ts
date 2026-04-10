@@ -106,7 +106,7 @@ Trends use a **short rolling window**. A model can look hot or cold due to **ran
 
 ## Data pipeline
 
-Predictions come from scheduled jobs (JSON). Results are stored in tables such as \`numbers4_draws\` after sync. There can be short delays between the official announcement and on-screen updates.
+Predictions come from scheduled jobs (JSON). Official draw results are synced into this site before display. There can be short delays between the official announcement and on-screen updates.
 
 ## Summary workflow
 
@@ -147,7 +147,7 @@ If a bookmark breaks, open the bank’s or portal’s **top page** and navigate 
 ## How Takarakuji AI fits in
 
 - We **do not** process claims or payouts.  
-- There can be a **short delay** between the official announcement and our database sync.  
+- There can be a **short delay** between the official announcement and on-site updates.  
 - If any value disagrees, **the official site wins**.
 
 ## Language note

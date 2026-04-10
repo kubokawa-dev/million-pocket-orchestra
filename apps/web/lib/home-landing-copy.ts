@@ -146,7 +146,7 @@ export const homeLandingCopyJa: HomeLandingCopy = {
     subtitle: "略して「数字とにらめっこするための、ちゃんとしたWebアプリ」です。",
     p1Lead: "ナンバーズ4の",
     p1Strong1: "公式に近い形の当選情報",
-    p1Mid: "を一覧しつつ、リポジトリとDBに載った",
+    p1Mid: "を一覧しつつ、サイト側に蓄積した",
     p1Strong2: "日次予測データ",
     p1Tail:
       "をダッシュボード表示。アンサンブル・手法別・予算プランなど、種類が多いほど比較が楽しくなる構成にしています。",
@@ -256,7 +256,7 @@ export const homeLandingCopyEn: HomeLandingCopy = {
     p1Mid: " alongside ",
     p1Strong2: "daily prediction datasets",
     p1Tail:
-      " from the project’s repository and database — ensembles, methods, and budget-style plans side by side so comparisons stay interesting.",
+      " hosted on this site — ensembles, methods, and budget-style plans side by side so comparisons stay interesting.",
     p2: "We care about both a polished, shareable UI and a calm, analytical workflow for digging into the digits.",
   },
   disclaimer: {

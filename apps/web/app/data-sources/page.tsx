@@ -100,12 +100,12 @@ export default function DataSourcesPage() {
           <CardHeader>
             <CardTitle className="text-lg">このサイトのデータについて</CardTitle>
             <CardDescription>
-              抽選結果は公開情報の範囲で収集し、Supabase 等に格納したものを表示しています。取り込み遅延や表記揺れがある場合があります。
+              抽選結果は公開情報の範囲で収集し、当サイトのサーバー側で保管したものを表示しています。取り込み遅延や表記揺れがある場合があります。
             </CardDescription>
           </CardHeader>
           <CardContent className="text-muted-foreground space-y-3 text-sm leading-relaxed">
             <p>
-              予測値はリポジトリまたは DB に保存された JSON を参照しており、当せんを保証するものではありません。
+              予測値は日次ジョブが出力した JSON（オンライン上の最新を優先し、無ければサイトに同梱したファイル）を参照しており、当せんを保証するものではありません。
             </p>
             <p>
               ライセンスはリポジトリのライセンスに従います。データセットの再利用を検討する場合は、公式結果の利用条件もあわせて確認してください。

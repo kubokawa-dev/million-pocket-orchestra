@@ -91,13 +91,9 @@ export default async function Numbers4StatsPage({ searchParams }: PageProps) {
               </h1>
             </div>
             <p className="text-muted-foreground max-w-2xl text-sm leading-relaxed">
-              Supabase の{" "}
-              <code className="bg-muted rounded px-1 font-mono text-xs">
-                numbers4_draws
-              </code>{" "}
-              に当選番号がある直近{" "}
+              当サイトに取り込まれた当選番号がある直近{" "}
               <strong className="text-foreground">{stats.draws.length}</strong>{" "}
-              回を対象に、各回の予測バンドル（DB 優先・無ければリポジトリ
+              回を対象に、各回の予測バンドル（オンラインの最新を優先し、無ければサイト同梱の日次
               JSON）から<strong className="text-foreground">
                 ボックス一致
               </strong>
@@ -172,9 +168,7 @@ export default async function Numbers4StatsPage({ searchParams }: PageProps) {
                 データを取得できませんでした
               </CardTitle>
               <CardDescription>
-                Supabase の{" "}
-                <code className="font-mono">numbers4_draws</code>{" "}
-                から当選番号付きの行が読めません。環境変数・RLS・データ投入を確認してください。
+                当選番号付きの抽選結果を読み込めませんでした。データ未投入・公開サイト側の設定・接続状況を確認してください。
               </CardDescription>
             </CardHeader>
           </Card>

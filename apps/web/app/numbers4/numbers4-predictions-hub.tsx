@@ -95,9 +95,9 @@ export type Numbers4PredictionsHubProps = {
 function SourceBadges({ data }: { data: Numbers4PredictionBundle }) {
   const sourceLabel =
     data.source === "database"
-      ? "Supabase（numbers4_daily_prediction_documents）"
+      ? "オンラインの最新データ"
       : data.source === "repository_files"
-        ? "リポジトリ JSON"
+        ? "サイト同梱の日次ファイル"
         : "内蔵デモ";
 
   return (
@@ -1123,18 +1123,12 @@ export async function Numbers4PredictionsHub({
               第 {data.targetDrawNumber} 回 ナンバーズ4｜予測と当選照合
             </h1>
             <p className="text-muted-foreground max-w-2xl text-sm leading-relaxed sm:text-base">
-              Supabase の{" "}
-              <code className="bg-muted rounded px-1 font-mono text-xs">
-                numbers4_daily_prediction_documents
-              </code>{" "}
-              と同じく、
               <strong className="text-foreground"> ensemble / method / budget_plan </strong>
-              の3種類のドキュメントを一覧しやすくまとめています。当選番号が DB
-              に入っていれば、予測との一致も表示します。
+              の3種類の予測ドキュメントを一覧しやすくまとめています。当選番号がサイトに取り込まれていれば、予測との一致も表示します。
             </p>
             {data.source !== "database" && (
               <p className="text-muted-foreground border-border/80 bg-muted/40 max-w-2xl rounded-lg border px-3 py-2 text-xs leading-relaxed">
-                該当する Supabase 行が無いため、リポジトリ内 JSON またはデモデータを表示しています。
+                オンライン側に該当データが無いため、サイト同梱の日次ファイルまたはお試し用データを表示しています。
               </p>
             )}
           </div>
@@ -1162,8 +1156,7 @@ export async function Numbers4PredictionsHub({
               <CardTitle className="text-lg">第 {data.targetDrawNumber} 回 · 当選結果</CardTitle>
             </div>
             <CardDescription>
-              <code className="text-muted-foreground text-xs">numbers4_draws.numbers</code>{" "}
-              と照合（ストレート / ボックス相当）。
+              当サイトに取り込んだ公式当選番号と照合（ストレート / ボックス相当）。
               {winningNorm
                 ? " 下の予測番号で、当選と同じ数字は出現回数の範囲内だけ左から薄い赤で強調します（例: 当選に4が1個なら予測の4は先頭1桁のみ）。"
                 : null}
@@ -1190,11 +1183,7 @@ export async function Numbers4PredictionsHub({
                   抽選前 / 未登録
                 </Badge>
                 <p className="text-muted-foreground text-sm">
-                  この回の当選番号がまだ DB に無いため、「あたり」表示はありません。開催後は{" "}
-                  <code className="bg-muted rounded px-1 font-mono text-xs">
-                    numbers4_draws
-                  </code>{" "}
-                  に取り込むと自動で照合されます。
+                  この回の当選番号がまだ取り込まれていないため、「あたり」表示はありません。開催後、公式結果がサイトに反映されると自動で照合されます。
                 </p>
               </div>
             )}
@@ -1212,9 +1201,7 @@ export async function Numbers4PredictionsHub({
                 <strong className="text-foreground">
                   その一つ前の回からさかのぼって最大5回分
                 </strong>
-                （いずれも第 {data.targetDrawNumber} 回より前で、すでに当選番号が{" "}
-                <code className="font-mono text-xs">numbers4_draws</code>{" "}
-                に入っている回だけ）の
+                （いずれも第 {data.targetDrawNumber} 回より前で、すでに当選番号がサイトに取り込まれている回だけ）の
                 <strong className="text-foreground">実際の当選4桁</strong>
                 を1行ずつ取り、
                 <strong className="text-foreground">同じ回号の</strong>{" "}
@@ -1222,14 +1209,12 @@ export async function Numbers4PredictionsHub({
                 予測と突き合わせています。
               </span>
               <span className="block">
-                当選数字はすべて{" "}
-                <code className="font-mono text-xs">numbers4_draws</code>{" "}
-                の抽選結果です。下のアンサンブル上位から数字を選んでいるわけではありません。
+                当選数字はすべて公式抽選の結果を当サイトに取り込んだ値です。下のアンサンブル上位から数字を選んでいるわけではありません。
               </span>
             </>
           }
           bannerLead={`表示順は新しい回が上です（全 ${officialPastFiveHits.length} 行）。`}
-          emptyMessage="直前5回の公式当選がまだ DB に無いか、Supabase に接続できていません。"
+          emptyMessage="直前5回の公式当選がまだ取り込まれていないか、データを読み込めませんでした。"
         />
 
         {winningNorm ? (
@@ -1244,10 +1229,9 @@ export async function Numbers4PredictionsHub({
                   <CardDescription className="text-pretty mt-1 text-sm">
                     <span className="block">
                       照合の左側にある当選{" "}
-                      <span className="font-mono">{winningNorm}</span> は{" "}
-                      <code className="font-mono text-xs">numbers4_draws</code>{" "}
-                      の<strong className="text-foreground">実抽選結果</strong>
-                      です。
+                      <span className="font-mono">{winningNorm}</span> は
+                      <strong className="text-foreground">公式抽選の当選番号</strong>
+                      （当サイトに取り込んだ値）です。
                     </span>
                     <span className="block">
                       各 <code className="font-mono text-xs">method</code> の

@@ -19,7 +19,7 @@ export async function GET() {
   if (!hasSupabase) {
     return NextResponse.json(
       {
-        error: "Database not available",
+        error: "Draw data service unavailable",
         site: origin,
         docs: `${origin}/llms.txt`,
       },

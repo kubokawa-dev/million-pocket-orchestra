@@ -64,7 +64,7 @@ export default async function Numbers4Page() {
           <p className="text-muted-foreground mx-auto max-w-xl text-sm leading-relaxed sm:mx-0 sm:text-base">
             このサイトの「ナンバーズ4ゾーン」の入口です。いま取り込まれている予測データの最新回は{" "}
             <strong className="text-foreground">第 {latestDraw} 回</strong>
-            向けです。当選番号は開催後に DB に入ると、予測との照合も自動で付きます。
+            向けです。当選番号は開催後にサイトへ取り込まれると、予測との照合も自動で付きます。
           </p>
         </header>
 
@@ -175,11 +175,8 @@ export default async function Numbers4Page() {
               <CardTitle className="text-base">データについて</CardTitle>
             </div>
             <CardDescription className="text-xs sm:text-sm">
-              表示は{" "}
-              <code className="bg-background rounded px-1 font-mono text-[0.7rem]">
-                numbers4_daily_prediction_documents
-              </code>{" "}
-              （Supabase）を優先し、無い場合はリポジトリ内の日次 JSON にフォールバックします。予測は参考情報であり、当選を保証するものではありません。
+              表示はオンライン上の最新データを優先し、無い場合はサイトに同梱の日次 JSON
+              から読み込みます。予測は参考情報であり、当選を保証するものではありません。
             </CardDescription>
           </CardHeader>
         </Card>

@@ -73,9 +73,7 @@ const defaultDescription = (
   <>
     <span className="block">
       <strong className="text-foreground">当選列の4桁は、宝くじの実際の抽選結果</strong>
-      （Supabase の{" "}
-      <code className="font-mono text-xs">numbers4_draws.numbers</code>
-      ）です。アンサンブル上位の予測リストから数字を拾っているわけではありません。
+      （当サイトに取り込んだ公式当選番号）です。アンサンブル上位の予測リストから数字を拾っているわけではありません。
     </span>
     <span className="block">
       そのうえで、
