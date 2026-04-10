@@ -1,16 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { getEnPostsSortedByDate } from "@/lib/blog/posts-en";
-import { absoluteUrl, getSiteOrigin } from "@/lib/site";
+import { HomeLanding } from "@/components/home-landing";
 import { buttonVariants } from "@/components/ui/button-variants";
+import { getEnPostsSortedByDate } from "@/lib/blog/posts-en";
+import { homeLandingCopyEn } from "@/lib/home-landing-copy";
+import { absoluteUrl, getSiteOrigin } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
 const enFaq = [
   {
     question: "What is Takarakuji AI?",
     answer:
-      "An unofficial web app focused on Japan’s Numbers4 lottery: browse official draw results, explore statistics and trends, and compare multiple daily prediction models. The interface is mostly Japanese; this page summarizes the service in English for international visitors and AI systems.",
+      "An unofficial web app focused on Japan’s Numbers4 lottery: browse official draw results, explore statistics and trends, and compare multiple daily prediction models. The in-app UI is mostly Japanese; this English landing helps international visitors and launch traffic (e.g. Product Hunt) get oriented quickly.",
   },
   {
     question: "Is this official or affiliated with the lottery?",
@@ -30,10 +32,10 @@ const enFaq = [
 ] as const;
 
 const pageDescription =
-  "Unofficial Numbers4 (Japan) dashboard: official-style results listing, statistics, trends, and multi-model daily predictions. English overview; app UI is mainly Japanese.";
+  "Unofficial Numbers4 (Japan) dashboard: winning numbers, multi-model daily predictions, stats, and trends — English landing; most app screens are in Japanese.";
 
 export const metadata: Metadata = {
-  title: "Takarakuji AI — Numbers4 results & predictions (overview)",
+  title: "Takarakuji AI — Numbers4 dashboard (English)",
   description: pageDescription,
   keywords: [
     "Takarakuji AI",
@@ -52,7 +54,6 @@ export const metadata: Metadata = {
     "verify official results",
     "ナンバーズ4",
     "宝くじ",
-    "Arabic overview",
   ],
   alternates: {
     canonical: "/en",
@@ -71,15 +72,14 @@ export const metadata: Metadata = {
     locale: "en_US",
     alternateLocale: ["ja_JP", "ar_SA"],
     url: absoluteUrl("/en"),
-    title: "Takarakuji AI — Numbers4 results & predictions",
+    title: "Takarakuji AI — Numbers4 results, models & trends",
     description:
-      "Browse Numbers4 draw results, stats, and model predictions. Unofficial fan/analytics site; not affiliated with any lottery operator.",
+      "Unofficial Numbers4 hub for Japan: draws, analytics, and multiple prediction models in one dashboard. Not affiliated with any lottery operator.",
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "Takarakuji AI — Numbers4",
-    description:
-      "Unofficial Numbers4 results & prediction dashboard (Japan). English overview page.",
+    description: pageDescription,
   },
 };
 
@@ -105,7 +105,7 @@ export default function EnglishOverviewPage() {
     "@type": "WebPage",
     "@id": `${origin}/en#webpage`,
     url: `${origin}/en`,
-    name: "Takarakuji AI — English overview",
+    name: "Takarakuji AI — English home",
     description: pageDescription,
     inLanguage: "en",
     isPartOf: { "@id": `${origin}/#website` },
@@ -127,126 +127,50 @@ export default function EnglishOverviewPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(webPageJsonLd) }}
       />
-      <div className="mx-auto w-full max-w-2xl flex-1 space-y-10 px-4 py-10 sm:px-6 sm:py-14">
-        <header className="space-y-3">
-          <p className="text-muted-foreground text-sm font-medium tracking-wide uppercase">
-            English overview · LLM-friendly summary
-          </p>
-          <h1 className="text-foreground font-heading text-3xl font-semibold tracking-tight sm:text-4xl">
-            Takarakuji AI
-          </h1>
-          <p className="text-muted-foreground text-base leading-relaxed">
-            Unofficial{" "}
-            <strong className="text-foreground">Numbers4</strong> (Japan)
-            dashboard: winning numbers, statistics, trends, and multiple daily
-            prediction models—built from public data.{" "}
-            <strong className="text-foreground">Not</strong> affiliated with any
-            lottery operator.{" "}
-            <Link
-              href="/"
-              className="text-primary font-medium underline-offset-4 hover:underline"
-            >
-              Japanese home
-            </Link>
-            .
-          </p>
-        </header>
+      <HomeLanding copy={homeLandingCopyEn} />
 
-        <section className="space-y-3">
-          <h2 className="text-foreground text-lg font-semibold">
-            Key pages (Japanese UI)
-          </h2>
-          <ul className="text-muted-foreground list-inside list-disc space-y-2 text-sm leading-relaxed sm:text-base">
-            <li>
+      <section className="border-border/60 mx-auto w-full max-w-2xl border-t px-4 py-14 sm:px-6">
+        <h2 className="text-foreground font-heading text-lg font-semibold">
+          English guides (blog)
+        </h2>
+        <p className="text-muted-foreground mt-2 text-sm leading-relaxed sm:text-base">
+          Longer explainers for international readers and search/LLM context.{" "}
+          <Link
+            href="/en/blog"
+            className="text-primary font-medium underline-offset-4 hover:underline"
+          >
+            All English articles →
+          </Link>
+        </p>
+        <ul className="text-muted-foreground mt-4 list-inside list-disc space-y-2 text-sm leading-relaxed sm:text-base">
+          {enPosts.map((post) => (
+            <li key={post.slug}>
               <Link
-                href="/numbers4"
+                href={`/en/blog/${post.slug}`}
                 className="text-primary font-medium underline-offset-4 hover:underline"
               >
-                /numbers4
-              </Link>{" "}
-              — hub for predictions and tools
-            </li>
-            <li>
-              <Link
-                href="/numbers4/result"
-                className="text-primary font-medium underline-offset-4 hover:underline"
-              >
-                /numbers4/result
-              </Link>{" "}
-              — results index
-            </li>
-            <li>
-              <Link
-                href="/numbers4/stats"
-                className="text-primary font-medium underline-offset-4 hover:underline"
-              >
-                /numbers4/stats
+                {post.title}
               </Link>
-              ,{" "}
-              <Link
-                href="/numbers4/trend"
-                className="text-primary font-medium underline-offset-4 hover:underline"
-              >
-                /numbers4/trend
-              </Link>{" "}
-              — analytics
             </li>
-            <li>
-              <Link
-                href="/llms.txt"
-                className="text-primary font-medium underline-offset-4 hover:underline"
-              >
-                /llms.txt
-              </Link>{" "}
-              — machine-readable site summary
-            </li>
-          </ul>
-        </section>
+          ))}
+        </ul>
+      </section>
 
-        <section className="space-y-3">
-          <h2 className="text-foreground text-lg font-semibold">
-            English guides (blog)
-          </h2>
-          <p className="text-muted-foreground text-sm leading-relaxed sm:text-base">
-            Longer explainers for international readers and search/LLM context.{" "}
-            <Link
-              href="/en/blog"
-              className="text-primary font-medium underline-offset-4 hover:underline"
-            >
-              All English articles →
-            </Link>
-          </p>
-          <ul className="text-muted-foreground list-inside list-disc space-y-2 text-sm leading-relaxed sm:text-base">
-            {enPosts.map((post) => (
-              <li key={post.slug}>
-                <Link
-                  href={`/en/blog/${post.slug}`}
-                  className="text-primary font-medium underline-offset-4 hover:underline"
-                >
-                  {post.title}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <section className="space-y-4">
-          <h2 className="text-foreground text-lg font-semibold">FAQ</h2>
-          <div className="space-y-6">
-            {enFaq.map((item) => (
-              <div key={item.question} className="space-y-2">
-                <h3 className="text-foreground text-base font-medium">
-                  {item.question}
-                </h3>
-                <p className="text-muted-foreground text-sm leading-relaxed sm:text-base">
-                  {item.answer}
-                </p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <div>
+      <section className="mx-auto w-full max-w-2xl px-4 pb-20 sm:px-6">
+        <h2 className="text-foreground font-heading text-lg font-semibold">FAQ</h2>
+        <div className="mt-4 space-y-6">
+          {enFaq.map((item) => (
+            <div key={item.question} className="space-y-2">
+              <h3 className="text-foreground text-base font-medium">
+                {item.question}
+              </h3>
+              <p className="text-muted-foreground text-sm leading-relaxed sm:text-base">
+                {item.answer}
+              </p>
+            </div>
+          ))}
+        </div>
+        <div className="mt-10">
           <Link
             href="/numbers4"
             className={cn(
@@ -257,7 +181,7 @@ export default function EnglishOverviewPage() {
             Open Numbers4 hub
           </Link>
         </div>
-      </div>
+      </section>
     </div>
   );
 }
