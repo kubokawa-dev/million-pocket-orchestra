@@ -25,7 +25,11 @@ class DailyPredictionRecord:
     file_mtime: str
 
 
-def classify_json_path(path: Path) -> tuple[str, int, str] | None:
+def classify_json_path_for_lottery(
+    path: Path,
+    *,
+    lottery: str,
+) -> tuple[str, int, str] | None:
     """(doc_kind, target_draw_number, method_slug) を返す。対象外は None。"""
     try:
         rel = path.relative_to(ROOT).as_posix()
@@ -33,23 +37,36 @@ def classify_json_path(path: Path) -> tuple[str, int, str] | None:
         return None
 
     m = re.fullmatch(
-        r"predictions/daily/methods/([^/]+)/numbers4_(\d+)\.json", rel
+        rf"predictions/daily/methods/([^/]+)/{re.escape(lottery)}_(\d+)\.json",
+        rel,
     )
     if m:
         return ("method", int(m.group(2)), m.group(1))
 
-    m = re.fullmatch(r"predictions/daily/numbers4_(\d+)\.json", rel)
+    m = re.fullmatch(rf"predictions/daily/{re.escape(lottery)}_(\d+)\.json", rel)
     if m:
         return ("ensemble", int(m.group(1)), "")
 
-    m = re.fullmatch(r"predictions/daily/budget_plan_(\d+)\.json", rel)
-    if m:
-        return ("budget_plan", int(m.group(1)), "")
+    if lottery == "numbers4":
+        m = re.fullmatch(r"predictions/daily/budget_plan_(\d+)\.json", rel)
+        if m:
+            return ("budget_plan", int(m.group(1)), "")
+    elif lottery == "numbers3":
+        m = re.fullmatch(r"predictions/daily/budget_plan_numbers3_(\d+)\.json", rel)
+        if m:
+            return ("budget_plan", int(m.group(1)), "")
 
     return None
 
 
-def collect_daily_prediction_records(
+def classify_json_path(path: Path) -> tuple[str, int, str] | None:
+    """numbers4 既定の分類（後方互換）。"""
+    return classify_json_path_for_lottery(path, lottery="numbers4")
+
+
+def collect_daily_prediction_records_for_lottery(
+    *,
+    lottery: str,
     target_draw_number: int | None = None,
 ) -> tuple[list[DailyPredictionRecord], int]:
     """日次 JSON を読み込み、レコード一覧とスキップ数を返す。
@@ -63,7 +80,7 @@ def collect_daily_prediction_records(
         return records, skipped
 
     for path in sorted(DAILY.rglob("*.json")):
-        meta = classify_json_path(path)
+        meta = classify_json_path_for_lottery(path, lottery=lottery)
         if not meta:
             skipped += 1
             continue
@@ -94,3 +111,13 @@ def collect_daily_prediction_records(
         )
 
     return records, skipped
+
+
+def collect_daily_prediction_records(
+    target_draw_number: int | None = None,
+) -> tuple[list[DailyPredictionRecord], int]:
+    """numbers4 既定の収集（後方互換）。"""
+    return collect_daily_prediction_records_for_lottery(
+        lottery="numbers4",
+        target_draw_number=target_draw_number,
+    )

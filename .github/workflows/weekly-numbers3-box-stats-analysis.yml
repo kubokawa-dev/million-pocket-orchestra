@@ -1,0 +1,45 @@
+name: Weekly Numbers3 Box Stats Analysis
+
+on:
+  schedule:
+    - cron: "0 20 * * 0"
+  workflow_dispatch:
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run box stats analysis (if script exists)
+        run: |
+          if [ -f "numbers3/analyze_box_stats.py" ]; then
+            python numbers3/analyze_box_stats.py --save
+          else
+            echo "numbers3/analyze_box_stats.py not found. skip."
+          fi
+
+      - name: Commit report updates
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add reports/*.md || true
+          if git diff --staged --quiet; then
+            echo "No updates."
+          else
+            TIMESTAMP=$(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M')
+            git commit -m "📈 Numbers3 weekly box stats $TIMESTAMP"
+            bash tools/git_push_with_retry.sh main
+          fi
