@@ -31,7 +31,7 @@ export async function GET() {
     const supabase = await createClient();
     const { data: draws, error: drawsError } = await supabase
       .from("numbers3_draws")
-      .select("draw_number, draw_date, numbers")
+      .select("*")
       .order("draw_number", { ascending: false })
       .limit(10);
 

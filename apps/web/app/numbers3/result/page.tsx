@@ -69,7 +69,7 @@ export default async function Numbers3ResultPage({ searchParams }: PageProps) {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="mx-auto w-full max-w-[1200px] flex-1 space-y-8 px-4 py-8 sm:space-y-10 sm:px-6 sm:py-10">
+      <div className="mx-auto w-full max-w-[1400px] flex-1 space-y-8 px-4 py-8 sm:space-y-10 sm:px-6 sm:py-10">
         <Card className="border-border/80 shadow-sm ring-1 ring-black/5 dark:ring-white/10">
           <CardHeader className="border-border/60 space-y-4 border-b pb-6 sm:pb-6">
             <div className="space-y-2">

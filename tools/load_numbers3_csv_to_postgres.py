@@ -285,24 +285,36 @@ def parse_csv_row(row: list[str]) -> tuple | None:
     )
 
 
-def load_all_csv_files() -> list[tuple]:
+def _read_csv_path(csv_path: str) -> list[tuple]:
     rows: list[tuple] = []
+    try:
+        with open(csv_path, "r", encoding="utf-8") as f:
+            reader = csv.reader(f)
+            for row in reader:
+                if not row:
+                    continue
+                parsed = parse_csv_row(row)
+                if parsed:
+                    rows.append(parsed)
+    except Exception as e:
+        print(f"[warn] Error reading {csv_path}: {e}")
+    return rows
+
+
+def load_all_csv_files() -> list[tuple]:
+    """月次 YYYYMM.csv を優先し、draws_export.csv は未掲載の回のみ補完する（同一回は等級付きを残す）。"""
+    export_rows: list[tuple] = []
+    monthly_rows: list[tuple] = []
     for csv_path in sorted(glob.glob(os.path.join(CSV_DIR, "*.csv"))):
         base = os.path.basename(csv_path)
         if base == "draws_normalized.csv":
             continue
-        try:
-            with open(csv_path, "r", encoding="utf-8") as f:
-                reader = csv.reader(f)
-                for row in reader:
-                    if not row:
-                        continue
-                    parsed = parse_csv_row(row)
-                    if parsed:
-                        rows.append(parsed)
-        except Exception as e:
-            print(f"[warn] Error reading {csv_path}: {e}")
-    return rows
+        chunk = _read_csv_path(csv_path)
+        if base == "draws_export.csv":
+            export_rows.extend(chunk)
+        else:
+            monthly_rows.extend(chunk)
+    return merge_rows_by_draw_number(export_rows, monthly_rows)
 
 
 def _sqlite_cell_tier(raw: object) -> int | None:
@@ -388,18 +400,9 @@ def load_rows_for_source(source: str, sqlite_path: str | None) -> tuple[list[tup
 
 
 def row_to_rest_payload(row: tuple) -> dict:
-    """tier が NULL のキーは送らず、PostgREST で既存値が消えにくくする。"""
+    """PostgREST 一括 UPSERT は配列内で全オブジェクトのキー一致が必須（PGRST102）。"""
     d = dict(zip(REST_COLUMNS, row))
-    out = {
-        "draw_number": d["draw_number"],
-        "draw_date": d["draw_date"],
-        "numbers": d["numbers"],
-    }
-    for k in REST_COLUMNS[3:]:
-        v = d[k]
-        if v is not None:
-            out[k] = v
-    return out
+    return {k: d[k] for k in REST_COLUMNS}
 
 
 def upsert_via_supabase_rest(rows: list[tuple], *, chunk_size: int = 500) -> None:

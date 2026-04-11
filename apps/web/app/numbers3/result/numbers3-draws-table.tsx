@@ -23,7 +23,7 @@ type Numbers3DrawsTableProps = {
 export function Numbers3DrawsTable({ rows }: Numbers3DrawsTableProps) {
   return (
     <div>
-      <Table className="min-w-[520px]">
+      <Table className="min-w-[1100px]">
         <TableHeader className="bg-muted/80 supports-[backdrop-filter]:bg-muted/70 sticky top-0 z-10 backdrop-blur-sm [&_tr]:border-border/80">
           <TableRow className="hover:bg-transparent">
             {NUMBERS3_DRAW_COLUMNS.map((col) => (
