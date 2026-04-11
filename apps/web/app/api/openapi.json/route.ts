@@ -16,6 +16,24 @@ export async function GET() {
     },
     servers: [{ url: origin }],
     paths: {
+      "/api/numbers3/latest": {
+        get: {
+          summary: "Latest Numbers3 draws snapshot",
+          description:
+            "Returns recent Numbers3 draw rows when the live data backend is configured; otherwise 503.",
+          responses: {
+            "200": {
+              description: "JSON payload with latest_draws and navigation links",
+              content: {
+                "application/json": {
+                  schema: { type: "object" },
+                },
+              },
+            },
+            "503": { description: "Live draw data not configured" },
+          },
+        },
+      },
       "/api/numbers4/latest": {
         get: {
           summary: "Latest Numbers4 draws snapshot",

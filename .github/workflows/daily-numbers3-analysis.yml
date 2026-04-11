@@ -1,0 +1,76 @@
+name: Daily Numbers3 Analysis
+
+on:
+  workflow_dispatch:
+    inputs:
+      draw_number:
+        description: "分析対象回号（空なら自動）"
+        required: false
+        type: string
+        default: ""
+  schedule:
+    - cron: "50 3 * * 1-5"
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Scrape latest Numbers3 (if script exists)
+        run: |
+          if [ -f "tools/scrape_numbers3_rakuten.py" ]; then
+            python tools/scrape_numbers3_rakuten.py
+          else
+            echo "tools/scrape_numbers3_rakuten.py not found. skip."
+          fi
+
+      - name: Analyze prediction result (if script exists)
+        run: |
+          DRAW="${{ inputs.draw_number }}"
+          if [ -f "numbers3/analyze_prediction_result.py" ]; then
+            if [ -n "$DRAW" ]; then
+              python numbers3/analyze_prediction_result.py --draw "$DRAW" || true
+            else
+              python numbers3/analyze_prediction_result.py || true
+            fi
+          else
+            echo "numbers3/analyze_prediction_result.py not found. skip."
+          fi
+
+      - name: Update model (if script exists)
+        run: |
+          if [ -f "numbers3/update_model.py" ]; then
+            python numbers3/update_model.py --auto || true
+          else
+            echo "numbers3/update_model.py not found. skip."
+          fi
+
+      - name: Commit analysis artifacts
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add reports/analysis_*.md || true
+          git add numbers3/*.json || true
+          if git diff --staged --quiet; then
+            echo "No analysis updates."
+          else
+            TIMESTAMP=$(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M')
+            git commit -m "📊 Numbers3 analysis $TIMESTAMP"
+            bash tools/git_push_with_retry.sh main
+          fi

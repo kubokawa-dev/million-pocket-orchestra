@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 
 const links = [
   { href: "/", label: "ホーム" },
+  { href: "/numbers3", label: "ナンバーズ3" },
   { href: "/numbers4", label: "ナンバーズ4" },
   { href: "/blog", label: "ブログ" },
   { href: "/faq", label: "FAQ" },

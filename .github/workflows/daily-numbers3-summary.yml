@@ -1,0 +1,79 @@
+name: Daily Numbers3 Summary
+
+on:
+  workflow_dispatch:
+    inputs:
+      draw_number:
+        description: "対象回号（空なら最新）"
+        required: false
+        type: string
+        default: ""
+  schedule:
+    - cron: "30 3 * * 1-5"
+
+jobs:
+  summary:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Generate summary markdown (if script exists)
+        run: |
+          if [ -f "numbers3/summarize_from_json.py" ]; then
+            DRAW="${{ inputs.draw_number }}"
+            if [ -n "$DRAW" ]; then
+              python numbers3/summarize_from_json.py --draw "$DRAW"
+            else
+              python numbers3/summarize_from_json.py
+            fi
+          else
+            echo "numbers3/summarize_from_json.py not found. skip."
+          fi
+
+      - name: Check target number (optional)
+        run: |
+          python tools/check_numbers3_target_number.py --methods "box_model,cold_revival" || true
+
+      - name: Generate budget plan (if script exists)
+        run: |
+          if [ -f "numbers3/generate_budget_plan.py" ]; then
+            python numbers3/generate_budget_plan.py || true
+          else
+            echo "numbers3/generate_budget_plan.py not found. skip."
+          fi
+
+      - name: Upsert numbers3_daily_prediction_documents (Supabase)
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          python tools/load_numbers3_daily_json_to_postgres.py --skip-if-unconfigured --chunk-size 12
+
+      - name: Commit generated summaries
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add predictions/numbers3_*.md || true
+          git add predictions/daily/budget_plan_numbers3_*.json || true
+          if git diff --staged --quiet; then
+            echo "No summary updates."
+          else
+            TIMESTAMP=$(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M')
+            git commit -m "📝 Numbers3 summary $TIMESTAMP"
+            bash tools/git_push_with_retry.sh main
+          fi

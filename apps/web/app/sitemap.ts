@@ -17,6 +17,8 @@ const STATIC_PATHS: {
   priority: number;
 }[] = [
     { path: "", changeFrequency: "weekly", priority: 1 },
+  { path: "/numbers3", changeFrequency: "daily", priority: 0.94 },
+  { path: "/numbers3/result", changeFrequency: "daily", priority: 0.89 },
     { path: "/numbers4", changeFrequency: "daily", priority: 0.95 },
     { path: "/numbers4/result", changeFrequency: "daily", priority: 0.9 },
     { path: "/numbers4/stats", changeFrequency: "daily", priority: 0.85 },
@@ -113,6 +115,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   try {
     const supabase = await createClient();
+    const { data: n3Data, error: n3Error } = await supabase
+      .from("numbers3_draws")
+      .select("draw_number, draw_date")
+      .order("draw_number", { ascending: false });
+
+    if (!n3Error && n3Data?.length) {
+      for (const row of n3Data) {
+        const n3Date = row.draw_date != null ? String(row.draw_date) : "";
+        const n3Iso = /^\d{4}\/\d{2}\/\d{2}$/.test(n3Date)
+          ? n3Date.replaceAll("/", "-")
+          : n3Date;
+        entries.push({
+          url: `${origin}/numbers3/result/${row.draw_number}`,
+          lastModified: n3Iso ? new Date(`${n3Iso}T12:00:00.000Z`) : lastModified,
+          changeFrequency: "weekly",
+          priority: 0.54,
+        });
+      }
+    }
+
     const { data, error } = await supabase
       .from("numbers4_draws")
       .select("draw_number, draw_date")

@@ -1,0 +1,50 @@
+name: Numbers3 Target Number Check
+
+on:
+  workflow_dispatch:
+    inputs:
+      draw:
+        description: "対象回号（空なら最新）"
+        required: false
+        type: string
+        default: ""
+      number:
+        description: "チェック番号（3桁）"
+        required: false
+        type: string
+        default: "111"
+      methods:
+        description: "カンマ区切りの手法"
+        required: false
+        type: string
+        default: "box_model,cold_revival"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run checker
+        run: |
+          ARGS=""
+          if [ -n "${{ inputs.draw }}" ]; then
+            ARGS="$ARGS --draw ${{ inputs.draw }}"
+          fi
+          python tools/check_numbers3_target_number.py \
+            $ARGS \
+            --number "${{ inputs.number }}" \
+            --methods "${{ inputs.methods }}" \
+            --output predictions/numbers3_target_check.md
+
+      - name: Upload report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: numbers3-target-check
+          path: predictions/numbers3_target_check.md

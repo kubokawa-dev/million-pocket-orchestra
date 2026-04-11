@@ -1,0 +1,75 @@
+name: Daily Numbers3 Prediction
+
+on:
+  schedule:
+    - cron: "*/20 16-23 * * 0-4"
+    - cron: "*/20 0-2 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      methods:
+        description: "実行するメソッド（カンマ区切り、空欄=自動選択）"
+        required: false
+        type: string
+        default: ""
+
+jobs:
+  predict:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Initialize database
+        run: python tools/utils.py
+
+      - name: Load Numbers3 CSV (if exists)
+        run: |
+          python tools/load_numbers3_csv_to_postgres.py || true
+
+      - name: Run Numbers3 prediction pipeline
+        run: python tools/run_numbers3_pipeline.py
+
+      - name: Run Numbers3 method predictions
+        run: |
+          python tools/run_numbers3_method_predictions.py \
+            --methods "${{ inputs.methods }}" \
+            --limit 200 \
+            --top 20
+
+      - name: Upsert numbers3_daily_prediction_documents (Supabase)
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          python tools/load_numbers3_daily_json_to_postgres.py --skip-if-unconfigured --chunk-size 12
+
+      - name: Commit prediction JSON and CSV
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add predictions/daily/numbers3_*.json || true
+          git add predictions/daily/methods/**/numbers3_*.json || true
+          git add numbers3/*.csv || true
+          if git diff --staged --quiet; then
+            echo "📝 No new Numbers3 predictions to commit"
+          else
+            TIMESTAMP=$(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M')
+            git commit -m "🔮 Numbers3 prediction $TIMESTAMP"
+            bash tools/git_push_with_retry.sh main
+          fi
