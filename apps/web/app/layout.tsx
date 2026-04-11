@@ -33,13 +33,15 @@ const siteVerification = buildSiteVerification();
 export const metadata: Metadata = {
   metadataBase: new URL(siteOrigin),
   title: {
-    default: "宝くじAI | ナンバーズ4 抽選結果・予測",
+    default: "宝くじAI | ナンバーズ3・4 抽選結果・予測",
     template: "%s · 宝くじAI",
   },
   description:
-    "ナンバーズ4の当選番号・抽選結果を一覧でチェック。複数のAI・統計モデルによる日次予測やボックス順位の統計もまとめて閲覧できます。（takarakuji-ai.space） English: Unofficial Japan Numbers4 dashboard — results, stats, multi-model predictions; not affiliated with any operator.",
+    "ナンバーズ3・4の当選番号・抽選結果を一覧でチェック。ナンバーズ4は複数のAI・統計モデルによる日次予測やボックス順位の統計もまとめて閲覧できます。（takarakuji-ai.space） English: Unofficial Japan Numbers3/4 dashboard — results, stats, multi-model predictions; not affiliated with any operator.",
   applicationName: "宝くじAI",
   keywords: [
+    "ナンバーズ3",
+    "ナンバーズ３",
     "ナンバーズ4",
     "ナンバーズ４",
     "宝くじ",
@@ -49,6 +51,7 @@ export const metadata: Metadata = {
     "宝くじAI",
     "ブログ",
     "FAQ",
+    "Numbers3",
     "Numbers4",
     "Numbers 4",
     "Japan lottery",
@@ -71,15 +74,15 @@ export const metadata: Metadata = {
     alternateLocale: ["en_US", "zh_CN", "ko_KR", "es_ES", "hi_IN", "ar_SA"],
     url: siteOrigin,
     siteName: "宝くじAI",
-    title: "宝くじAI | ナンバーズ4 抽選結果・予測",
+    title: "宝くじAI | ナンバーズ3・4 抽選結果・予測",
     description:
-      "ナンバーズ4の当選番号一覧と、複数モデルによる日次予測・統計をスマホでも見やすく。",
+      "ナンバーズ3の当選一覧（等級つき）と、ナンバーズ4の当選番号・日次予測・統計をスマホでも見やすく。",
   },
   twitter: {
     card: "summary_large_image",
     title: "宝くじAI",
     description:
-      "ナンバーズ4の抽選結果と予測ダッシュボード。当選番号をすっきり一覧で。",
+      "ナンバーズ3・4の抽選結果と予測ダッシュボード。当選番号をすっきり一覧で。",
   },
   alternates: {
     types: {

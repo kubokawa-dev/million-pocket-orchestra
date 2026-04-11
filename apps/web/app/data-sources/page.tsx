@@ -35,7 +35,8 @@ export default function DataSourcesPage() {
   ]);
 
   const machineLinks = [
-    { href: "/api/numbers4/latest", label: "GET /api/numbers4/latest", note: "直近の抽選行など（JSON）" },
+    { href: "/api/numbers3/latest", label: "GET /api/numbers3/latest", note: "直近のナンバーズ3抽選行など（JSON）" },
+    { href: "/api/numbers4/latest", label: "GET /api/numbers4/latest", note: "直近のナンバーズ4抽選行など（JSON）" },
     { href: "/api/openapi.json", label: "GET /api/openapi.json", note: "OpenAPI 3.1 仕様" },
     {
       href: `/api/oembed?url=${encodeURIComponent(`${origin}/numbers4/result/1`)}&format=json`,

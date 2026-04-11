@@ -12,6 +12,14 @@ export type HomeLandingLanguageLink = {
   current?: boolean;
 };
 
+/** トップ／フッタ CTA の見た目（ナンバーズ3・4で色分け） */
+export type HomeLandingHeroCta = {
+  href: string;
+  label: string;
+  lottery: "numbers3" | "numbers4";
+  variant: "solid" | "outline";
+};
+
 export type HomeLandingCopy = {
   hero: {
     badgeBrand: string;
@@ -26,8 +34,7 @@ export type HomeLandingCopy = {
     /** Second emphasized phrase (e.g. product positioning); omit for a single-strong intro. */
     introEmphasis?: string;
     introTail: string;
-    ctaPrimary: string;
-    ctaSecondary: string;
+    ctas: readonly HomeLandingHeroCta[];
     languageLinks: readonly HomeLandingLanguageLink[];
   };
   pitchLabels: readonly string[];
@@ -60,16 +67,15 @@ export type HomeLandingCopy = {
   bottomCta: {
     title: string;
     subtitle: string;
-    primary: string;
-    secondary: string;
+    ctas: readonly HomeLandingHeroCta[];
   };
 };
 
 export const homeLandingCopyJa: HomeLandingCopy = {
   hero: {
     badgeBrand: "宝くじAI",
-    badgeFocus: "Numbers4 特化",
-    titleLine1: "ナンバーズ4の",
+    badgeFocus: "Numbers3 & 4",
+    titleLine1: "ナンバーズ3・4の",
     titleHighlight: "数字遊び",
     titleLine2: "、",
     titleLine3: "ここが本気のメインステージ。",
@@ -77,10 +83,34 @@ export const homeLandingCopyJa: HomeLandingCopy = {
     introLead: "宝くじAI",
     introMid:
       "は、当選番号の閲覧から複数AI・統計モデルの予測、成績の見える化までをまとめた",
-    introEmphasis: "ナンバーズ4専用ダッシュボード",
-    introTail: "。Xで語れるネタも、じっくり検証も、どっちもアリ。",
-    ctaPrimary: "いま一番アツいゾーンへ",
-    ctaSecondary: "当選番号一覧",
+    introEmphasis: "ナンバーズ3・4ダッシュボード",
+    introTail: "。3桁も4桁も、Xで語れるネタもじっくり検証も、どっちもアリ。",
+    ctas: [
+      {
+        href: "/numbers4",
+        label: "ナンバーズ4 ハブへ",
+        lottery: "numbers4",
+        variant: "solid",
+      },
+      {
+        href: "/numbers3",
+        label: "ナンバーズ3 ハブへ",
+        lottery: "numbers3",
+        variant: "solid",
+      },
+      {
+        href: "/numbers4/result",
+        label: "ナンバーズ4 当選一覧",
+        lottery: "numbers4",
+        variant: "outline",
+      },
+      {
+        href: "/numbers3/result",
+        label: "ナンバーズ3 当選一覧",
+        lottery: "numbers3",
+        variant: "outline",
+      },
+    ],
     languageLinks: [
       { href: "/blog", label: "使い方ブログ" },
       { href: "/faq", label: "FAQ" },
@@ -95,6 +125,7 @@ export const homeLandingCopyJa: HomeLandingCopy = {
     ],
   },
   pitchLabels: [
+    "3桁・4桁どっちも",
     "複数モデル同時表示",
     "予算プラン付き",
     "スマホ最適化UI",
@@ -104,20 +135,36 @@ export const homeLandingCopyJa: HomeLandingCopy = {
   features: {
     sectionTitle: "このサイトでできること",
     sectionSubtitle:
-      "ただの当選番号リストじゃ終わらない。予測・検証・トレンドまで、Numbers4好きのための機能を詰め込みました。",
+      "ただの当選番号リストじゃ終わらない。ナンバーズ3の結果閲覧に加え、ナンバーズ4は予測・検証・トレンドまで一気通貫。",
     openPage: "ページを開く",
     cards: [
       {
+        href: "/numbers3/result",
+        title: "ナンバーズ3 当選を一覧",
+        tag: "3桁",
+        description:
+          "等級別の口数・払戻つきでガッツリ表示。過去データをサクッと追いかけたい人向け。",
+        accent: "from-emerald-500/15 to-transparent",
+      },
+      {
+        href: "/numbers3",
+        title: "ナンバーズ3 入口",
+        tag: "ハブ",
+        description:
+          "最新回へのショートカットと一覧導線。3桁の予測まわりもここから育てていきます。",
+        accent: "from-teal-500/15 to-transparent",
+      },
+      {
         href: "/numbers4/result",
-        title: "当選番号を一気見せ",
-        tag: "公式結果",
+        title: "ナンバーズ4 当選を一気見せ",
+        tag: "4桁",
         description:
           "過去の抽選を表でサクッと追跡。スマホは横スクロールで全列いける、見やすさガチ勢。",
         accent: "from-violet-500/15 to-transparent",
       },
       {
         href: "/numbers4",
-        title: "マルチモデル予測ハブ",
+        title: "ナンバーズ4 マルチモデル予測",
         tag: "アンサンブル",
         description:
           "統計・ML・パターン系など、複数の頭脳をぶち込んだ日次予測を1画面にダッシュボード表示。",
@@ -144,12 +191,12 @@ export const homeLandingCopyJa: HomeLandingCopy = {
   story: {
     title: "宝くじAI って何者？",
     subtitle: "略して「数字とにらめっこするための、ちゃんとしたWebアプリ」です。",
-    p1Lead: "ナンバーズ4の",
+    p1Lead: "ナンバーズ3・4の",
     p1Strong1: "公式に近い形の当選情報",
     p1Mid: "を一覧しつつ、サイト側に蓄積した",
     p1Strong2: "日次予測データ",
     p1Tail:
-      "をダッシュボード表示。アンサンブル・手法別・予算プランなど、種類が多いほど比較が楽しくなる構成にしています。",
+      "をダッシュボード表示（※予測の厚みはナンバーズ4が先行）。アンサンブル・手法別・予算プランなど、種類が多いほど比較が楽しくなる構成にしています。",
     p2: "「バズる予感のするUI」と「じっくり数字を追う体験」、両方取りにいきました。SNSでスクショ載せたくなるくらい、見せ方にはこだわってます。",
   },
   disclaimer: {
@@ -164,29 +211,78 @@ export const homeLandingCopyJa: HomeLandingCopy = {
     subtitle: "ブログで画面の読み方を解説しています",
   },
   bottomCta: {
-    title: "さあ、第1ゲームはナンバーズ4ダッシュボード",
-    subtitle: "当選を眺めるだけでも、予測を覗くだけでもOK。あなたの見たい回から飛び込んでみて。",
-    primary: "ナンバーズ4ゾーンへ",
-    secondary: "当選番号から入る",
+    title: "さあ、ナンバーズ3・4のダッシュボードへ",
+    subtitle:
+      "3桁は当選データを厚めに、4桁は予測も統計も。眺めるだけでも、覗くだけでもOK。好きな入口からどうぞ。",
+    ctas: [
+      {
+        href: "/numbers4",
+        label: "ナンバーズ4 ハブ",
+        lottery: "numbers4",
+        variant: "solid",
+      },
+      {
+        href: "/numbers3",
+        label: "ナンバーズ3 ハブ",
+        lottery: "numbers3",
+        variant: "solid",
+      },
+      {
+        href: "/numbers4/result",
+        label: "ナンバーズ4 当選一覧",
+        lottery: "numbers4",
+        variant: "outline",
+      },
+      {
+        href: "/numbers3/result",
+        label: "ナンバーズ3 当選一覧",
+        lottery: "numbers3",
+        variant: "outline",
+      },
+    ],
   },
 };
 
 export const homeLandingCopyEn: HomeLandingCopy = {
   hero: {
     badgeBrand: "Takarakuji AI",
-    badgeFocus: "Numbers4-focused",
-    titleLine1: "All-in on ",
-    titleHighlight: "Numbers4",
-    titleLine2: " — draws, predictions, stats, and trends in one dashboard.",
+    badgeFocus: "Numbers3 & 4",
+    titleLine1: "Japan ",
+    titleHighlight: "Numbers3 & 4",
+    titleLine2: " — draws, predictions, stats, and trends in one place.",
     titleLine3: "",
     titleLineBreakBeforeLine3: false,
     introLead: "Takarakuji AI",
     introMid:
-      " is an unofficial hub for Japan’s Numbers4 game: browse draws, compare multiple daily prediction models, and explore performance analytics. ",
+      " is an unofficial hub for Japan’s Numbers3 and Numbers4 games: browse draws (including tier payouts for Numbers3), compare multiple daily prediction models on Numbers4, and explore performance analytics. ",
     introTail:
       "Most in-app labels are in Japanese — this landing is in English for international visitors.",
-    ctaPrimary: "Open the predictions hub",
-    ctaSecondary: "Browse winning numbers",
+    ctas: [
+      {
+        href: "/numbers4",
+        label: "Numbers4 hub",
+        lottery: "numbers4",
+        variant: "solid",
+      },
+      {
+        href: "/numbers3",
+        label: "Numbers3 hub",
+        lottery: "numbers3",
+        variant: "solid",
+      },
+      {
+        href: "/numbers4/result",
+        label: "Numbers4 results",
+        lottery: "numbers4",
+        variant: "outline",
+      },
+      {
+        href: "/numbers3/result",
+        label: "Numbers3 results",
+        lottery: "numbers3",
+        variant: "outline",
+      },
+    ],
     languageLinks: [
       { href: "/", label: "日本語" },
       { href: "/en", label: "English", current: true },
@@ -202,6 +298,7 @@ export const homeLandingCopyEn: HomeLandingCopy = {
     ],
   },
   pitchLabels: [
+    "3-digit & 4-digit",
     "Multi-model view",
     "Budget-style plans",
     "Mobile-first UI",
@@ -211,13 +308,29 @@ export const homeLandingCopyEn: HomeLandingCopy = {
   features: {
     sectionTitle: "What you can do here",
     sectionSubtitle:
-      "More than a plain results list — explore predictions, validation views, and trend analytics built for Numbers4 enthusiasts.",
+      "More than plain lists — Numbers3 results with tier payouts, plus Numbers4 predictions, validation views, and trend analytics.",
     openPage: "Open page",
     cards: [
       {
+        href: "/numbers3/result",
+        title: "Numbers3 results list",
+        tag: "3-digit",
+        description:
+          "Browse past draws with winners and payouts per tier — optimized for quick scanning on mobile.",
+        accent: "from-emerald-500/15 to-transparent",
+      },
+      {
+        href: "/numbers3",
+        title: "Numbers3 hub",
+        tag: "Entry",
+        description:
+          "Shortcuts to the latest draw and the results index — the home for 3-digit workflows on this site.",
+        accent: "from-teal-500/15 to-transparent",
+      },
+      {
         href: "/numbers4/result",
-        title: "Winning numbers at a glance",
-        tag: "Results",
+        title: "Numbers4 results at a glance",
+        tag: "4-digit",
         description:
           "Scan past draws in a dense, scannable table — horizontal scroll on mobile so every column stays reachable.",
         accent: "from-violet-500/15 to-transparent",
@@ -250,13 +363,13 @@ export const homeLandingCopyEn: HomeLandingCopy = {
   },
   story: {
     title: "What is Takarakuji AI?",
-    subtitle: "A focused web app for exploring Numbers4 draws, models, and analytics.",
+    subtitle: "A focused web app for exploring Numbers3/4 draws, models, and analytics.",
     p1Lead: "We surface ",
     p1Strong1: "official-style winning-number data",
-    p1Mid: " alongside ",
+    p1Mid: " for both games alongside ",
     p1Strong2: "daily prediction datasets",
     p1Tail:
-      " hosted on this site — ensembles, methods, and budget-style plans side by side so comparisons stay interesting.",
+      " (prediction depth is richest on Numbers4 for now) — ensembles, methods, and budget-style plans side by side so comparisons stay interesting.",
     p2: "We care about both a polished, shareable UI and a calm, analytical workflow for digging into the digits.",
   },
   disclaimer: {
@@ -271,10 +384,34 @@ export const homeLandingCopyEn: HomeLandingCopy = {
     subtitle: "The Japanese blog walks through how to read each screen.",
   },
   bottomCta: {
-    title: "Start from the Numbers4 dashboard",
+    title: "Jump into Numbers3 or Numbers4",
     subtitle:
-      "Skim results, peek at models, or jump to a specific draw — pick your own entry point.",
-    primary: "Go to Numbers4 hub",
-    secondary: "Start from results",
+      "Browse 3-digit draws with payouts, or dive into 4-digit predictions and analytics — pick your entry point.",
+    ctas: [
+      {
+        href: "/numbers4",
+        label: "Numbers4 hub",
+        lottery: "numbers4",
+        variant: "solid",
+      },
+      {
+        href: "/numbers3",
+        label: "Numbers3 hub",
+        lottery: "numbers3",
+        variant: "solid",
+      },
+      {
+        href: "/numbers4/result",
+        label: "Numbers4 results",
+        lottery: "numbers4",
+        variant: "outline",
+      },
+      {
+        href: "/numbers3/result",
+        label: "Numbers3 results",
+        lottery: "numbers3",
+        variant: "outline",
+      },
+    ],
   },
 };

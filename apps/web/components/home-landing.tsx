@@ -21,16 +21,79 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import type { HomeLandingCopy } from "@/lib/home-landing-copy";
+import type { HomeLandingCopy, HomeLandingHeroCta } from "@/lib/home-landing-copy";
 import { homeLandingCopyJa } from "@/lib/home-landing-copy";
 import { cn } from "@/lib/utils";
 
 const featureIconByHref: Record<string, LucideIcon> = {
+  "/numbers3/result": ListOrderedIcon,
+  "/numbers3": LayersIcon,
   "/numbers4/result": ListOrderedIcon,
   "/numbers4": LayersIcon,
   "/numbers4/stats": BarChart3Icon,
   "/numbers4/trend": FlameIcon,
 };
+
+function homeCtaButtonClass(
+  cta: HomeLandingHeroCta,
+  surface: "hero" | "bottom" = "hero",
+): string {
+  if (cta.variant === "solid") {
+    if (cta.lottery === "numbers4") {
+      return cn(
+        buttonVariants({ size: "lg" }),
+        "gap-2 bg-gradient-to-r from-violet-600 to-cyan-600 text-white shadow-md hover:from-violet-500 hover:to-cyan-500",
+      );
+    }
+    return cn(
+      buttonVariants({ size: "lg" }),
+      "gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md hover:from-emerald-500 hover:to-teal-500",
+    );
+  }
+  const onGradient =
+    surface === "bottom"
+      ? "border-background/30 bg-background/90 shadow-sm hover:bg-background"
+      : "border-border/80 bg-background/60 backdrop-blur-sm hover:bg-background/80";
+  if (cta.lottery === "numbers4") {
+    return cn(
+      buttonVariants({ variant: "outline", size: "lg" }),
+      "justify-center ring-violet-500/15 hover:ring-1 dark:ring-violet-400/20",
+      onGradient,
+    );
+  }
+  return cn(
+    buttonVariants({ variant: "outline", size: "lg" }),
+    "justify-center ring-emerald-500/15 hover:ring-1 dark:ring-emerald-400/20",
+    onGradient,
+  );
+}
+
+function HomeCtaLink({
+  cta,
+  surface = "hero",
+}: {
+  cta: HomeLandingHeroCta;
+  surface?: "hero" | "bottom";
+}) {
+  const SolidIcon =
+    cta.lottery === "numbers4" ? ZapIcon : SparklesIcon;
+  const icon =
+    cta.variant === "solid" ? (
+      <SolidIcon className="size-4 shrink-0" />
+    ) : (
+      <ListOrderedIcon className="size-4 shrink-0 opacity-80" />
+    );
+  return (
+    <Link
+      href={cta.href}
+      className={cn(homeCtaButtonClass(cta, surface), "w-full sm:min-w-0")}
+    >
+      {icon}
+      <span className="text-balance">{cta.label}</span>
+      <ArrowRightIcon className="size-4 shrink-0 opacity-90" />
+    </Link>
+  );
+}
 
 type HomeLandingProps = {
   copy?: HomeLandingCopy;
@@ -79,27 +142,14 @@ export function HomeLanding({ copy = homeLandingCopyJa }: HomeLandingProps) {
             ) : null}
             {hero.introTail}
           </p>
-          <div className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
-            <Link
-              href="/numbers4"
-              className={cn(
-                buttonVariants({ size: "lg" }),
-                "gap-2 bg-gradient-to-r from-violet-600 to-cyan-600 text-white shadow-md hover:from-violet-500 hover:to-cyan-500 sm:min-w-[240px]",
-              )}
-            >
-              <ZapIcon className="size-4" />
-              {hero.ctaPrimary}
-              <ArrowRightIcon className="size-4" />
-            </Link>
-            <Link
-              href="/numbers4/result"
-              className={cn(
-                buttonVariants({ variant: "outline", size: "lg" }),
-                "justify-center border-border/80 bg-background/60 backdrop-blur-sm sm:min-w-[200px]",
-              )}
-            >
-              {hero.ctaSecondary}
-            </Link>
+          <div className="mx-auto mt-8 grid max-w-lg grid-cols-1 gap-3 sm:max-w-2xl sm:grid-cols-2">
+            {hero.ctas.map((cta) => (
+              <HomeCtaLink
+                key={`${cta.href}-${cta.variant}`}
+                cta={cta}
+                surface="hero"
+              />
+            ))}
           </div>
           <p className="text-muted-foreground mt-8 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs sm:text-sm">
             {hero.languageLinks.map((link, index) => (
@@ -150,7 +200,7 @@ export function HomeLanding({ copy = homeLandingCopyJa }: HomeLandingProps) {
               {features.sectionSubtitle}
             </p>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {features.cards.map(
               ({ href, title, tag, description, accent }) => {
                 const Icon = featureIconByHref[href] ?? ListOrderedIcon;
@@ -266,26 +316,14 @@ export function HomeLanding({ copy = homeLandingCopyJa }: HomeLandingProps) {
             <p className="text-muted-foreground mx-auto mt-2 max-w-md text-sm sm:text-base">
               {bottomCta.subtitle}
             </p>
-            <div className="mt-6 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:justify-center">
-              <Link
-                href="/numbers4"
-                className={cn(
-                  buttonVariants({ size: "lg" }),
-                  "gap-2 shadow-md sm:min-w-[220px]",
-                )}
-              >
-                {bottomCta.primary}
-                <ArrowRightIcon className="size-4" />
-              </Link>
-              <Link
-                href="/numbers4/result"
-                className={cn(
-                  buttonVariants({ variant: "outline", size: "lg" }),
-                  "border-background/20 bg-background/70 backdrop-blur-sm sm:min-w-[180px]",
-                )}
-              >
-                {bottomCta.secondary}
-              </Link>
+            <div className="mx-auto mt-6 grid max-w-lg grid-cols-1 gap-3 sm:max-w-2xl sm:grid-cols-2">
+              {bottomCta.ctas.map((cta) => (
+                <HomeCtaLink
+                  key={`bottom-${cta.href}-${cta.variant}`}
+                  cta={cta}
+                  surface="bottom"
+                />
+              ))}
             </div>
           </div>
         </div>
