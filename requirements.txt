@@ -1,7 +1,6 @@
 numpy>=1.24,<3
 pandas>=2.0,<3
 tqdm
-Flask>=2.0
 streamlit>=1.30
 python-dotenv
 psycopg2-binary>=2.9
