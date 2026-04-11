@@ -230,6 +230,25 @@ CREATE TABLE IF NOT EXISTS loto6_prediction_candidates (
 CREATE INDEX IF NOT EXISTS idx_loto6_candidates_ensemble ON loto6_prediction_candidates(ensemble_prediction_id);
 CREATE INDEX IF NOT EXISTS idx_loto6_candidates_number ON loto6_prediction_candidates(number);
 
+-- predictions/daily/loto6_*.json（Postgres の loto6_daily_prediction_documents と同役割・SQLite 用）
+CREATE TABLE IF NOT EXISTS loto6_daily_prediction_documents (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    target_draw_number INTEGER NOT NULL,
+    doc_kind TEXT NOT NULL CHECK (doc_kind IN ('ensemble', 'method')),
+    method_slug TEXT NOT NULL DEFAULT '',
+    relative_path TEXT NOT NULL,
+    payload TEXT NOT NULL,
+    payload_sha256 TEXT,
+    file_mtime TEXT,
+    ingested_at TEXT DEFAULT (datetime('now')),
+    CHECK (
+        (doc_kind = 'method' AND method_slug != '')
+        OR (doc_kind = 'ensemble' AND method_slug = '')
+    ),
+    UNIQUE (target_draw_number, doc_kind, method_slug)
+);
+CREATE INDEX IF NOT EXISTS idx_loto6_daily_docs_draw ON loto6_daily_prediction_documents(target_draw_number);
+CREATE INDEX IF NOT EXISTS idx_loto6_daily_docs_kind ON loto6_daily_prediction_documents(doc_kind);
 
 
 

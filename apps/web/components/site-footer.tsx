@@ -7,6 +7,7 @@ const footerLinks = [
   { href: "/numbers3", label: "ナンバーズ3" },
   { href: "/numbers4", label: "ナンバーズ4" },
   { href: "/loto6", label: "ロト6" },
+  { href: "/loto6/stats", label: "ロト6 統計" },
   { href: "/en", label: "English" },
   { href: "/en/blog", label: "Blog (EN)" },
   { href: "/llms.txt", label: "llms.txt（AI向け要約）" },

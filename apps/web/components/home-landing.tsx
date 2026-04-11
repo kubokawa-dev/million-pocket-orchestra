@@ -35,6 +35,7 @@ const featureIconByHref: Record<string, LucideIcon> = {
   "/numbers4/trend": FlameIcon,
   "/loto6/result": ListOrderedIcon,
   "/loto6": CircleDotIcon,
+  "/loto6/stats": BarChart3Icon,
 };
 
 function homeCtaButtonClass(

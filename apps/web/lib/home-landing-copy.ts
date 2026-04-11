@@ -218,6 +218,14 @@ export const homeLandingCopyJa: HomeLandingCopy = {
           "最新回へのショートカットと一覧への導線。ナンバーズと並べて数字チェックしたい人向け。",
         accent: "from-orange-500/15 to-transparent",
       },
+      {
+        href: "/loto6/stats",
+        title: "ロト6 出現回数",
+        tag: "統計",
+        description:
+          "1〜43の本数字・ボーナスの出現回数を窓を変えて一覧。次の予測の肌感チェックにも使えるよ。",
+        accent: "from-yellow-500/14 to-transparent",
+      },
     ],
   },
   story: {
@@ -430,6 +438,14 @@ export const homeLandingCopyEn: HomeLandingCopy = {
         description:
           "Shortcuts to the latest draw and the results index — browse alongside Numbers games in one place.",
         accent: "from-orange-500/15 to-transparent",
+      },
+      {
+        href: "/loto6/stats",
+        title: "Loto6 frequency stats",
+        tag: "Stats",
+        description:
+          "Per-ball counts for mains and bonus across a configurable window — handy context before reading predictions.",
+        accent: "from-yellow-500/14 to-transparent",
       },
     ],
   },

@@ -18,12 +18,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { buttonVariants } from "@/components/ui/button-variants";
+import { Loto6PredictionsPanel } from "@/components/loto6-predictions-panel";
 import { createClient } from "@/lib/supabase/server";
 import { formatYen } from "@/lib/numbers4";
 import {
   type Loto6DrawRow,
   formatLoto6NumbersCell,
 } from "@/lib/loto6";
+import { parseLoto6MainNumbers } from "@/lib/loto6-predictions/hit-utils";
+import { loadLoto6PredictionBundle } from "@/lib/loto6-predictions/load-bundles";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -72,6 +75,9 @@ export default async function Loto6ResultDetailPage({ params }: PageProps) {
   if (!row) notFound();
 
   const r = row as Loto6DrawRow;
+
+  const predictionBundle = await loadLoto6PredictionBundle(n);
+  const actualMain = parseLoto6MainNumbers(r.numbers);
 
   return (
     <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-8 sm:px-6 sm:py-10">
@@ -143,6 +149,18 @@ export default async function Loto6ResultDetailPage({ params }: PageProps) {
           </div>
         </CardContent>
       </Card>
+
+      {predictionBundle &&
+      (predictionBundle.ensemble != null ||
+        predictionBundle.methodRows.length > 0) ? (
+        <section className="border-border/60 rounded-2xl border bg-card/40 p-5 shadow-sm ring-1 ring-black/5 sm:p-6 dark:ring-white/10">
+          <Loto6PredictionsPanel
+            bundle={predictionBundle}
+            actualMain={actualMain.length === 6 ? actualMain : undefined}
+            actualBonus={r.bonus_number}
+          />
+        </section>
+      ) : null}
     </div>
   );
 }

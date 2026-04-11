@@ -1,0 +1,92 @@
+name: Daily Loto6 Prediction (MVP)
+
+on:
+  schedule:
+    # 毎日 UTC 22:40 ≒ 翌 JST 07:40
+    - cron: "40 22 * * *"
+  workflow_dispatch:
+    inputs:
+      target_draw:
+        description: "予測対象回（空欄＝loto6/*.csv の最新+1）"
+        required: false
+        type: string
+        default: ""
+
+concurrency:
+  group: loto6-predictions-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  predict:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Pull latest changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git pull origin main --rebase || true
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Sync Loto6 draws (CSV → Supabase)
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_USE_REST: "1"
+        run: |
+          python tools/load_loto6_csv_to_postgres.py --skip-if-unconfigured --source csv
+
+      - name: Generate Loto6 MVP predictions
+        run: |
+          T="${{ github.event.inputs.target_draw }}"
+          if [ -n "$T" ] && [ "$T" != "null" ]; then
+            echo "🎯 target_draw=$T"
+            python tools/generate_loto6_predictions_mvp.py --target-draw "$T"
+          else
+            python tools/generate_loto6_predictions_mvp.py
+          fi
+
+      - name: Upsert loto6_daily_prediction_documents (Supabase)
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          T="${{ github.event.inputs.target_draw }}"
+          EXTRA=""
+          if [ -n "$T" ] && [ "$T" != "null" ]; then EXTRA="--target-draw-number $T"; fi
+          python tools/load_loto6_daily_json_to_postgres.py --skip-if-unconfigured --chunk-size 16 $EXTRA
+
+      - name: Commit prediction JSON
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add predictions/daily/loto6_*.json || true
+          git add predictions/daily/methods/**/loto6_*.json || true
+          if git diff --staged --quiet; then
+            echo "No new Loto6 prediction files to commit"
+          else
+            TS=$(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M')
+            git commit -m "chore(loto6): refresh MVP predictions ${TS}"
+            bash tools/git_push_with_retry.sh main || true
+          fi
+
+      - name: Summary
+        run: |
+          echo "✅ Loto6 prediction job finished (draws sync + generate + JSON upsert + commit)."

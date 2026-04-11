@@ -16,7 +16,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Loto6PredictionsPanel } from "@/components/loto6-predictions-panel";
 import { buildBreadcrumbJsonLd } from "@/lib/breadcrumb-jsonld";
+import {
+  loadLoto6PredictionBundle,
+  resolveNextLoto6TargetDrawNumber,
+} from "@/lib/loto6-predictions/load-bundles";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -29,7 +34,8 @@ export const metadata: Metadata = {
   alternates: { canonical: "/loto6" },
   openGraph: {
     title: "ロト6 | 宝くじAI",
-    description: "ロト6の抽選結果一覧と詳細ページへのハブ。",
+    description:
+      "ロト6の抽選結果一覧・詳細、MVP予測、出現回数統計へのハブ。",
     url: "/loto6",
   },
 };
@@ -46,6 +52,10 @@ export default async function Loto6Page() {
   const latestDraw = data?.draw_number ?? null;
   const latestHref = latestDraw ? `/loto6/result/${latestDraw}` : "/loto6/result";
 
+  const nextTarget = await resolveNextLoto6TargetDrawNumber();
+  const predictionBundle =
+    nextTarget != null ? await loadLoto6PredictionBundle(nextTarget) : null;
+
   const breadcrumbJsonLd = buildBreadcrumbJsonLd([
     { name: "ロト6", path: "/loto6" },
   ]);
@@ -56,7 +66,7 @@ export default async function Loto6Page() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
-      <div className="mx-auto w-full max-w-3xl flex-1 space-y-10 px-4 py-10 sm:space-y-12 sm:px-6 sm:py-14">
+      <div className="mx-auto w-full max-w-4xl flex-1 space-y-10 px-4 py-10 sm:space-y-12 sm:px-6 sm:py-14">
         <header className="space-y-4 text-center sm:text-left">
           <Badge
             variant="secondary"
@@ -74,10 +84,43 @@ export default async function Loto6Page() {
               {latestDraw ? `第 ${latestDraw} 回` : "未取得"}
             </strong>
             です。当選番号・ボーナス・等級別口数・払戻金・キャリーオーバーを一覧・詳細で確認できます。
+            {nextTarget != null ? (
+              <>
+                {" "}
+                次回予定の{" "}
+                <strong className="text-foreground">第 {nextTarget} 回</strong>
+                向けの MVP 予測は、下のパネルで確認できます（データがある場合）。
+              </>
+            ) : null}
           </p>
         </header>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        {predictionBundle &&
+        (predictionBundle.ensemble != null ||
+          predictionBundle.methodRows.length > 0) ? (
+          <section className="border-border/60 rounded-2xl border bg-card/40 p-5 shadow-sm ring-1 ring-black/5 sm:p-6 dark:ring-white/10">
+            <Loto6PredictionsPanel bundle={predictionBundle} />
+          </section>
+        ) : nextTarget != null ? (
+          <Card className="border-dashed border-amber-500/30 bg-muted/20 shadow-none">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">予測（MVP）</CardTitle>
+              <CardDescription>
+                第 {nextTarget} 回向けの予測 JSON がまだ Supabase に入っていません。リポジトリで{" "}
+                <code className="font-mono text-xs">
+                  python tools/generate_loto6_predictions_mvp.py
+                </code>{" "}
+                →{" "}
+                <code className="font-mono text-xs">
+                  python tools/load_loto6_daily_json_to_postgres.py
+                </code>{" "}
+                を実行すると表示されます（8 手法 + アンサンブル JSON）。
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        ) : null}
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Card className="border-border/80 shadow-sm ring-1 ring-black/5 dark:ring-white/10">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg">最新回を見る</CardTitle>
@@ -94,6 +137,27 @@ export default async function Loto6Page() {
                 )}
               >
                 {latestDraw ? `第 ${latestDraw} 回へ` : "一覧へ"}
+                <ArrowRightIcon className="size-4" />
+              </Link>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/80 shadow-sm ring-1 ring-black/5 dark:ring-white/10">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">出現回数の統計</CardTitle>
+              <CardDescription>
+                本数字・ボーナスの出現頻度を球ごとにチェック。
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Link
+                href="/loto6/stats"
+                className={cn(
+                  buttonVariants({ variant: "outline", size: "lg" }),
+                  "w-full justify-center gap-2 border-amber-500/30 sm:w-auto",
+                )}
+              >
+                統計ページへ
                 <ArrowRightIcon className="size-4" />
               </Link>
             </CardContent>

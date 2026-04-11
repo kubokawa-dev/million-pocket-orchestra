@@ -147,6 +147,10 @@ def main():
             'id', 'target_draw_number', 'doc_kind', 'method_slug', 'relative_path',
             'payload', 'payload_sha256', 'file_mtime', 'ingested_at',
         ],
+        'loto6_daily_prediction_documents': [
+            'id', 'target_draw_number', 'doc_kind', 'method_slug', 'relative_path',
+            'payload', 'payload_sha256', 'file_mtime', 'ingested_at',
+        ],
         'loto6_prediction_candidates': ['id', 'ensemble_prediction_id', 'rank', 'number', 'score', 'contributing_models', 'created_at'],
     }
     

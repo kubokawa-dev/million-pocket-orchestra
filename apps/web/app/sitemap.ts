@@ -23,6 +23,7 @@ const STATIC_PATHS: {
     { path: "/numbers4/result", changeFrequency: "daily", priority: 0.9 },
   { path: "/loto6", changeFrequency: "daily", priority: 0.9 },
   { path: "/loto6/result", changeFrequency: "daily", priority: 0.88 },
+  { path: "/loto6/stats", changeFrequency: "daily", priority: 0.82 },
     { path: "/numbers4/stats", changeFrequency: "daily", priority: 0.85 },
     { path: "/numbers4/trend", changeFrequency: "daily", priority: 0.85 },
     { path: "/blog", changeFrequency: "weekly", priority: 0.75 },
