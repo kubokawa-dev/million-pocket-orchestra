@@ -1,3 +1,4 @@
+# Numbers3 ターゲット番号チェック（予測 JSON のみ参照。スキーマ: apps/web/supabase/migrations）
 name: Numbers3 Target Number Check
 
 on:
@@ -23,13 +24,22 @@ jobs:
   check:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
 
       - name: Run checker
         run: |

@@ -1,3 +1,4 @@
+# Numbers3 平日分析。Supabase: numbers3_draws 等（apps/web/supabase/migrations）
 name: Daily Numbers3 Analysis
 
 on:
@@ -16,11 +17,21 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_USE_REST: "1"
 
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Pull latest changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git pull origin main --rebase
 
       - uses: actions/setup-python@v5
         with:
@@ -31,6 +42,9 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
+
+      - name: Initialize database
+        run: python tools/utils.py
 
       - name: Scrape latest Numbers3 (if script exists)
         run: |
@@ -61,12 +75,22 @@ jobs:
             echo "numbers3/update_model.py not found. skip."
           fi
 
+      - name: Upsert Numbers3 draws to Supabase
+        run: |
+          echo "📤 numbers3/*.csv → Supabase numbers3_draws（本番・リモート同期）"
+          python tools/load_numbers3_csv_to_postgres.py --skip-if-unconfigured
+
+      - name: Upsert numbers3_daily_prediction_documents (Supabase)
+        run: |
+          python tools/load_numbers3_daily_json_to_postgres.py --skip-if-unconfigured --chunk-size 12
+
       - name: Commit analysis artifacts
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add reports/analysis_*.md || true
           git add numbers3/*.json || true
+          git add numbers3/*.csv || true
           if git diff --staged --quiet; then
             echo "No analysis updates."
           else

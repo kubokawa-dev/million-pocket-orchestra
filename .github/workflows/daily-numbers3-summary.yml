@@ -1,3 +1,4 @@
+# Numbers3 サマリー。Supabase: numbers3_draws / numbers3_daily_prediction_documents
 name: Daily Numbers3 Summary
 
 on:
@@ -16,11 +17,21 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_USE_REST: "1"
 
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Pull latest changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git pull origin main --rebase
 
       - uses: actions/setup-python@v5
         with:
@@ -31,6 +42,9 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
+
+      - name: Initialize database
+        run: python tools/utils.py
 
       - name: Generate summary markdown (if script exists)
         run: |
@@ -58,16 +72,10 @@ jobs:
           fi
 
       - name: Upsert Numbers3 draws to Supabase
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
-          SUPABASE_USE_REST=1 python tools/load_numbers3_csv_to_postgres.py --skip-if-unconfigured
+          python tools/load_numbers3_csv_to_postgres.py --skip-if-unconfigured
 
       - name: Upsert numbers3_daily_prediction_documents (Supabase)
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           python tools/load_numbers3_daily_json_to_postgres.py --skip-if-unconfigured --chunk-size 12
 
