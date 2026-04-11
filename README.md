@@ -126,7 +126,7 @@ python loto6/predict_ensemble.py
 
 | ワークフロー | 用途 |
 |--------------|------|
-| `ci.yml` | PR / main 向け **lint・ビルド（web）** と **pytest** |
+| `ci.yml` | PR / main 向け **lint → pytest → build（web）** を 1 ジョブで実行 |
 | `daily-numbers3-prediction.yml` | Numbers3 日次予測・JSON コミット・Supabase |
 | `daily-numbers3-analysis.yml` | Numbers3 分析 |
 | `daily-numbers3-summary.yml` | Numbers3 サマリー |

@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  web:
+  checks:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -28,22 +28,11 @@ jobs:
           cache: "pnpm"
           cache-dependency-path: pnpm-lock.yaml
 
-      - name: Install dependencies
+      - name: Install Node dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Lint and build (web)
-        run: pnpm exec turbo run lint build --filter=web
-        env:
-          # ビルド時に RSC が Supabase 設定を要求するため、CI 用のダミー値
-          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-build-anon-key-placeholder
-          SUPABASE_SERVICE_ROLE_KEY: ""
-
-  python:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Lint (web)
+        run: pnpm exec turbo run lint --filter=web
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -54,10 +43,17 @@ jobs:
             requirements.txt
             requirements-dev.txt
 
-      - name: Install dependencies
+      - name: Install Python dependencies
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt -r requirements-dev.txt
 
-      - name: Run tests
+      - name: Test (pytest)
         run: python -m pytest
+
+      - name: Build (web)
+        run: pnpm exec turbo run build --filter=web
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-build-anon-key-placeholder
+          SUPABASE_SERVICE_ROLE_KEY: ""
