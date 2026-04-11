@@ -28,6 +28,8 @@ const STATIC_PATHS: {
     { path: "/numbers4/trend", changeFrequency: "daily", priority: 0.85 },
     { path: "/blog", changeFrequency: "weekly", priority: 0.75 },
     { path: "/faq", changeFrequency: "monthly", priority: 0.7 },
+    { path: "/responsible-use", changeFrequency: "monthly", priority: 0.68 },
+    { path: "/terms", changeFrequency: "monthly", priority: 0.66 },
     { path: "/data-sources", changeFrequency: "monthly", priority: 0.62 },
     { path: "/en", changeFrequency: "monthly", priority: 0.88 },
     { path: "/en/blog", changeFrequency: "weekly", priority: 0.82 },

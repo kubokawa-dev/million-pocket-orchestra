@@ -3,6 +3,8 @@ import Link from "next/link";
 const footerLinks = [
   { href: "/blog", label: "ブログ" },
   { href: "/faq", label: "よくある質問" },
+  { href: "/responsible-use#ethical", label: "倫理的配慮・健全な利用" },
+  { href: "/terms", label: "利用規約（草案）" },
   { href: "/data-sources", label: "データ・API" },
   { href: "/numbers3", label: "ナンバーズ3" },
   { href: "/numbers4", label: "ナンバーズ4" },

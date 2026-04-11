@@ -33,7 +33,7 @@ export async function generateMetadata({
   const row = await getCachedNumbers4DrawFullRow(n);
   const description =
     buildNumbers4DrawPageDescription(n, row) + numbers4DrawEnglishMetaSuffix(n);
-  const title = `第${n}回 ナンバーズ4 予測・当選照合`;
+  const title = `第${n}回 ナンバーズ4 モデル試算と当選照合`;
   const ogDate = numbers4DrawDateToIsoDate(row?.draw_date);
 
   return {
@@ -42,7 +42,7 @@ export async function generateMetadata({
     keywords: [
       "ナンバーズ4",
       `第${n}回`,
-      "予測",
+      "モデル試算",
       "当選番号",
       "アンサンブル",
       "ボックス",
@@ -80,7 +80,7 @@ export default async function Numbers4ResultDrawPredictionsPage({
   ]);
   const origin = getSiteOrigin();
   const description = buildNumbers4DrawPageDescription(drawNumber, row);
-  const pageName = `第${drawNumber}回 ナンバーズ4 予測・当選照合`;
+  const pageName = `第${drawNumber}回 ナンバーズ4 モデル試算と当選照合`;
   const pageUrl = `${origin}/numbers4/result/${drawNumber}`;
   const ogDate = numbers4DrawDateToIsoDate(row?.draw_date);
 

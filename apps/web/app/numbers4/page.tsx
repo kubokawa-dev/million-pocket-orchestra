@@ -28,12 +28,12 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "ナンバーズ4",
   description:
-    "日次予測（アンサンブル・モデル別・予算プラン）と当選番号一覧への入口です。 EN: Unofficial Numbers4 hub — predictions, stats, and results (verify officially).",
+    "日次モデル試算（アンサンブル・モデル別・予算プラン）と当選番号一覧への入口です。 EN: Unofficial Numbers4 hub — reference model outputs, stats, and results (verify officially).",
   alternates: { canonical: "/numbers4" },
   openGraph: {
     title: "ナンバーズ4 | 宝くじAI",
     description:
-      "複数のAI・統計モデルによるナンバーズ4の日次予測と、当選番号・統計ページへのハブ。",
+      "複数のAI・統計モデルによるナンバーズ4の日次試算と、当選番号・統計ページへのハブ。当せんの保証はありません。",
     url: "/numbers4",
   },
 };
@@ -62,9 +62,9 @@ export default async function Numbers4Page() {
             ナンバーズ4
           </h1>
           <p className="text-muted-foreground mx-auto max-w-xl text-sm leading-relaxed sm:mx-0 sm:text-base">
-            このサイトの「ナンバーズ4ゾーン」の入口です。いま取り込まれている予測データの最新回は{" "}
+            このサイトの「ナンバーズ4ゾーン」の入口です。いま取り込まれているモデル試算データの最新回は{" "}
             <strong className="text-foreground">第 {latestDraw} 回</strong>
-            向けです。当選番号は開催後にサイトへ取り込まれると、予測との照合も自動で付きます。
+            向けです。当選番号は開催後にサイトへ取り込まれると、試算リストとの照合も自動で付きます。
           </p>
         </header>
 
@@ -78,7 +78,7 @@ export default async function Numbers4Page() {
                 </CardTitle>
               </div>
               <CardDescription>
-                アンサンブル・手法別に、当選番号が予測リストの何位以内にボックス一致したかを表で確認できます。
+                アンサンブル・手法別に、当選番号が各モデルの候補リストの何位以内にボックス一致したかを表で確認できます。
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-3 sm:flex-row">
@@ -109,7 +109,7 @@ export default async function Numbers4Page() {
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
                 <LayersIcon className="text-muted-foreground size-5" />
-                <CardTitle className="text-lg">最新回の予測を見る</CardTitle>
+                <CardTitle className="text-lg">最新回のモデル試算を見る</CardTitle>
               </div>
               <CardDescription>
                 第 {latestDraw} 回のアンサンブル・モデル別・予算プランをまとめて表示します。
@@ -150,7 +150,7 @@ export default async function Numbers4Page() {
                 <CardTitle className="text-lg">当選番号をさがす</CardTitle>
               </div>
               <CardDescription>
-                回号ごとの公式当選と、予測ページへのリンクが並ぶ一覧です（ページ分割あり）。
+                回号ごとの公式当選と、試算・照合ページへのリンクが並ぶ一覧です（ページ分割あり）。
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -176,7 +176,7 @@ export default async function Numbers4Page() {
             </div>
             <CardDescription className="text-xs sm:text-sm">
               表示はオンライン上の最新データを優先し、無い場合はサイトに同梱の日次 JSON
-              から読み込みます。予測は参考情報であり、当選を保証するものではありません。
+              から読み込みます。試算は参考情報であり、当せんを保証するものではありません。
             </CardDescription>
           </CardHeader>
         </Card>

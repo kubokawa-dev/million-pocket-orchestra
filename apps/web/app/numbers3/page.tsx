@@ -18,11 +18,12 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "ナンバーズ3",
-  description: "ナンバーズ3の当選番号一覧と予測導線のハブページです。",
+  description:
+    "ナンバーズ3の当選番号一覧と結果閲覧のハブページです（非公式・公式で必ず照合してください）。",
   alternates: { canonical: "/numbers3" },
   openGraph: {
     title: "ナンバーズ3 | 宝くじAI",
-    description: "ナンバーズ3の結果・予測ページへの入口です。",
+    description: "ナンバーズ3の結果ページへの入口です。",
     url: "/numbers3",
   },
 };

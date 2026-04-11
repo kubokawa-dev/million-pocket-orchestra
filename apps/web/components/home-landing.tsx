@@ -303,10 +303,22 @@ export function HomeLanding({ copy = homeLandingCopyJa }: HomeLandingProps) {
                   <CardTitle className="text-base">{disclaimer.title}</CardTitle>
                 </div>
               </CardHeader>
-              <CardContent className="text-muted-foreground text-xs leading-relaxed sm:text-sm">
-                {disclaimer.bodyLead}
-                <strong className="text-foreground">{disclaimer.bodyStrong}</strong>
-                {disclaimer.bodyTail}
+              <CardContent className="text-muted-foreground space-y-3 text-xs leading-relaxed sm:text-sm">
+                <p>
+                  {disclaimer.bodyLead}
+                  <strong className="text-foreground">{disclaimer.bodyStrong}</strong>
+                  {disclaimer.bodyTail}
+                </p>
+                {disclaimer.detailsLink ? (
+                  <p>
+                    <Link
+                      href={disclaimer.detailsLink.href}
+                      className="text-foreground font-medium underline-offset-4 hover:underline"
+                    >
+                      {disclaimer.detailsLink.label}
+                    </Link>
+                  </p>
+                ) : null}
               </CardContent>
             </Card>
             <Link

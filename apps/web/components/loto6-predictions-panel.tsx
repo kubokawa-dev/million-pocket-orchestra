@@ -1,5 +1,6 @@
 import { SparklesIcon } from "lucide-react";
 
+import { AnalysisTransparencyCallout } from "@/components/analysis-transparency-callout";
 import {
   Card,
   CardContent,
@@ -90,7 +91,7 @@ function TicketsTable({
       <TableHeader>
         <TableRow>
           <TableHead className="w-14">順</TableHead>
-          <TableHead>本数字（予測）</TableHead>
+          <TableHead>本数字（試算）</TableHead>
           <TableHead className="w-20 text-right">Bonus</TableHead>
           {showHits ? (
             <>
@@ -204,12 +205,23 @@ export function Loto6PredictionsPanel({
       <div className="flex items-center gap-2">
         <SparklesIcon className="text-amber-600 dark:text-amber-400 size-5" />
         <h2 className="text-foreground font-heading text-lg font-semibold tracking-tight">
-          予測（MVP）第 {bundle.targetDrawNumber} 回向け
+          モデル試算（MVP）第 {bundle.targetDrawNumber} 回向け
         </h2>
       </div>
       <p className="text-muted-foreground text-sm leading-relaxed">
         直近の抽選データから頻度を集計したシンプルモデルです。娯楽・検証用で、当せんの保証はありません。
       </p>
+
+      <AnalysisTransparencyCallout
+        basis={[
+          "公開されているロト6の当せん番号（本数字・ボーナス）を前提に、各 method のルールで候補を生成しています。",
+          "行の「スコア」はモデル内部の並び替え用指標で、期待値や当せん確率ではありません。",
+        ]}
+        limitations={[
+          "抽選はランダム性が大きく、過去の出方から将来が読めるとは限りません。",
+          "表示は「試算・整理」であり、購入の推奨や最適口数の指示ではありません。",
+        ]}
+      />
 
       {ens && ensTops.length > 0 ? (
         <Card className="border-amber-500/25 bg-amber-500/[0.04] shadow-sm ring-1 ring-amber-500/15 dark:ring-amber-400/20">

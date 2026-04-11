@@ -15,6 +15,7 @@ import {
   WavesIcon,
 } from "lucide-react";
 
+import { AnalysisTransparencyCallout } from "@/components/analysis-transparency-callout";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button-variants";
 import {
@@ -1189,6 +1190,17 @@ export async function Numbers4PredictionsHub({
           </div>
         </div>
 
+        <AnalysisTransparencyCallout
+          basis={[
+            "サイトに取り込んだナンバーズ4の当せん番号・予測用 JSON（ensemble / method / budget_plan 等）に基づき、一覧・照合・スコア表示をしています。",
+            "アンサンブルのスコアは複数モデルの順位を合成した内部指標で、当せん確率や期待値の宣言ではありません（列ヘッダの説明も参照）。",
+          ]}
+          limitations={[
+            "過去の傾向やランキングは見え方が良くても偶然やバイアスの影響を受けやすいです。",
+            "予算プラン等は「枠の例示」に近く、継続利益や回収を保証するものではありません。",
+          ]}
+        />
+
         <Card
           className={cn(
             "overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10",
@@ -1852,13 +1864,13 @@ export async function Numbers4PredictionsHub({
                     <div className="mt-8 border-t border-border/60 pt-6">
                       <div
                         className="text-blue-600 dark:text-blue-400 mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide"
-                        title="過去の遷移パターンから算出した次回当たりやすいモデル"
+                        title="過去の遷移に基づく参考ランキング（当せんの保証ではありません）"
                       >
                         <LightbulbIcon className="size-3.5" />
-                        次回（第 {data.targetDrawNumber} 回）の最強モデル予測
+                        次回（第 {data.targetDrawNumber} 回）向けの参考モデル順（過去遷移ベース）
                       </div>
                       <p className="text-muted-foreground mb-3 text-[0.7rem] leading-snug">
-                        過去50回の遷移パターンから、前回（第 {data.targetDrawNumber - 1} 回）の最強モデルの次に当たりやすいモデルを予測しています。
+                        過去50回の遷移に基づく参考表示です。前回でスコアが高かったモデルのあとに同じ傾向が続くとは限りません。
                       </p>
                       <div className="space-y-2.5">
                         {nextPredictions.map((pred, i) => (

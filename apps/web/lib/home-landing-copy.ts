@@ -61,6 +61,8 @@ export type HomeLandingCopy = {
     bodyLead: string;
     bodyStrong: string;
     bodyTail: string;
+    /** 健全な利用・免責の詳細ページへの導線 */
+    detailsLink?: { href: string; label: string };
   };
   blogCard: {
     title: string;
@@ -86,9 +88,10 @@ export const homeLandingCopyJa: HomeLandingCopy = {
     titleLineBreakBeforeLine3: true,
     introLead: "宝くじAI",
     introMid:
-      "は、ナンバーズ3・4の当選閲覧からロト6の等級つき一覧まで、複数AI・統計モデルの予測や成績の見える化をまとめた",
-    introEmphasis: "日本の数字系宝くじダッシュボード",
-    introTail: "。3桁も4桁も6球も、Xで語れるネタもじっくり検証も、全部アリ。",
+      "は、ナンバーズ3・4の当選閲覧からロト6の等級つき一覧まで、複数AI・統計モデルの日次試算や成績の見える化をまとめた",
+    introEmphasis: "日本の数字系宝くじの参加検討支援ダッシュボード",
+    introTail:
+      "。当せんの保証はしませんが、3桁も4桁も6球も、数字の整理や比較の相棒になります。",
     ctas: [
       {
         href: "/numbers4",
@@ -142,7 +145,7 @@ export const homeLandingCopyJa: HomeLandingCopy = {
   },
   pitchLabels: [
     "3桁・4桁・ロト6",
-    "複数モデル同時表示",
+    "複数モデル試算を同時表示",
     "予算プラン付き",
     "スマホ最適化UI",
     "照合ハイライト",
@@ -151,7 +154,7 @@ export const homeLandingCopyJa: HomeLandingCopy = {
   features: {
     sectionTitle: "このサイトでできること",
     sectionSubtitle:
-      "ただの当選番号リストじゃ終わらない。ナンバーズ3・ロト6は等級つきでガッツリ、ナンバーズ4は予測・検証・トレンドまで一気通貫。",
+      "ただの当選番号リストじゃ終わらない。ナンバーズ3・ロト6は等級つきでガッツリ、ナンバーズ4はモデル試算・検証ビュー・トレンドまで一気通貫。",
     openPage: "ページを開く",
     cards: [
       {
@@ -183,7 +186,7 @@ export const homeLandingCopyJa: HomeLandingCopy = {
         title: "ナンバーズ4 マルチモデル予測",
         tag: "アンサンブル",
         description:
-          "統計・ML・パターン系など、複数の頭脳をぶち込んだ日次予測を1画面にダッシュボード表示。",
+          "統計・ML・パターン系など、複数の頭脳をぶち込んだ日次モデル試算を1画面にダッシュボード表示。",
         accent: "from-cyan-500/15 to-transparent",
       },
       {
@@ -191,7 +194,7 @@ export const homeLandingCopyJa: HomeLandingCopy = {
         title: "ボックス順位の統計",
         tag: "検証モード",
         description:
-          "「予測リストのどのあたりに当たりがいた？」をモデル別に集計。数字オタク歓喜のビュー。",
+          "「各モデルの候補リストのどのあたりに当せんがいた？」をモデル別に集計。数字オタク歓喜のビュー。",
         accent: "from-amber-500/15 to-transparent",
       },
       {
@@ -236,7 +239,7 @@ export const homeLandingCopyJa: HomeLandingCopy = {
     p1Mid: "を一覧しつつ、サイト側に蓄積した",
     p1Strong2: "日次予測データ",
     p1Tail:
-      "をダッシュボード表示（※予測の厚みはナンバーズ4が先行）。アンサンブル・手法別・予算プランなど、種類が多いほど比較が楽しくなる構成にしています。",
+      "をダッシュボード表示（※試算データの厚みはナンバーズ4が先行）。アンサンブル・手法別・予算プランなど、種類が多いほど比較が楽しくなる構成にしています。",
     p2: "「バズる予感のするUI」と「じっくり数字を追う体験」、両方取りにいきました。SNSでスクショ載せたくなるくらい、見せ方にはこだわってます。",
   },
   disclaimer: {
@@ -244,7 +247,11 @@ export const homeLandingCopyJa: HomeLandingCopy = {
     bodyLead: "予測は",
     bodyStrong: "過去データやモデルに基づく試算",
     bodyTail:
-      "であり、当選や的中を保証するものではありません。娯楽・学習・情報整理として楽しんでください。購入を推奨するサービスではありません。",
+      "であり、当せんや的中を保証するものではありません。娯楽・学習・参加の情報整理として楽しんでください。購入を推奨するサービスではありません。",
+    detailsLink: {
+      href: "/responsible-use#ethical",
+      label: "健全な利用について（年齢・免責・相談先）",
+    },
   },
   blogCard: {
     title: "はじめてでも大丈夫",
@@ -301,14 +308,14 @@ export const homeLandingCopyEn: HomeLandingCopy = {
     badgeFocus: "N3 / N4 / Loto6",
     titleLine1: "Japan ",
     titleHighlight: "Numbers3, Numbers4 & Loto6",
-    titleLine2: " — draws, predictions, stats, and trends in one place.",
+    titleLine2: " — draws, model outputs, stats, and trends in one place.",
     titleLine3: "",
     titleLineBreakBeforeLine3: false,
     introLead: "Takarakuji AI",
     introMid:
-      " is an unofficial hub for Japan’s Numbers3, Numbers4, and Loto6: browse draws (tier payouts for Numbers3 and Loto6), compare multiple daily prediction models on Numbers4, and explore performance analytics. ",
+      " is an unofficial hub for Japan’s Numbers3, Numbers4, and Loto6: browse draws (tier payouts for Numbers3 and Loto6), compare multiple daily model runs on Numbers4, and explore performance analytics. ",
     introTail:
-      "Most in-app labels are in Japanese — this landing is in English for international visitors.",
+      "Outputs are reference-only—not promises of wins. Most in-app labels are in Japanese — this landing is in English for international visitors.",
     ctas: [
       {
         href: "/numbers4",
@@ -363,7 +370,7 @@ export const homeLandingCopyEn: HomeLandingCopy = {
   },
   pitchLabels: [
     "3-digit, 4-digit & Loto6",
-    "Multi-model view",
+    "Multi-model reference runs",
     "Budget-style plans",
     "Mobile-first UI",
     "Match highlights",
@@ -372,7 +379,7 @@ export const homeLandingCopyEn: HomeLandingCopy = {
   features: {
     sectionTitle: "What you can do here",
     sectionSubtitle:
-      "More than plain lists — Numbers3 and Loto6 with tier payouts, plus Numbers4 predictions, validation views, and trend analytics.",
+      "More than plain lists — Numbers3 and Loto6 with tier payouts, plus Numbers4 model outputs, validation views, and trend analytics.",
     openPage: "Open page",
     cards: [
       {
@@ -404,7 +411,7 @@ export const homeLandingCopyEn: HomeLandingCopy = {
         title: "Multi-model prediction hub",
         tag: "Ensemble",
         description:
-          "Daily forecasts from statistics, ML, and pattern-style models on one dashboard-style screen.",
+          "Daily reference outputs from statistics, ML, and pattern-style models on one dashboard-style screen.",
         accent: "from-cyan-500/15 to-transparent",
       },
       {
@@ -412,7 +419,7 @@ export const homeLandingCopyEn: HomeLandingCopy = {
         title: "Box-rank statistics",
         tag: "Validation",
         description:
-          "See where hits landed across prediction lists, broken down by model — built for deep number crunching.",
+          "See where hits landed across model candidate lists, broken down by model — built for deep number crunching.",
         accent: "from-amber-500/15 to-transparent",
       },
       {
@@ -457,7 +464,7 @@ export const homeLandingCopyEn: HomeLandingCopy = {
     p1Mid: " for Numbers3, Numbers4, and Loto6 alongside ",
     p1Strong2: "daily prediction datasets",
     p1Tail:
-      " (prediction depth is richest on Numbers4 for now) — ensembles, methods, and budget-style plans side by side so comparisons stay interesting.",
+      " (reference model depth is richest on Numbers4 for now) — ensembles, methods, and budget-style plans side by side so comparisons stay interesting.",
     p2: "We care about both a polished, shareable UI and a calm, analytical workflow for digging into the digits.",
   },
   disclaimer: {
@@ -466,6 +473,10 @@ export const homeLandingCopyEn: HomeLandingCopy = {
     bodyStrong: "experimental estimates from public history and models",
     bodyTail:
       ". They do not guarantee wins or hits. For entertainment, learning, and organizing information only — not gambling or financial advice.",
+    detailsLink: {
+      href: "/responsible-use#ethical",
+      label: "Responsible use (age, limits, support resources) — Japanese",
+    },
   },
   blogCard: {
     title: "New here?",

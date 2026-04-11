@@ -17,12 +17,12 @@ export const revalidate = 3600;
 export const metadata: Metadata = {
   title: "ブログ",
   description:
-    "ナンバーズ4・当選番号一覧・予測ダッシュボードの使い方や読み方を記事にまとめています。",
+    "ナンバーズ4・当選番号一覧・モデル試算ダッシュボードの使い方や読み方を記事にまとめています。",
   alternates: { canonical: "/blog" },
   openGraph: {
     title: "ブログ | 宝くじAI",
     description:
-      "サイトの使い方、予測・統計ページの見方など、SEO向けの解説記事を掲載しています。",
+      "サイトの使い方、試算・統計ページの見方など、解説記事を掲載しています。",
     url: "/blog",
   },
 };
@@ -49,7 +49,7 @@ export default function BlogIndexPage() {
             ブログ
           </h1>
           <p className="text-muted-foreground text-sm leading-relaxed sm:text-base">
-            宝くじAIの使い方や、ナンバーズ4の結果・予測まわりの読み方を整理した記事です。
+            宝くじAIの使い方や、ナンバーズ4の結果・モデル試算まわりの読み方を整理した記事です。
             海外向けの英語解説は{" "}
             <Link
               href="/en/blog"

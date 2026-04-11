@@ -12,7 +12,7 @@ const enFaq = [
   {
     question: "What is Takarakuji AI?",
     answer:
-      "An unofficial web app focused on Japan’s Numbers4 lottery: browse official draw results, explore statistics and trends, and compare multiple daily prediction models. The in-app UI is mostly Japanese; this English landing helps international visitors and launch traffic (e.g. Product Hunt) get oriented quickly.",
+      "An unofficial web app focused on Japan’s Numbers4 lottery: browse official draw results, explore statistics and trends, and compare multiple daily reference model outputs (not win predictions). The in-app UI is mostly Japanese; this English landing helps international visitors and launch traffic (e.g. Product Hunt) get oriented quickly.",
   },
   {
     question: "Is this official or affiliated with the lottery?",
@@ -20,9 +20,9 @@ const enFaq = [
       "No. It is not affiliated with Mizuho Bank, the Japan Lottery, or any operator. Always verify results with official sources before relying on them.",
   },
   {
-    question: "Do predictions guarantee wins?",
+    question: "Do the model outputs guarantee wins?",
     answer:
-      "No. Predictions are experimental and based on public historical data. They are for research and entertainment only, not financial or gambling advice.",
+      "No. Outputs are experimental and based on public historical data. They are for research, entertainment, and organizing information only — not financial or gambling advice.",
   },
   {
     question: "Where can I see winning numbers?",
@@ -32,7 +32,7 @@ const enFaq = [
 ] as const;
 
 const pageDescription =
-  "Unofficial Numbers4 (Japan) dashboard: winning numbers, multi-model daily predictions, stats, and trends — English landing; most app screens are in Japanese.";
+  "Unofficial Numbers4 (Japan) dashboard: winning numbers, multi-model daily reference runs, stats, and trends — English landing; most app screens are in Japanese.";
 
 export const metadata: Metadata = {
   title: "Takarakuji AI — Numbers4 dashboard (English)",
@@ -48,7 +48,7 @@ export const metadata: Metadata = {
     "winning numbers",
     "draw results",
     "lottery statistics",
-    "prediction models",
+    "reference model outputs",
     "machine learning lottery",
     "unofficial lottery dashboard",
     "verify official results",
@@ -74,7 +74,7 @@ export const metadata: Metadata = {
     url: absoluteUrl("/en"),
     title: "Takarakuji AI — Numbers4 results, models & trends",
     description:
-      "Unofficial Numbers4 hub for Japan: draws, analytics, and multiple prediction models in one dashboard. Not affiliated with any lottery operator.",
+      "Unofficial Numbers4 hub for Japan: draws, analytics, and multiple reference model outputs in one dashboard. Not affiliated with any lottery operator.",
   },
   twitter: {
     card: "summary_large_image",

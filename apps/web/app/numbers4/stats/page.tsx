@@ -27,12 +27,12 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "ボックス順位の統計 | ナンバーズ4",
   description:
-    "直近の開催回について、アンサンブル・手法別の予測リスト内で当選番号（ボックス一致）が何位以内に入ったかを集計します。 EN: Box-rank stats for recent Numbers4 draws (unofficial).",
+    "直近の開催回について、アンサンブル・手法別のモデル候補リスト内で当選番号（ボックス一致）が何位以内に入ったかを集計します（将来の当せんを約束するものではありません）。 EN: Box-rank stats for recent Numbers4 draws (unofficial).",
   alternates: { canonical: "/numbers4/stats" },
   openGraph: {
     title: "ボックス順位の統計 | ナンバーズ4",
     description:
-      "予測リスト内での当選番号の順位を、モデル別に集計して比較できます。",
+      "各モデルの候補リスト内での当選番号の順位を集計して比較できます。",
     url: "/numbers4/stats",
   },
 };
@@ -93,7 +93,7 @@ export default async function Numbers4StatsPage({ searchParams }: PageProps) {
             <p className="text-muted-foreground max-w-2xl text-sm leading-relaxed">
               当サイトに取り込まれた当選番号がある直近{" "}
               <strong className="text-foreground">{stats.draws.length}</strong>{" "}
-              回を対象に、各回の予測バンドル（オンラインの最新を優先し、無ければサイト同梱の日次
+              回を対象に、各回のモデル試算バンドル（オンラインの最新を優先し、無ければサイト同梱の日次
               JSON）から<strong className="text-foreground">
                 ボックス一致
               </strong>

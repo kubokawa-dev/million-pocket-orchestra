@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ArrowLeftIcon, FlameIcon, ArrowRightIcon, WavesIcon, LightbulbIcon } from "lucide-react";
+import { ArrowLeftIcon, FlameIcon, WavesIcon, LightbulbIcon } from "lucide-react";
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
@@ -20,12 +20,12 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Hot Model トレンド分析 | ナンバーズ4",
   description:
-    "直近50回の成績から、いま一番「キテる」モデルを分析します。 EN: Hot model trend view for Numbers4 predictions (unofficial).",
+    "直近50回の成績から、いま一番「キテる」モデルを分析します（過去データの整理であり当せんを約束しません）。 EN: Hot model trend view for Numbers4 (unofficial).",
   alternates: { canonical: "/numbers4/trend" },
   openGraph: {
     title: "Hot Model トレンド分析 | ナンバーズ4",
     description:
-      "直近の予測成績から注目モデルを可視化。ナンバーズ4の予測トレンドをチェック。",
+      "直近のモデル試算の成績から注目モデルを可視化。当せんの保証はありません。",
     url: "/numbers4/trend",
   },
 };
@@ -92,7 +92,7 @@ export default async function HotModelTrendPage() {
         <p className="text-muted-foreground text-sm leading-relaxed sm:text-base">
           第 {latestDraw - 50} 回 〜 第 {latestDraw - 1} 回の成績を集計し、
           いま一番「キテる」モデルをランキング形式で表示します。
-          （※ このスコアは毎日のアンサンブル予測の重み付けに自動で反映されます）
+          （※ このスコアは毎日のアンサンブル試算の重み付けに自動で反映されます）
         </p>
 
         {hotModels.length > 0 ? (
@@ -105,7 +105,7 @@ export default async function HotModelTrendPage() {
                 </CardTitle>
                 <CardDescription className="text-orange-700/80 dark:text-orange-300/80">
                   直近50回で最も高いスコア（{hotModels[0].score.toFixed(1)}）を獲得しています。
-                  次の予測はこのモデルの候補に注目してみてください！
+                  次回開催向けの試算では、このモデルの出力も比較材料のひとつです（当せんの保証ではありません）。
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -189,10 +189,12 @@ export default async function HotModelTrendPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg text-blue-600 dark:text-blue-400">
                     <LightbulbIcon className="size-5" />
-                    次回（第 {latestDraw} 回）の最強モデル予測
+                    次回（第 {latestDraw} 回）向けの参考モデル順（過去遷移ベース）
                   </CardTitle>
                   <CardDescription className="text-blue-700/80 dark:text-blue-300/80">
-                    過去50回の遷移パターンから、前回（第 {latestDraw - 1} 回）の最強モデル「{recentFlow[recentFlow.length - 1]?.model}」の次に当たりやすいモデルを予測しています。
+                    過去50回の遷移に基づく参考ランキングです。前回（第 {latestDraw - 1}{" "}
+                    回）でスコアが高かった「{recentFlow[recentFlow.length - 1]?.model}
+                    」のあとに同じ傾向が続くとは限りません。
                   </CardDescription>
                 </CardHeader>
                 <CardContent>

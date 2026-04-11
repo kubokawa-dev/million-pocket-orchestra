@@ -35,7 +35,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "ロト6 | 宝くじAI",
     description:
-      "ロト6の抽選結果一覧・詳細、MVP予測、出現回数統計へのハブ。",
+      "ロト6の抽選結果一覧・詳細、MVPモデル試算、出現回数統計へのハブ。当せんの保証はありません。",
     url: "/loto6",
   },
 };
@@ -89,7 +89,7 @@ export default async function Loto6Page() {
                 {" "}
                 次回予定の{" "}
                 <strong className="text-foreground">第 {nextTarget} 回</strong>
-                向けの MVP 予測は、下のパネルで確認できます（データがある場合）。
+                向けの MVP モデル試算は、下のパネルで確認できます（データがある場合。当せんの保証ではありません）。
               </>
             ) : null}
           </p>
@@ -104,9 +104,9 @@ export default async function Loto6Page() {
         ) : nextTarget != null ? (
           <Card className="border-dashed border-amber-500/30 bg-muted/20 shadow-none">
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">予測（MVP）</CardTitle>
+              <CardTitle className="text-base">モデル試算（MVP）</CardTitle>
               <CardDescription>
-                第 {nextTarget} 回向けの予測 JSON がまだ Supabase に入っていません。リポジトリで{" "}
+                第 {nextTarget} 回向けの試算 JSON がまだ Supabase に入っていません。リポジトリで{" "}
                 <code className="font-mono text-xs">
                   python tools/generate_loto6_predictions_mvp.py
                 </code>{" "}

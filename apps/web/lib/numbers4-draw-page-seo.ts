@@ -23,10 +23,10 @@ export function buildNumbers4DrawPageDescription(
       ? `当選番号 ${nums}。`
       : "当選番号は公式結果の取り込み後に表示されます。";
 
-  return `ナンバーズ4 第${drawNumber}回の${datePart}${winningPart}アンサンブル・手法別・予算プランの日次予測と照合を宝くじAIで一覧できます。`;
+  return `ナンバーズ4 第${drawNumber}回の${datePart}${winningPart}アンサンブル・手法別・予算プランの日次モデル試算と照合を宝くじAIで一覧できます（当せんの保証はありません）。`;
 }
 
 /** メタ description 用の英語サフィックス（検索・SNS 向け） */
 export function numbers4DrawEnglishMetaSuffix(drawNumber: number): string {
-  return ` EN: Unofficial Japan Numbers4 draw #${drawNumber} — results & model predictions; always verify on official lottery sites.`;
+  return ` EN: Unofficial Japan Numbers4 draw #${drawNumber} — results & reference model outputs (not win predictions); verify on official lottery sites.`;
 }

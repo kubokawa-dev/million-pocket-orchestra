@@ -12,6 +12,7 @@ const links = [
   { href: "/loto6", label: "ロト6" },
   { href: "/blog", label: "ブログ" },
   { href: "/faq", label: "FAQ" },
+  { href: "/responsible-use#ethical", label: "倫理的配慮" },
 ] as const;
 
 export function SiteNav() {
@@ -23,10 +24,11 @@ export function SiteNav() {
       className="-mx-1 flex max-w-[100vw] gap-1 overflow-x-auto px-1 py-0.5 [scrollbar-width:none] sm:max-w-none [&::-webkit-scrollbar]:hidden"
     >
       {links.map(({ href, label }) => {
+        const pathOnly = href.split("#")[0] ?? href;
         const active =
-          href === "/"
+          pathOnly === "/"
             ? pathname === "/"
-            : pathname === href || pathname.startsWith(`${href}/`);
+            : pathname === pathOnly || pathname.startsWith(`${pathOnly}/`);
 
         return (
           <Link

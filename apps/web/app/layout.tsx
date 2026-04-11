@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Noto_Sans_JP } from "next/font/google";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { Analytics } from "@vercel/analytics/next";
 
+import { AgeAcknowledgmentBar } from "@/components/age-acknowledgment-bar";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { buildSiteVerification } from "@/lib/site-verification";
@@ -33,11 +34,11 @@ const siteVerification = buildSiteVerification();
 export const metadata: Metadata = {
   metadataBase: new URL(siteOrigin),
   title: {
-    default: "宝くじAI | ナンバーズ3・4 抽選結果・予測",
+    default: "宝くじAI | ナンバーズ3・4 抽選結果と参加支援（モデル試算）",
     template: "%s · 宝くじAI",
   },
   description:
-    "ナンバーズ3・4の当選番号・抽選結果を一覧でチェック。ナンバーズ4は複数のAI・統計モデルによる日次予測やボックス順位の統計もまとめて閲覧できます。（takarakuji-ai.space） English: Unofficial Japan Numbers3/4 dashboard — results, stats, multi-model predictions; not affiliated with any operator.",
+    "ナンバーズ3・4の当選番号・抽選結果の閲覧に加え、ナンバーズ4では複数モデルの日次「試算」出力や統計を一覧できます。当せんの保証や購入の推奨は行いません（参加の情報整理・戦略検討の補助）。（takarakuji-ai.space） English: Unofficial Japan Numbers3/4 dashboard — results and reference model outputs; not affiliated with any operator.",
   applicationName: "宝くじAI",
   keywords: [
     "ナンバーズ3",
@@ -48,6 +49,8 @@ export const metadata: Metadata = {
     "抽選結果",
     "当選番号",
     "予測",
+    "モデル試算",
+    "参加戦略",
     "宝くじAI",
     "ブログ",
     "FAQ",
@@ -61,7 +64,7 @@ export const metadata: Metadata = {
     "winning numbers",
     "lottery statistics",
     "machine learning",
-    "prediction dashboard",
+    "lottery analytics",
     "digit lottery",
     "اليانصيب الياباني",
     "نمبرز 4",
@@ -74,15 +77,15 @@ export const metadata: Metadata = {
     alternateLocale: ["en_US", "zh_CN", "ko_KR", "es_ES", "hi_IN", "ar_SA"],
     url: siteOrigin,
     siteName: "宝くじAI",
-    title: "宝くじAI | ナンバーズ3・4 抽選結果・予測",
+    title: "宝くじAI | ナンバーズ3・4 抽選結果と参加支援（モデル試算）",
     description:
-      "ナンバーズ3の当選一覧（等級つき）と、ナンバーズ4の当選番号・日次予測・統計をスマホでも見やすく。",
+      "ナンバーズ3の当選一覧（等級つき）と、ナンバーズ4の当選番号・日次モデル試算・統計をスマホでも見やすく。当せんを約束するサービスではありません。",
   },
   twitter: {
     card: "summary_large_image",
     title: "宝くじAI",
     description:
-      "ナンバーズ3・4の抽選結果と予測ダッシュボード。当選番号をすっきり一覧で。",
+      "ナンバーズ3・4の抽選結果と、モデル試算・統計のダッシュボード。当せんの保証はありません。",
   },
   alternates: {
     types: {
@@ -119,6 +122,7 @@ export default function RootLayout({
             <SiteHeader />
             <main className="flex flex-1 flex-col">{children}</main>
             <SiteFooter />
+            <AgeAcknowledgmentBar />
           </div>
         </NuqsAdapter>
         <Analytics />

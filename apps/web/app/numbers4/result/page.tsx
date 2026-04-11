@@ -30,7 +30,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "ナンバーズ4 当選番号一覧 | 宝くじAI",
     description:
-      "過去の抽選結果を一覧で確認。予測モデルとの照合表示にも対応。",
+      "過去の抽選結果を一覧で確認。日次モデル試算との照合表示にも対応（当せん保証なし）。",
     url: "/numbers4/result",
   },
 };

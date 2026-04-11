@@ -12,12 +12,12 @@ import { faqItems } from "@/lib/faq-content";
 export const metadata: Metadata = {
   title: "よくある質問（FAQ）",
   description:
-    "宝くじAIの使い方、データの出所、予測の位置づけなどよくある質問と回答。",
+    "宝くじAIの使い方、データの出所、モデル試算の位置づけ、利用規約（草案）などよくある質問と回答。",
   alternates: { canonical: "/faq" },
   openGraph: {
     title: "よくある質問 | 宝くじAI",
     description:
-      "ナンバーズ4・当選番号・予測についてのFAQ。構造化データ（FAQPage）対応。",
+      "ナンバーズ4・当選番号・試算表示についてのFAQ。構造化データ（FAQPage）対応。",
     url: "/faq",
   },
 };
