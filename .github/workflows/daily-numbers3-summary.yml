@@ -57,6 +57,13 @@ jobs:
             echo "numbers3/generate_budget_plan.py not found. skip."
           fi
 
+      - name: Upsert Numbers3 draws to Supabase
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          SUPABASE_USE_REST=1 python tools/load_numbers3_csv_to_postgres.py --skip-if-unconfigured
+
       - name: Upsert numbers3_daily_prediction_documents (Supabase)
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}

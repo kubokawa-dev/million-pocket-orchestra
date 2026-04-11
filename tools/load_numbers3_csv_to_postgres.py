@@ -177,6 +177,39 @@ def inject_service_role_from_supabase_cli(project_ref: str) -> None:
     os.environ["NEXT_PUBLIC_SUPABASE_URL"] = f"https://{project_ref}.supabase.co"
 
 
+def try_inject_service_role_from_cli(project_ref: str | None) -> bool:
+    """
+    SUPABASE_SERVICE_ROLE_KEY が未設定でも、supabase login 済みなら CLI で取得して環境に載せる。
+    （ resolve / inject は失敗時に sys.exit するため SystemExit を握りつぶす ）
+    """
+    if _service_role_for_rest():
+        return True
+    if not shutil.which("supabase"):
+        return False
+    try:
+        ref = resolve_supabase_project_ref(project_ref)
+        inject_service_role_from_supabase_cli(ref)
+    except SystemExit:
+        return False
+    except Exception as e:
+        print(f"[warn] CLI での service_role 取得をスキップ: {e}")
+        return False
+    return bool(_service_role_for_rest())
+
+
+def _should_try_cli_service_role(args: argparse.Namespace) -> bool:
+    """PostgREST を使いたいがキーだけ無いとき、CLI で補えるか。"""
+    if args.no_rest or args.use_cli_login or _service_role_for_rest():
+        return False
+    if not _supabase_rest_base():
+        return False
+    if not shutil.which("supabase"):
+        return False
+    db_url = resolve_postgres_url()
+    rest_flag = os.getenv("SUPABASE_USE_REST", "").lower() in ("1", "true", "yes")
+    return bool(rest_flag or not db_url or _is_localhost_dsn(db_url))
+
+
 def resolve_postgres_url() -> str:
     v = _strip_q(os.environ.get("SUPABASE_DATABASE_URL", ""))
     if v:
@@ -403,6 +436,9 @@ def main() -> None:
         ref = resolve_supabase_project_ref(args.project_ref)
         inject_service_role_from_supabase_cli(ref)
         print("🔑 Supabase CLI で service_role を取得しました（メモリ内のみ）")
+    elif _should_try_cli_service_role(args):
+        if try_inject_service_role_from_cli(args.project_ref):
+            print("🔑 supabase login 済み CLI から service_role を取得しました（メモリ内のみ）")
 
     if args.skip_if_unconfigured and not args.use_cli_login:
         db_url = resolve_postgres_url()
