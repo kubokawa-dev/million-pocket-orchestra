@@ -55,6 +55,22 @@ def ensure_numbers4_draws_columns(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+def ensure_numbers3_draws_columns(conn: sqlite3.Connection) -> None:
+    """numbers3_draws に numbers4 と同じ払戻カラムが無ければ ALTER TABLE で追加する。"""
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='numbers3_draws'"
+    )
+    if cur.fetchone() is None:
+        return
+    cur.execute("PRAGMA table_info(numbers3_draws)")
+    existing = {row[1] for row in cur.fetchall()}
+    for name, coltype in NUMBERS4_PRIZE_COLUMN_DEFS:
+        if name not in existing:
+            cur.execute(f"ALTER TABLE numbers3_draws ADD COLUMN {name} {coltype}")
+    conn.commit()
+
+
 def get_db_connection():
     """
     データベース接続を取得します。
@@ -80,6 +96,7 @@ def init_database():
             schema_sql = f.read()
         conn.executescript(schema_sql)
         ensure_numbers4_draws_columns(conn)
+        ensure_numbers3_draws_columns(conn)
         conn.commit()
         print(f"✅ Database initialized: {DB_PATH}")
     finally:

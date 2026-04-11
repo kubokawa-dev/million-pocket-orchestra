@@ -111,7 +111,13 @@ def main():
     print("\n[Step 3] データ移行中...")
     
     tables = {
-        'numbers3_draws': ['draw_number', 'draw_date', 'numbers'],
+        'numbers3_draws': [
+            'draw_number', 'draw_date', 'numbers',
+            'tier1_winners', 'tier1_payout_yen',
+            'tier2_winners', 'tier2_payout_yen',
+            'tier3_winners', 'tier3_payout_yen',
+            'tier4_winners', 'tier4_payout_yen',
+        ],
         'numbers4_draws': [
             'draw_number', 'draw_date', 'numbers',
             'tier1_winners', 'tier1_payout_yen',

@@ -8,7 +8,15 @@
 CREATE TABLE IF NOT EXISTS numbers3_draws (
     draw_number INTEGER PRIMARY KEY,
     draw_date TEXT NOT NULL,
-    numbers TEXT NOT NULL
+    numbers TEXT NOT NULL,
+    tier1_winners INTEGER,
+    tier1_payout_yen INTEGER,
+    tier2_winners INTEGER,
+    tier2_payout_yen INTEGER,
+    tier3_winners INTEGER,
+    tier3_payout_yen INTEGER,
+    tier4_winners INTEGER,
+    tier4_payout_yen INTEGER
 );
 
 -- numbers4 月次CSV列に対応: 当選番号の次から 口数・払戻金額 が4等級分（ストレート/ボックス/セットストレート/セットボックス）
