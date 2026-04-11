@@ -1,8 +1,17 @@
 """
-numbers3/*.csv を PostgreSQL（ローカル Postgres / Supabase）に投入する。
+numbers3/*.csv またはローカル lottery.db の numbers3_draws を PostgreSQL（ローカル / Supabase）に投入する。
 
-想定CSV:
+想定CSV（3列の最小形式）:
   第1234回,2026/04/10,123
+
+numbers4 月次CSVと同じく、当選番号の次から8列（口数・払戻×4等級）があれば取り込みます:
+  第1234回,2026/04/10,123,t1w,t1y,t2w,t2y,t3w,t3y,t4w,t4y
+
+スキーマ:
+  apps/web/supabase/migrations または tools/ddl_numbers3_draws_postgres.sql（numbers4_draws と同列）
+
+Postgres 直結 UPSERT では、CSVに等級列が無い場合は既存の tier 値を COALESCE で保持します。
+PostgREST 経由では、等級が NULL の列は JSON に含めず既存行の値を残しやすくします。
 """
 from __future__ import annotations
 
@@ -31,26 +40,70 @@ except ImportError:
 
 from dotenv import load_dotenv
 
+from tools.utils import DB_PATH, parse_numbers4_int_cell
+
 load_dotenv(os.path.join(ROOT, ".env"))
 load_dotenv(os.path.join(ROOT, ".env.local"), override=True)
 load_dotenv(os.path.join(ROOT, "apps", "web", ".env.local"), override=True)
 
 CSV_DIR = os.path.join(ROOT, "numbers3")
-REST_COLUMNS = ["draw_number", "draw_date", "numbers"]
+
+REST_COLUMNS = [
+    "draw_number",
+    "draw_date",
+    "numbers",
+    "tier1_winners",
+    "tier1_payout_yen",
+    "tier2_winners",
+    "tier2_payout_yen",
+    "tier3_winners",
+    "tier3_payout_yen",
+    "tier4_winners",
+    "tier4_payout_yen",
+]
 
 UPSERT_SQL = """
-INSERT INTO numbers3_draws (draw_number, draw_date, numbers)
-VALUES (%s, %s, %s)
+INSERT INTO numbers3_draws (
+    draw_number, draw_date, numbers,
+    tier1_winners, tier1_payout_yen,
+    tier2_winners, tier2_payout_yen,
+    tier3_winners, tier3_payout_yen,
+    tier4_winners, tier4_payout_yen
+) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
 ON CONFLICT (draw_number) DO UPDATE SET
-  draw_date = EXCLUDED.draw_date,
-  numbers = EXCLUDED.numbers
+    draw_date = EXCLUDED.draw_date,
+    numbers = EXCLUDED.numbers,
+    tier1_winners = COALESCE(EXCLUDED.tier1_winners, numbers3_draws.tier1_winners),
+    tier1_payout_yen = COALESCE(EXCLUDED.tier1_payout_yen, numbers3_draws.tier1_payout_yen),
+    tier2_winners = COALESCE(EXCLUDED.tier2_winners, numbers3_draws.tier2_winners),
+    tier2_payout_yen = COALESCE(EXCLUDED.tier2_payout_yen, numbers3_draws.tier2_payout_yen),
+    tier3_winners = COALESCE(EXCLUDED.tier3_winners, numbers3_draws.tier3_winners),
+    tier3_payout_yen = COALESCE(EXCLUDED.tier3_payout_yen, numbers3_draws.tier3_payout_yen),
+    tier4_winners = COALESCE(EXCLUDED.tier4_winners, numbers3_draws.tier4_winners),
+    tier4_payout_yen = COALESCE(EXCLUDED.tier4_payout_yen, numbers3_draws.tier4_payout_yen)
 """
 
 
 def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="numbers3 CSV → PostgreSQL UPSERT")
+    p = argparse.ArgumentParser(description="numbers3 CSV / SQLite → PostgreSQL UPSERT")
+    p.add_argument(
+        "--source",
+        choices=("csv", "sqlite", "both"),
+        default="csv",
+        help="csv=numbers3/*.csv のみ, sqlite=lottery.db の numbers3_draws, both=両方（同一回は CSV 優先）",
+    )
+    p.add_argument(
+        "--sqlite-path",
+        default=None,
+        help="--source sqlite/both 時の DB パス（省略時はルートの lottery.db）",
+    )
     p.add_argument("--no-rest", action="store_true")
     p.add_argument("--use-cli-login", action="store_true")
+    p.add_argument(
+        "--skip-if-unconfigured",
+        action="store_true",
+        help="Postgres URI も Supabase REST 用の認証も無いときは何もせず終了（CI 向け）",
+    )
     p.add_argument("--project-ref", default=None)
     p.add_argument(
         "--draw-number",
@@ -163,7 +216,7 @@ def _is_localhost_dsn(url: str) -> bool:
     return "localhost" in u or "127.0.0.1" in u
 
 
-def parse_csv_row(row: list[str]) -> tuple[int, str, str] | None:
+def parse_csv_row(row: list[str]) -> tuple | None:
     if len(row) < 3:
         return None
     kai_match = re.search(r"(\d+)", row[0] or "")
@@ -174,11 +227,33 @@ def parse_csv_row(row: list[str]) -> tuple[int, str, str] | None:
     numbers = row[2].strip()
     if not re.fullmatch(r"\d{3}", numbers):
         return None
-    return (draw_number, draw_date, numbers)
+
+    t1w = parse_numbers4_int_cell(row[3]) if len(row) > 3 else None
+    t1y = parse_numbers4_int_cell(row[4]) if len(row) > 4 else None
+    t2w = parse_numbers4_int_cell(row[5]) if len(row) > 5 else None
+    t2y = parse_numbers4_int_cell(row[6]) if len(row) > 6 else None
+    t3w = parse_numbers4_int_cell(row[7]) if len(row) > 7 else None
+    t3y = parse_numbers4_int_cell(row[8]) if len(row) > 8 else None
+    t4w = parse_numbers4_int_cell(row[9]) if len(row) > 9 else None
+    t4y = parse_numbers4_int_cell(row[10]) if len(row) > 10 else None
+
+    return (
+        draw_number,
+        draw_date,
+        numbers,
+        t1w,
+        t1y,
+        t2w,
+        t2y,
+        t3w,
+        t3y,
+        t4w,
+        t4y,
+    )
 
 
-def load_all_csv_files() -> list[tuple[int, str, str]]:
-    rows: list[tuple[int, str, str]] = []
+def load_all_csv_files() -> list[tuple]:
+    rows: list[tuple] = []
     for csv_path in sorted(glob.glob(os.path.join(CSV_DIR, "*.csv"))):
         base = os.path.basename(csv_path)
         if base == "draws_normalized.csv":
@@ -197,14 +272,111 @@ def load_all_csv_files() -> list[tuple[int, str, str]]:
     return rows
 
 
-def upsert_via_supabase_rest(rows: list[tuple[int, str, str]], *, chunk_size: int = 500) -> None:
+def _sqlite_cell_tier(raw: object) -> int | None:
+    if raw is None:
+        return None
+    if isinstance(raw, int):
+        return raw
+    return parse_numbers4_int_cell(raw)
+
+
+def load_rows_from_sqlite(db_path: str) -> list[tuple]:
+    """lottery.db の numbers3_draws を 11 列タプルに正規化する。"""
+    import sqlite3
+
+    if not os.path.isfile(db_path):
+        print(f"❌ SQLite が見つかりません: {db_path}")
+        return []
+
+    conn = sqlite3.connect(db_path)
+    try:
+        cur = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='numbers3_draws'"
+        )
+        if cur.fetchone() is None:
+            print("⚠️ numbers3_draws テーブルがありません")
+            return []
+        cur = conn.execute("PRAGMA table_info(numbers3_draws)")
+        col_names = [row[1] for row in cur.fetchall()]
+        cur = conn.execute(
+            f"SELECT {', '.join(col_names)} FROM numbers3_draws ORDER BY draw_number ASC"
+        )
+        raw_rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    out: list[tuple] = []
+    for tup in raw_rows:
+        d = dict(zip(col_names, tup))
+        num = str(d.get("numbers") or "").strip()
+        if not re.fullmatch(r"\d{3}", num):
+            continue
+        out.append(
+            (
+                int(d["draw_number"]),
+                str(d.get("draw_date") or "").strip(),
+                num,
+                _sqlite_cell_tier(d.get("tier1_winners")),
+                _sqlite_cell_tier(d.get("tier1_payout_yen")),
+                _sqlite_cell_tier(d.get("tier2_winners")),
+                _sqlite_cell_tier(d.get("tier2_payout_yen")),
+                _sqlite_cell_tier(d.get("tier3_winners")),
+                _sqlite_cell_tier(d.get("tier3_payout_yen")),
+                _sqlite_cell_tier(d.get("tier4_winners")),
+                _sqlite_cell_tier(d.get("tier4_payout_yen")),
+            )
+        )
+    return out
+
+
+def merge_rows_by_draw_number(*row_lists: list[tuple]) -> list[tuple]:
+    """同一 draw_number は後から渡したリストが優先（CSV で SQLite を上書きする用途）。"""
+    by_draw: dict[int, tuple] = {}
+    for rows in row_lists:
+        for r in rows:
+            by_draw[r[0]] = r
+    return sorted(by_draw.values(), key=lambda x: x[0])
+
+
+def load_rows_for_source(source: str, sqlite_path: str | None) -> tuple[list[tuple], str]:
+    """行と、ログ用ラベルを返す。"""
+    path = sqlite_path or DB_PATH
+    if source == "csv":
+        rows = load_all_csv_files()
+        return rows, "numbers3/*.csv"
+    if source == "sqlite":
+        rows = load_rows_from_sqlite(path)
+        return rows, path
+    # both
+    s_rows = load_rows_from_sqlite(path)
+    c_rows = load_all_csv_files()
+    merged = merge_rows_by_draw_number(s_rows, c_rows)
+    return merged, f"{path} + numbers3/*.csv（同一回は CSV 優先）"
+
+
+def row_to_rest_payload(row: tuple) -> dict:
+    """tier が NULL のキーは送らず、PostgREST で既存値が消えにくくする。"""
+    d = dict(zip(REST_COLUMNS, row))
+    out = {
+        "draw_number": d["draw_number"],
+        "draw_date": d["draw_date"],
+        "numbers": d["numbers"],
+    }
+    for k in REST_COLUMNS[3:]:
+        v = d[k]
+        if v is not None:
+            out[k] = v
+    return out
+
+
+def upsert_via_supabase_rest(rows: list[tuple], *, chunk_size: int = 500) -> None:
     base = _supabase_rest_base()
     key = _service_role_for_rest()
     if not base or not key:
         raise ValueError("PostgREST 用の URL / service_role が不足しています")
 
     endpoint = f"{base}/rest/v1/numbers3_draws?on_conflict=draw_number"
-    payload_rows = [dict(zip(REST_COLUMNS, r)) for r in rows]
+    payload_rows = [row_to_rest_payload(r) for r in rows]
     total = 0
     for i in range(0, len(payload_rows), chunk_size):
         chunk = payload_rows[i : i + chunk_size]
@@ -232,8 +404,22 @@ def main() -> None:
         inject_service_role_from_supabase_cli(ref)
         print("🔑 Supabase CLI で service_role を取得しました（メモリ内のみ）")
 
-    rows = load_all_csv_files()
-    print(f"📊 numbers3 CSV から {len(rows)} 行を読み込み")
+    if args.skip_if_unconfigured and not args.use_cli_login:
+        db_url = resolve_postgres_url()
+        has_rest = bool(_service_role_for_rest() and _supabase_rest_base())
+        can_direct_remote = bool(db_url and not _is_localhost_dsn(db_url))
+        if not has_rest and not can_direct_remote:
+            print(
+                "⚠️ Supabase REST 用の認証も、リモート Postgres URI も無いため "
+                "numbers3_draws UPSERT をスキップします（--skip-if-unconfigured）。"
+                "ローカル DATABASE_URL のみの場合は .env.local に "
+                "NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY を追加するか、"
+                "SUPABASE_DATABASE_URL で本番 DB を指定してください。"
+            )
+            return
+
+    rows, label = load_rows_for_source(args.source, args.sqlite_path)
+    print(f"📊 numbers3 抽選データ（{label}）から {len(rows)} 行を読み込み")
     if not rows:
         print("⚠️ 投入する行がありません")
         return

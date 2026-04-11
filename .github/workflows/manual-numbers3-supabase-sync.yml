@@ -1,0 +1,36 @@
+# 手動で Numbers3 の Supabase へ一式同期（抽選 + 日次予測 JSON）
+# - リポジトリに numbers3/*.csv または numbers3/draws_export.csv 等がコミットされている場合、CI から本番へ流せます。
+# - lottery.db は *.gitignore のため CI には含まれません。ローカルでフル投入する場合は
+#   `SUPABASE_USE_REST=1 python tools/sync_numbers3_to_supabase.py` を実行してください。
+
+name: Manual Numbers3 Supabase full sync
+
+on:
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Sync draws + daily prediction documents
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          SUPABASE_USE_REST=1 python tools/sync_numbers3_to_supabase.py --skip-if-unconfigured
