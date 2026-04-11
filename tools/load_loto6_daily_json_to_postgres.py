@@ -28,9 +28,23 @@ load_dotenv(os.path.join(ROOT, ".env"))
 load_dotenv(os.path.join(ROOT, ".env.local"), override=True)
 load_dotenv(os.path.join(ROOT, "apps", "web", ".env.local"), override=True)
 
+MIGRATION_REL = "apps/web/supabase/migrations/20260412130000_loto6_daily_prediction_documents.sql"
+
+
+class Loto6PredictionTableMissingError(Exception):
+    """PostgREST PGRST205: public.loto6_daily_prediction_documents が無い。"""
+
+
+def _is_loto6_table_missing_404(code: int, err_body: str) -> bool:
+    return (
+        code == 404
+        and "PGRST205" in err_body
+        and "loto6_daily_prediction_documents" in err_body
+    )
+
 
 def upsert_daily_documents_via_rest(
-    records: list, *, chunk_size: int = 12
+    records: list, *, chunk_size: int = 12, skip_on_missing_table: bool = False
 ) -> None:
     base = _supabase_rest_base()
     key = _service_role_for_rest()
@@ -82,6 +96,17 @@ def upsert_daily_documents_via_rest(
                     print(f"   ⚠️ HTTP {e.code} — {wait}秒後にリトライ ({attempt + 1}/{max_retries})")
                     time.sleep(wait)
                     continue
+                if _is_loto6_table_missing_404(e.code, err_body):
+                    if skip_on_missing_table:
+                        raise Loto6PredictionTableMissingError(err_body) from e
+                    raise RuntimeError(
+                        "PostgREST: テーブル public.loto6_daily_prediction_documents が存在しません (PGRST205)。\n"
+                        f"  次の SQL を Supabase ダッシュボードの SQL Editor で実行するか、"
+                        f"`supabase db push` でマイグレーションを当ててください:\n"
+                        f"  → {MIGRATION_REL}\n"
+                        f"  適用後も 404 の場合は Project Settings → API で schema の再読み込みを試してください。\n"
+                        f"  詳細: {err_body[:800]}"
+                    ) from e
                 raise RuntimeError(
                     f"PostgREST HTTP {e.code} (chunk {i // chunk_size + 1}): {err_body}"
                 ) from e
@@ -103,6 +128,11 @@ def parse_args() -> argparse.Namespace:
         "--skip-if-unconfigured",
         action="store_true",
         help="NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY が無いときは成功終了",
+    )
+    p.add_argument(
+        "--skip-on-missing-table",
+        action="store_true",
+        help="loto6_daily_prediction_documents が未作成 (404 PGRST205) のとき警告のみで成功終了",
     )
     p.add_argument("--target-draw-number", type=int, default=None)
     return p.parse_args()
@@ -145,7 +175,18 @@ def main() -> None:
         return
 
     try:
-        upsert_daily_documents_via_rest(records, chunk_size=args.chunk_size)
+        upsert_daily_documents_via_rest(
+            records,
+            chunk_size=args.chunk_size,
+            skip_on_missing_table=args.skip_on_missing_table,
+        )
+    except Loto6PredictionTableMissingError:
+        print(
+            "⚠️ public.loto6_daily_prediction_documents が無いため UPSERT をスキップしました "
+            "(--skip-on-missing-table)。\n"
+            f"   本番反映: リポジトリの {MIGRATION_REL} を Supabase に適用してください。"
+        )
+        return
     except (ValueError, RuntimeError) as e:
         print(f"❌ {e}")
         sys.exit(1)

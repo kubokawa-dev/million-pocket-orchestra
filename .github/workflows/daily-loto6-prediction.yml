@@ -1,3 +1,5 @@
+# 初回: Supabase に apps/web/supabase/migrations/20260412130000_loto6_daily_prediction_documents.sql
+# を適用しないと、JSON UPSERT が PGRST205 (テーブルなし) で失敗します。
 name: Daily Loto6 Prediction (MVP)
 
 on:
