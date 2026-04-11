@@ -4,6 +4,7 @@ import {
   ArrowRightIcon,
   BarChart3Icon,
   BookOpenIcon,
+  CircleDotIcon,
   CircleHelpIcon,
   FlameIcon,
   LayersIcon,
@@ -32,6 +33,8 @@ const featureIconByHref: Record<string, LucideIcon> = {
   "/numbers4": LayersIcon,
   "/numbers4/stats": BarChart3Icon,
   "/numbers4/trend": FlameIcon,
+  "/loto6/result": ListOrderedIcon,
+  "/loto6": CircleDotIcon,
 };
 
 function homeCtaButtonClass(
@@ -43,6 +46,12 @@ function homeCtaButtonClass(
       return cn(
         buttonVariants({ size: "lg" }),
         "gap-2 bg-gradient-to-r from-violet-600 to-cyan-600 text-white shadow-md hover:from-violet-500 hover:to-cyan-500",
+      );
+    }
+    if (cta.lottery === "loto6") {
+      return cn(
+        buttonVariants({ size: "lg" }),
+        "gap-2 bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-md hover:from-amber-500 hover:to-orange-500",
       );
     }
     return cn(
@@ -61,6 +70,13 @@ function homeCtaButtonClass(
       onGradient,
     );
   }
+  if (cta.lottery === "loto6") {
+    return cn(
+      buttonVariants({ variant: "outline", size: "lg" }),
+      "justify-center ring-amber-500/20 hover:ring-1 dark:ring-amber-400/25",
+      onGradient,
+    );
+  }
   return cn(
     buttonVariants({ variant: "outline", size: "lg" }),
     "justify-center ring-emerald-500/15 hover:ring-1 dark:ring-emerald-400/20",
@@ -76,7 +92,11 @@ function HomeCtaLink({
   surface?: "hero" | "bottom";
 }) {
   const SolidIcon =
-    cta.lottery === "numbers4" ? ZapIcon : SparklesIcon;
+    cta.lottery === "numbers4"
+      ? ZapIcon
+      : cta.lottery === "loto6"
+        ? CircleDotIcon
+        : SparklesIcon;
   const icon =
     cta.variant === "solid" ? (
       <SolidIcon className="size-4 shrink-0" />
@@ -119,7 +139,12 @@ export function HomeLanding({ copy = homeLandingCopyJa }: HomeLandingProps) {
           </div>
           <h1 className="text-foreground font-heading text-balance text-4xl font-bold tracking-tight sm:text-5xl sm:leading-[1.1] lg:text-[2.75rem]">
             {hero.titleLine1}
-            <span className="bg-gradient-to-r from-violet-600 via-fuchsia-600 to-cyan-600 bg-clip-text text-transparent dark:from-violet-400 dark:via-fuchsia-400 dark:to-cyan-400">
+            <span
+              className={
+                hero.titleHighlightClassName ??
+                "bg-gradient-to-r from-violet-600 via-fuchsia-600 to-cyan-600 bg-clip-text text-transparent dark:from-violet-400 dark:via-fuchsia-400 dark:to-cyan-400"
+              }
+            >
               {hero.titleHighlight}
             </span>
             {hero.titleLine2}
@@ -142,7 +167,7 @@ export function HomeLanding({ copy = homeLandingCopyJa }: HomeLandingProps) {
             ) : null}
             {hero.introTail}
           </p>
-          <div className="mx-auto mt-8 grid max-w-lg grid-cols-1 gap-3 sm:max-w-2xl sm:grid-cols-2">
+          <div className="mx-auto mt-8 grid max-w-lg grid-cols-1 gap-3 sm:max-w-3xl sm:grid-cols-2 lg:max-w-4xl lg:grid-cols-3">
             {hero.ctas.map((cta) => (
               <HomeCtaLink
                 key={`${cta.href}-${cta.variant}`}
@@ -200,7 +225,7 @@ export function HomeLanding({ copy = homeLandingCopyJa }: HomeLandingProps) {
               {features.sectionSubtitle}
             </p>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {features.cards.map(
               ({ href, title, tag, description, accent }) => {
                 const Icon = featureIconByHref[href] ?? ListOrderedIcon;
@@ -309,6 +334,7 @@ export function HomeLanding({ copy = homeLandingCopyJa }: HomeLandingProps) {
       <section className="px-4 pb-20 sm:px-6">
         <div className="from-primary/10 via-violet-500/10 to-cyan-500/10 border-primary/20 relative mx-auto max-w-3xl overflow-hidden rounded-3xl border bg-gradient-to-br px-6 py-10 text-center sm:px-10 sm:py-12">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,oklch(0.7_0.2_280/0.2),transparent_50%)]" />
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_78%_88%,oklch(0.78_0.14_75/0.14),transparent_42%)]" />
           <div className="relative">
             <h2 className="text-foreground font-heading text-xl font-bold sm:text-2xl">
               {bottomCta.title}
@@ -316,7 +342,7 @@ export function HomeLanding({ copy = homeLandingCopyJa }: HomeLandingProps) {
             <p className="text-muted-foreground mx-auto mt-2 max-w-md text-sm sm:text-base">
               {bottomCta.subtitle}
             </p>
-            <div className="mx-auto mt-6 grid max-w-lg grid-cols-1 gap-3 sm:max-w-2xl sm:grid-cols-2">
+            <div className="mx-auto mt-6 grid max-w-lg grid-cols-1 gap-3 sm:max-w-3xl sm:grid-cols-2 lg:max-w-4xl lg:grid-cols-3">
               {bottomCta.ctas.map((cta) => (
                 <HomeCtaLink
                   key={`bottom-${cta.href}-${cta.variant}`}

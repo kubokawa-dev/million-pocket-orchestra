@@ -27,7 +27,7 @@ const enFaq = [
   {
     question: "Where can I see winning numbers?",
     answer:
-      "Use the results index at /numbers4/result or per-draw pages linked from the hub. Primary UI labels are in Japanese.",
+      "Use the results indexes at /numbers3/result, /numbers4/result, and /loto6/result (plus per-draw pages linked from each hub). Primary UI labels are in Japanese.",
   },
 ] as const;
 

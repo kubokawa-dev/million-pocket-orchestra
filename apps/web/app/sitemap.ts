@@ -21,6 +21,8 @@ const STATIC_PATHS: {
   { path: "/numbers3/result", changeFrequency: "daily", priority: 0.89 },
     { path: "/numbers4", changeFrequency: "daily", priority: 0.95 },
     { path: "/numbers4/result", changeFrequency: "daily", priority: 0.9 },
+  { path: "/loto6", changeFrequency: "daily", priority: 0.9 },
+  { path: "/loto6/result", changeFrequency: "daily", priority: 0.88 },
     { path: "/numbers4/stats", changeFrequency: "daily", priority: 0.85 },
     { path: "/numbers4/trend", changeFrequency: "daily", priority: 0.85 },
     { path: "/blog", changeFrequency: "weekly", priority: 0.75 },
@@ -140,18 +142,38 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .select("draw_number, draw_date")
       .order("draw_number", { ascending: false });
 
-    if (error || !data?.length) return entries;
+    if (!error && data?.length) {
+      for (const row of data) {
+        const iso = numbers4DrawDateToIsoDate(
+          row.draw_date != null ? String(row.draw_date) : undefined,
+        );
+        entries.push({
+          url: `${origin}/numbers4/result/${row.draw_number}`,
+          lastModified: iso ? new Date(`${iso}T12:00:00.000Z`) : lastModified,
+          changeFrequency: "weekly",
+          priority: 0.55,
+        });
+      }
+    }
 
-    for (const row of data) {
-      const iso = numbers4DrawDateToIsoDate(
-        row.draw_date != null ? String(row.draw_date) : undefined,
-      );
-      entries.push({
-        url: `${origin}/numbers4/result/${row.draw_number}`,
-        lastModified: iso ? new Date(`${iso}T12:00:00.000Z`) : lastModified,
-        changeFrequency: "weekly",
-        priority: 0.55,
-      });
+    const { data: l6Data, error: l6Error } = await supabase
+      .from("loto6_draws")
+      .select("draw_number, draw_date")
+      .order("draw_number", { ascending: false });
+
+    if (!l6Error && l6Data?.length) {
+      for (const row of l6Data) {
+        const d = row.draw_date != null ? String(row.draw_date) : "";
+        const l6Iso = /^\d{4}\/\d{2}\/\d{2}$/.test(d)
+          ? d.replaceAll("/", "-")
+          : d;
+        entries.push({
+          url: `${origin}/loto6/result/${row.draw_number}`,
+          lastModified: l6Iso ? new Date(`${l6Iso}T12:00:00.000Z`) : lastModified,
+          changeFrequency: "weekly",
+          priority: 0.52,
+        });
+      }
     }
   } catch {
     // ビルド時に Supabase 未接続などの場合は静的URLのみ

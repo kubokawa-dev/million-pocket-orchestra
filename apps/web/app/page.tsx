@@ -18,9 +18,9 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: getSiteOrigin(),
-    title: "宝くじAI | ナンバーズ3・4の本気ダッシュボード",
+    title: "宝くじAI | ナンバーズ3・4・ロト6の本気ダッシュボード",
     description:
-      "ナンバーズ3の当選一覧（等級つき）と、ナンバーズ4のマルチモデル予測・統計・トレンドまで。スマホ最適化UIで数字遊びを加速。",
+      "ナンバーズ3・ロト6の当選一覧（等級・払戻つき）と、ナンバーズ4のマルチモデル予測・統計・トレンドまで。スマホ最適化UIで数字遊びを加速。",
   },
 };
 
@@ -36,11 +36,11 @@ const homeJsonLd = {
         "Takarakuji AI",
         "takarakuji-ai.space",
         "تاكاراكوجي AI",
-        "Japan Numbers3 & Numbers4 lottery dashboard",
+        "Japan Numbers3, Numbers4 & Loto6 lottery dashboard",
         "لوحة يانصيب أرقام اليابان",
       ],
       description:
-        "ナンバーズ3・4の当選番号・抽選結果の閲覧と、複数モデルによる日次予測・統計・トレンド可視化をまとめたWebアプリ。 English: Unofficial Japan Numbers3/4 results and analytics; see /en and /ar for overviews.",
+        "ナンバーズ3・4・ロト6の当選番号・抽選結果の閲覧と、複数モデルによる日次予測・統計・トレンド可視化をまとめたWebアプリ。 English: Unofficial Japan Numbers3/4/Loto6 results and analytics; see /en and /ar for overviews.",
       inLanguage: "ja",
       publisher: { "@id": `${getSiteOrigin()}/#organization` },
     },

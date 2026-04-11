@@ -1,222 +1,216 @@
 """
-楽天銀行ロト6スクレイパー（SQLite版）
+楽天銀行ロト6スクレイパー（月次 CSV + 任意で SQLite）
+
+月次ページは numbers3 と同様の tblType02 表ブロックのため、旧プレーンテキストパーサーは使わない。
+CSV は既存 loto6/*.csv と同一20列（train_and_predict / advanced_predict の COLS 互換）。
 """
+from __future__ import annotations
+
+import argparse
+import csv
 import os
 import re
-import csv
-import sqlite3
 import sys
-from datetime import datetime, date
-from urllib.request import urlopen, Request
+import time
+from datetime import date
+from urllib.error import HTTPError
+from urllib.request import Request, urlopen
 
-# プロジェクトルートをパスに追加
-ROOT = os.path.dirname(os.path.dirname(__file__))
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-from tools.utils import get_db_connection, DB_PATH
+from tools.utils import get_db_connection
 
-CSV_DIR = os.path.join(ROOT, 'loto6')
+CSV_DIR = os.path.join(ROOT, "loto6")
 
 HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127 Safari/537.36'
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/127 Safari/537.36"
+    )
 }
-
-# Target table: loto6_draws(draw_number INTEGER PK, draw_date TEXT, numbers TEXT, bonus_number INTEGER)
 
 
 def fetch_text(url: str) -> str:
-    from urllib.error import HTTPError
     req = Request(url, headers=HEADERS)
     try:
         with urlopen(req) as resp:
             html = resp.read()
     except HTTPError as e:
         if e.code == 404:
-            print(f'[scrape-loto6] Page not found (404): {url}')
-            return ''
+            print(f"[scrape-loto6] Page not found (404): {url}")
+            return ""
         raise
-    for enc in ('utf-8', 'cp932'):
+    for enc in ("utf-8", "cp932"):
         try:
             return html.decode(enc)
         except UnicodeDecodeError:
             continue
-    return html.decode('utf-8', errors='ignore')
+    return html.decode("utf-8", errors="ignore")
 
 
-def parse_month(text: str):
-    """Parse Rakuten Loto6 monthly page text into rows.
-    Extract draw range header, then split by dates, find 6 main numbers and a bonus in each block.
-    """
-    # Header example: （第2039回～第2041回）
-    rng = re.search(r'（第(\d+)回～第(\d+)回）', text)
-    start = end = None
-    if rng:
-        start = int(rng.group(1))
-        end = int(rng.group(2))
-
-    # Strip tags to get a plain text stream
-    plain = re.sub(r'<[^>]+>', ' ', text)
-    plain = plain.replace('|', ' ')
-    plain = re.sub(r'[\u3000\s]+', ' ', plain)
-
-    # Find all date positions
-    dates = [m for m in re.finditer(r'(\d{4}/\d{2}/\d{2})', plain)]
-    rows = []
-    for idx, dm in enumerate(dates):
-        date_str = dm.group(1)
-        start_i = dm.end()
-        end_i = dates[idx + 1].start() if idx + 1 < len(dates) else len(plain)
-        block = plain[start_i:end_i]
-
-        # Bonus number often shown in parentheses
-        bonus = None
-        bm = re.search(r'\((\d{1,2})\)', block)
-        if bm:
-            try:
-                b = int(bm.group(1))
-                if 1 <= b <= 43:
-                    bonus = b
-            except Exception:
-                pass
-
-        # Extract candidate numbers 1..43 from the block
-        nums = [int(x) for x in re.findall(r'\b(\d{1,2})\b', block)
-                if x.isdigit() and 1 <= int(x) <= 43]
-        # Remove the bonus occurrence from nums (if present once)
-        if bonus is not None:
-            # remove only one instance
-            removed = False
-            tmp = []
-            for v in nums:
-                if (v == bonus) and (not removed):
-                    removed = True
-                    continue
-                tmp.append(v)
-            nums = tmp
-
-        # Deduplicate while preserving order
-        seen = set()
-        uniq = []
-        for n in nums:
-            if n not in seen:
-                uniq.append(n)
-                seen.add(n)
-
-        if len(uniq) < 6:
-            # Widen the window just in case
-            ext_end = min(len(plain), end_i + 300)
-            ext_block = plain[start_i:ext_end]
-            nums_ext = [int(x) for x in re.findall(r'\b(\d{1,2})\b', ext_block)
-                        if x.isdigit() and 1 <= int(x) <= 43]
-            if bonus is not None and (bonus in nums_ext):
-                # remove first occurrence of bonus
-                ridx = nums_ext.index(bonus)
-                nums_ext.pop(ridx)
-            uniq = []
-            seen = set()
-            for n in nums_ext:
-                if n not in seen:
-                    uniq.append(n)
-                    seen.add(n)
-
-        if len(uniq) < 6:
-            continue
-
-        main6 = uniq[:6]
-        main6.sort()
-
-        rows.append({
-            'date': date_str,
-            'nums': main6,
-            'bonus': bonus,
-        })
-
-    # Sort by date asc to map draw numbers
-    try:
-        rows.sort(key=lambda r: datetime.strptime(r['date'], '%Y/%m/%d'))
-    except Exception:
-        pass
-
-    # assign draw numbers by header range if available
-    if start is not None and len(rows) > 0:
-        for i, r in enumerate(rows):
-            r['kai'] = start + i
-    else:
-        for r in rows:
-            r['kai'] = None
-
-    return start, end, rows
+def _strip_tags(s: str) -> str:
+    return re.sub(r"<[^>]+>", "", s).strip()
 
 
-def upsert_csv(month: str, rows):
-    csv_path = os.path.join(CSV_DIR, f'{month}.csv')
+def _tier_pair(table_html: str, label: str) -> tuple[str, str]:
+    m = re.search(
+        rf"<th>{re.escape(label)}</th>\s*"
+        r'<td class="txtRight" colspan="3">(.*?)</td>\s*'
+        r'<td class="txtRight" colspan="3">(.*?)</td>',
+        table_html,
+        re.DOTALL,
+    )
+    if not m:
+        return "該当なし", "該当なし"
+    return _strip_tags(m.group(1)), _strip_tags(m.group(2))
+
+
+def parse_draw_table(table_html: str) -> dict | None:
+    m_kai = re.search(r'<th colspan="6">\s*第(\d+)回\s*</th>', table_html)
+    m_date = re.search(
+        r'<th>抽せん日</th>\s*<td[^>]*colspan="6">(\d{4}/\d{2}/\d{2})</td>',
+        table_html,
+    )
+    main_m = re.search(r"<th>本数字</th>(.*?)</tr>", table_html, re.DOTALL)
+    if not (m_kai and m_date and main_m):
+        return None
+    nums = [int(x) for x in re.findall(r"loto-font-large\">(\d+)</span>", main_m.group(1))]
+    if len(nums) != 6:
+        return None
+
+    bm = re.search(r"loto-highlight[^>]*>\((\d+)\)</span>", table_html)
+    bonus = int(bm.group(1)) if bm else None
+
+    t1w, t1y = _tier_pair(table_html, "1等")
+    t2w, t2y = _tier_pair(table_html, "2等")
+    t3w, t3y = _tier_pair(table_html, "3等")
+    t4w, t4y = _tier_pair(table_html, "4等")
+    t5w, t5y = _tier_pair(table_html, "5等")
+
+    cm = re.search(
+        r"<th>キャリーオーバー</th>\s*<td[^>]*colspan=\"6\">(.*?)</td>",
+        table_html,
+        re.DOTALL,
+    )
+    carry = _strip_tags(cm.group(1)) if cm else "0円"
+
+    return {
+        "kai": int(m_kai.group(1)),
+        "date": m_date.group(1),
+        "nums": nums,
+        "bonus": bonus,
+        "t1w": t1w,
+        "t1y": t1y,
+        "t2w": t2w,
+        "t2y": t2y,
+        "t3w": t3w,
+        "t3y": t3y,
+        "t4w": t4w,
+        "t4y": t4y,
+        "t5w": t5w,
+        "t5y": t5y,
+        "carry": carry,
+    }
+
+
+def parse_month_html(text: str) -> list[dict]:
+    parts = re.split(
+        r'<table class="tblType02 tblNumberGuid">', text, flags=re.IGNORECASE
+    )
+    rows: list[dict] = []
+    for chunk in parts[1:]:
+        end = chunk.find("</table>")
+        block = chunk[:end] if end != -1 else chunk
+        row = parse_draw_table(block)
+        if row:
+            rows.append(row)
+    rows.sort(key=lambda r: r["kai"])
+    return rows
+
+
+def row_to_csv_line(r: dict) -> list:
+    n1, n2, n3, n4, n5, n6 = r["nums"]
+    bonus_cell = f"({r['bonus']})" if r["bonus"] is not None else ""
+    return [
+        f"第{r['kai']}回",
+        r["date"],
+        n1,
+        n2,
+        n3,
+        n4,
+        n5,
+        n6,
+        bonus_cell,
+        r["t1w"],
+        r["t1y"],
+        r["t2w"],
+        r["t2y"],
+        r["t3w"],
+        r["t3y"],
+        r["t4w"],
+        r["t4y"],
+        r["t5w"],
+        r["t5y"],
+        r["carry"],
+    ]
+
+
+def write_month_csv(month: str, rows: list[dict], overwrite: bool) -> tuple[int, str]:
+    csv_path = os.path.join(CSV_DIR, f"{month}.csv")
     os.makedirs(CSV_DIR, exist_ok=True)
 
-    existing = set()
-    if os.path.exists(csv_path):
-        with open(csv_path, 'r', encoding='utf-8') as f:
-            reader = csv.reader(f)
-            for cols in reader:
+    merged: dict[int, list] = {}
+    if not overwrite and os.path.isfile(csv_path):
+        with open(csv_path, "r", encoding="utf-8") as f:
+            for cols in csv.reader(f):
                 if not cols:
                     continue
                 try:
-                    kai = int(re.sub(r'[^0-9]', '', cols[0]))
-                    existing.add(kai)
+                    kai = int(re.sub(r"[^0-9]", "", cols[0]))
+                    merged[kai] = cols
                 except Exception:
                     continue
 
-    appended = 0
-    with open(csv_path, 'a', encoding='utf-8', newline='') as f:
-        writer = csv.writer(f)
-        for r in rows:
-            kai = r['kai']
-            if kai is None or kai in existing:
-                continue
-            n1, n2, n3, n4, n5, n6 = r['nums']
-            bonus_token = f'({r["bonus"]})' if r['bonus'] is not None else ''
-            line = [
-                f'第{kai}回',
-                r['date'],
-                n1, n2, n3, n4, n5, n6,
-                bonus_token,
-            ]
-            writer.writerow(line)
-            appended += 1
-    return appended, csv_path
+    for r in rows:
+        merged[r["kai"]] = row_to_csv_line(r)
+
+    ordered = [merged[k] for k in sorted(merged)]
+    with open(csv_path, "w", encoding="utf-8", newline="") as f:
+        csv.writer(f).writerows(ordered)
+    return len(rows), csv_path
 
 
 def ensure_db(conn):
     cur = conn.cursor()
     cur.execute(
-        '''
+        """
         CREATE TABLE IF NOT EXISTS loto6_draws (
             draw_number INTEGER PRIMARY KEY,
             draw_date TEXT NOT NULL,
             numbers TEXT NOT NULL,
             bonus_number INTEGER
         );
-        '''
+        """
     )
     conn.commit()
 
 
-def upsert_sqlite(rows):
+def upsert_sqlite(rows: list[dict]) -> int:
     conn = get_db_connection()
     ensure_db(conn)
     cur = conn.cursor()
     inserted = 0
     for r in rows:
-        kai = r['kai']
-        if kai is None:
-            continue
-        cur.execute('SELECT 1 FROM loto6_draws WHERE draw_number = ?', (kai,))
+        kai = r["kai"]
+        cur.execute("SELECT 1 FROM loto6_draws WHERE draw_number = ?", (kai,))
         if cur.fetchone():
             continue
-        numbers_str = ','.join(str(x) for x in r['nums'])
-        bonus = int(r['bonus']) if r['bonus'] is not None else None
+        numbers_str = ",".join(str(x) for x in r["nums"])
+        bonus = int(r["bonus"]) if r["bonus"] is not None else None
         cur.execute(
-            'INSERT INTO loto6_draws(draw_number, draw_date, numbers, bonus_number) VALUES (?,?,?,?)',
-            (kai, r['date'], numbers_str, bonus)
+            "INSERT INTO loto6_draws(draw_number, draw_date, numbers, bonus_number) VALUES (?,?,?,?)",
+            (kai, r["date"], numbers_str, bonus),
         )
         inserted += 1
     conn.commit()
@@ -224,59 +218,102 @@ def upsert_sqlite(rows):
     return inserted
 
 
-def run(url: str):
-    print('[scrape-loto6] Fetching:', url)
+def iter_yyyymm(start: str, end: str) -> list[str]:
+    sy, sm = int(start[:4]), int(start[4:6])
+    ey, em = int(end[:4]), int(end[4:6])
+    out: list[str] = []
+    y, m = sy, sm
+    while (y, m) <= (ey, em):
+        out.append(f"{y}{m:02d}")
+        m += 1
+        if m > 12:
+            m = 1
+            y += 1
+    return out
+
+
+def run_month(
+    month: str,
+    *,
+    overwrite: bool,
+    sqlite: bool,
+) -> None:
+    url = f"https://takarakuji.rakuten.co.jp/backnumber/loto6/{month}"
+    print("[scrape-loto6] Fetching:", url)
     text = fetch_text(url)
-    start, end, rows = parse_month(text)
+    if not text:
+        return
+    rows = parse_month_html(text)
     if not rows:
-        print('[scrape-loto6] No rows parsed. Check page structure.')
+        print(f"[scrape-loto6] No rows parsed for {month}.")
         return
-    # Determine month string from first date
-    mstr = None
-    for r in rows:
-        if r['date']:
-            mstr = r['date'].replace('/', '')[:6]
-            break
-    if not mstr:
-        print('[scrape-loto6] Could not determine month string.')
-        return
-
-    appended, csv_path = upsert_csv(mstr, rows)
-    inserted = upsert_sqlite(rows)
-
-    print(f"[scrape-loto6] Parsed range: 第{start}回～第{end}回 | Rows: {len(rows)}")
-    print(f"[scrape-loto6] CSV updated: +{appended} rows -> {csv_path}")
-    print(f"[scrape-loto6] SQLite updated: +{inserted} rows")
+    n, csv_path = write_month_csv(month, rows, overwrite=overwrite)
+    ins = upsert_sqlite(rows) if sqlite else 0
+    print(f"[scrape-loto6] {month}: {len(rows)} draws -> {csv_path}")
+    if sqlite:
+        print(f"[scrape-loto6] SQLite +{ins} rows")
 
 
-if __name__ == '__main__':
-    # CLI usage:
-    #   python tools/scrape_loto6_rakuten.py            -> fetch current and previous month
-    #   python tools/scrape_loto6_rakuten.py 202510     -> fetch specified month
-    #   python tools/scrape_loto6_rakuten.py 202509 202510 -> fetch two months
+def parse_args() -> argparse.Namespace:
+    p = argparse.ArgumentParser(description="楽天ロト6 月次バックナンバー → loto6/YYYYMM.csv")
+    p.add_argument("months", nargs="*", help="YYYYMM（省略時は前月と当月）")
+    p.add_argument(
+        "--from",
+        dest="from_month",
+        metavar="YYYYMM",
+        help="--to と併用で範囲一括（端含む）",
+    )
+    p.add_argument("--to", dest="to_month", metavar="YYYYMM")
+    p.add_argument("--sleep", type=float, default=0.25)
+    p.add_argument(
+        "--no-overwrite",
+        action="store_true",
+        help="既存 CSV と回号マージ（欠損のみ）。既定は月ごとに表の内容で全置換",
+    )
+    p.add_argument(
+        "--sqlite",
+        action="store_true",
+        help="lottery.db の loto6_draws にも未存在分を投入",
+    )
+    return p.parse_args()
 
-    def ym_str(dt: date) -> str:
-        return f"{dt.year}{dt.month:02d}"
 
-    args = [a for a in sys.argv[1:] if re.fullmatch(r"\d{6}", a)]
-    months = []
-    if args:
-        months = args
+def main() -> None:
+    args = parse_args()
+    overwrite = not args.no_overwrite
+
+    months: list[str] = []
+    if args.from_month and args.to_month:
+        months = iter_yyyymm(args.from_month, args.to_month)
+    elif args.from_month or args.to_month:
+        print("❌ --from と --to は両方指定してください")
+        sys.exit(1)
+    elif args.months:
+        for m in args.months:
+            if not re.fullmatch(r"\d{6}", m):
+                print(f"❌ 無効な月: {m}")
+                sys.exit(1)
+            months.append(m)
     else:
         today = date.today()
-        cur = ym_str(today)
+        cur = f"{today.year}{today.month:02d}"
         prev_month = today.month - 1 or 12
         prev_year = today.year - 1 if today.month == 1 else today.year
         prev = f"{prev_year}{prev_month:02d}"
         months = [prev, cur]
 
-    seen = set()
-    uniq_months = []
+    seen: set[str] = set()
+    uniq: list[str] = []
     for m in months:
         if m not in seen:
-            uniq_months.append(m)
+            uniq.append(m)
             seen.add(m)
 
-    for m in uniq_months:
-        url = f'https://takarakuji.rakuten.co.jp/backnumber/loto6/{m}'
-        run(url)
+    for i, m in enumerate(uniq):
+        run_month(m, overwrite=overwrite, sqlite=args.sqlite)
+        if args.sleep > 0 and i + 1 < len(uniq):
+            time.sleep(args.sleep)
+
+
+if __name__ == "__main__":
+    main()

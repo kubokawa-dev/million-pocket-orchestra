@@ -52,6 +52,24 @@ export async function GET() {
           },
         },
       },
+      "/api/loto6/latest": {
+        get: {
+          summary: "Latest Loto6 draws snapshot",
+          description:
+            "Returns recent Loto6 draw rows when the live data backend is configured; otherwise 503.",
+          responses: {
+            "200": {
+              description: "JSON payload with latest_draws and navigation links",
+              content: {
+                "application/json": {
+                  schema: { type: "object" },
+                },
+              },
+            },
+            "503": { description: "Live draw data not configured" },
+          },
+        },
+      },
       "/api/oembed": {
         get: {
           summary: "oEmbed discovery for draw pages",

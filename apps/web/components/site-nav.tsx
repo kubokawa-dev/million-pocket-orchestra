@@ -9,6 +9,7 @@ const links = [
   { href: "/", label: "ホーム" },
   { href: "/numbers3", label: "ナンバーズ3" },
   { href: "/numbers4", label: "ナンバーズ4" },
+  { href: "/loto6", label: "ロト6" },
   { href: "/blog", label: "ブログ" },
   { href: "/faq", label: "FAQ" },
 ] as const;
