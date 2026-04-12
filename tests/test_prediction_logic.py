@@ -26,6 +26,38 @@ def setup_sys_path():
 setup_sys_path()
 
 
+@pytest.fixture
+def numbers3_sqlite_db(monkeypatch, tmp_path):
+    """lottery.db が無い／空の CI でも numbers3 の DB 読み取りを検証する。"""
+    import sqlite3
+
+    db_path = tmp_path / "lottery.db"
+    conn = sqlite3.connect(db_path)
+    try:
+        conn.execute(
+            """
+            CREATE TABLE numbers3_draws (
+                draw_number INTEGER PRIMARY KEY,
+                draw_date TEXT NOT NULL,
+                numbers TEXT NOT NULL
+            )
+            """
+        )
+        conn.executemany(
+            "INSERT INTO numbers3_draws (draw_number, draw_date, numbers) VALUES (?, ?, ?)",
+            [
+                (100, "2024-01-01", "012"),
+                (101, "2024-01-08", "345"),
+                (102, "2024-01-15", "678"),
+            ],
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    monkeypatch.setattr("tools.utils.DB_PATH", str(db_path))
+
+
 class TestConfigModule:
     """設定クラスのテスト"""
 
@@ -229,16 +261,16 @@ class TestNumbers4PredictionLogic:
 class TestNumbers3Core:
     """Numbers3コアモジュールのテスト"""
 
-    def test_load_numbers3_draws(self):
+    def test_load_numbers3_draws(self, numbers3_sqlite_db):
         """Numbers3データ読み込みのテスト"""
         from numbers3.core import load_numbers3_draws
         
         df = load_numbers3_draws()
         
-        if not df.empty:
-            assert isinstance(df, pd.DataFrame)
-            assert 'numbers' in df.columns
-            assert 'draw_number' in df.columns
+        assert not df.empty
+        assert isinstance(df, pd.DataFrame)
+        assert "numbers" in df.columns
+        assert "draw_number" in df.columns
 
     def test_generate_all_numbers3(self):
         """全Numbers3番号生成のテスト"""
@@ -250,20 +282,20 @@ class TestNumbers3Core:
         assert '000' in all_nums
         assert '999' in all_nums
 
-    def test_predict_by_method(self):
+    def test_predict_by_method(self, numbers3_sqlite_db):
         """メソッド別予測のテスト"""
         from numbers3.core import predict_by_method, load_numbers3_draws
         
         df = load_numbers3_draws()
         
-        if not df.empty:
-            predictions = predict_by_method(df, 'box_model', limit=10)
-            
-            assert isinstance(predictions, list)
-            assert len(predictions) <= 10
-            for pred in predictions:
-                assert len(pred) == 3
-                assert pred.isdigit()
+        assert not df.empty
+        predictions = predict_by_method(df, "box_model", limit=10)
+
+        assert isinstance(predictions, list)
+        assert len(predictions) <= 10
+        for pred in predictions:
+            assert len(pred) == 3
+            assert pred.isdigit()
 
 
 class TestBoxUtils:
