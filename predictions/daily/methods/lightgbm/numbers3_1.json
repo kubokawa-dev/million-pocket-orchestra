@@ -558,8 +558,119 @@
         "limit": 200,
         "total_predictions": 200
       }
+    },
+    {
+      "time": "2026-04-12T17:38:06.511948+00:00",
+      "time_jst": "02:38",
+      "method": "lightgbm",
+      "top_predictions": [
+        {
+          "rank": 1,
+          "number": "336",
+          "score": 100.0
+        },
+        {
+          "rank": 2,
+          "number": "280",
+          "score": 99.5
+        },
+        {
+          "rank": 3,
+          "number": "080",
+          "score": 99.0
+        },
+        {
+          "rank": 4,
+          "number": "745",
+          "score": 98.5
+        },
+        {
+          "rank": 5,
+          "number": "711",
+          "score": 98.0
+        },
+        {
+          "rank": 6,
+          "number": "063",
+          "score": 97.5
+        },
+        {
+          "rank": 7,
+          "number": "116",
+          "score": 97.0
+        },
+        {
+          "rank": 8,
+          "number": "269",
+          "score": 96.5
+        },
+        {
+          "rank": 9,
+          "number": "625",
+          "score": 96.0
+        },
+        {
+          "rank": 10,
+          "number": "300",
+          "score": 95.5
+        },
+        {
+          "rank": 11,
+          "number": "858",
+          "score": 95.0
+        },
+        {
+          "rank": 12,
+          "number": "360",
+          "score": 94.5
+        },
+        {
+          "rank": 13,
+          "number": "592",
+          "score": 94.0
+        },
+        {
+          "rank": 14,
+          "number": "687",
+          "score": 93.5
+        },
+        {
+          "rank": 15,
+          "number": "042",
+          "score": 93.0
+        },
+        {
+          "rank": 16,
+          "number": "058",
+          "score": 92.5
+        },
+        {
+          "rank": 17,
+          "number": "325",
+          "score": 92.0
+        },
+        {
+          "rank": 18,
+          "number": "597",
+          "score": 91.5
+        },
+        {
+          "rank": 19,
+          "number": "324",
+          "score": 91.0
+        },
+        {
+          "rank": 20,
+          "number": "434",
+          "score": 90.5
+        }
+      ],
+      "metadata": {
+        "limit": 200,
+        "total_predictions": 200
+      }
     }
   ],
-  "last_updated": "2026-04-12T17:18:33.949202+00:00",
-  "prediction_count": 5
+  "last_updated": "2026-04-12T17:38:06.511948+00:00",
+  "prediction_count": 6
 }
