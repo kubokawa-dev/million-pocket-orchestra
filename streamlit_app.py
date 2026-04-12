@@ -34,8 +34,9 @@ def load_n4_draws(limit: int = 100) -> pd.DataFrame:
     conn = get_db_connection()
     try:
         df = pd.read_sql_query(
-            f"SELECT draw_number, draw_date, numbers FROM numbers4_draws ORDER BY draw_number DESC LIMIT {limit}",
-            conn
+            "SELECT draw_number, draw_date, numbers FROM numbers4_draws ORDER BY draw_number DESC LIMIT %s",
+            conn,
+            params=(limit,)
         )
     finally:
         conn.close()
@@ -60,8 +61,9 @@ def load_loto6_draws(limit: int = 100) -> pd.DataFrame:
     conn = get_db_connection()
     try:
         df = pd.read_sql_query(
-            f"SELECT draw_number, draw_date, numbers, bonus_number FROM loto6_draws ORDER BY draw_number DESC LIMIT {limit}",
-            conn
+            "SELECT draw_number, draw_date, numbers, bonus_number FROM loto6_draws ORDER BY draw_number DESC LIMIT %s",
+            conn,
+            params=(limit,)
         )
     finally:
         conn.close()
@@ -75,8 +77,9 @@ def load_n4_predictions(limit: int = 500) -> pd.DataFrame:
     conn = get_db_connection()
     try:
         df = pd.read_sql_query(
-            f"SELECT id, created_at, source, label, number FROM numbers4_predictions_log ORDER BY id DESC LIMIT {limit}",
-            conn
+            "SELECT id, created_at, source, label, number FROM numbers4_predictions_log ORDER BY id DESC LIMIT %s",
+            conn,
+            params=(limit,)
         )
     finally:
         conn.close()
@@ -90,8 +93,9 @@ def load_loto6_predictions(limit: int = 500) -> pd.DataFrame:
     conn = get_db_connection()
     try:
         df = pd.read_sql_query(
-            f"SELECT id, created_at, source, label, number FROM loto6_predictions_log ORDER BY id DESC LIMIT {limit}",
-            conn
+            "SELECT id, created_at, source, label, number FROM loto6_predictions_log ORDER BY id DESC LIMIT %s",
+            conn,
+            params=(limit,)
         )
     finally:
         conn.close()

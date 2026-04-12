@@ -133,7 +133,7 @@ python loto6/predict_ensemble.py
 | `daily-numbers4-prediction.yml` | Numbers4 日次予測 等 |
 | `daily-numbers4-analysis.yml` | Numbers4 分析 |
 | `daily-numbers4-summary.yml` | Numbers4 サマリー |
-| `daily-loto6-prediction.yml` | ロト6 日次予測 |
+| `daily-loto6-prediction.yml` | ロト6 予測（月・木当せんサイクル／JST 午前中に 1 日 5 回） |
 | `numbers3-target-number-check.yml` / `numbers4-target-number-check.yml` | 当選番号チェック |
 | `manual-numbers3-supabase-sync.yml` | Supabase 手動同期 |
 | `weekly-numbers3-box-stats-analysis.yml` / `weekly-numbers4-box-stats-analysis.yml` | 週次ボックス統計 |

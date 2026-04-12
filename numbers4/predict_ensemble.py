@@ -1,15 +1,16 @@
+from __future__ import annotations
+
 import pandas as pd
 import numpy as np
 import sys
 import os
 from collections import Counter
 from itertools import permutations
+from typing import Optional, Callable
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# --- モジュール検索パスを追加 ---
-# スクリプトの親ディレクトリ（numbers4）の親ディレクトリ（million-pocket）をパスに追加
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if project_root not in sys.path:
     sys.path.append(project_root)
@@ -21,36 +22,28 @@ from numbers4.prediction_logic import (
     predict_with_new_ml_model,
     predict_from_exploratory_heuristics,
     predict_from_extreme_patterns,
-    predict_from_digit_repetition_model_n4,  # v10.0
-    predict_from_digit_continuation_model_n4, # v10.0
-    predict_from_large_change_model_n4,       # v10.0
-    predict_from_realistic_frequency_model_n4,# v10.0
-    predict_from_lightgbm,                    # LightGBM
-    predict_from_lightgbm_with_probs,         # LightGBM + digit probabilities
-    # v10.3 過去パターン学習モデル
-    predict_from_transition_probability_n4,   # 遷移確率モデル
-    predict_from_global_frequency_n4,         # 全体頻度モデル
-    predict_from_box_pattern_analysis_n4,     # ボックスパターン分析 v10.5
-    # v10.5 ボックス特化型モデル
-    predict_from_hot_pair_combination_n4,     # ホットペア組み合わせ
-    predict_from_digit_frequency_box_n4,      # 数字頻度ボックス
-    predict_from_model_state_v2,              # model_stateチェーンモデル
-    # v10.7 コールドナンバー復活モデル（NEW!）
-    predict_from_cold_number_revival_n4,      # コールドナンバー復活
-    # v11.1 ML近傍探索モデル（NEW! 2827問題対策）
-    predict_from_ml_neighborhood_search_n4,   # ML近傍探索
-    # v12.0 2404問題対策モデル（NEW!）
-    predict_from_even_odd_pattern_n4,         # 偶数/奇数パターン
-    predict_from_low_sum_specialist_n4,       # 低合計値特化
-    predict_from_sequential_pattern_n4,       # 連続数字パターン
-    # v13.0 6376問題対策モデル（NEW!）
-    predict_from_adjacent_digit_pattern_n4,   # 隣接数字パターン
-    # v14.0 ボックスレベルLightGBM（NEW!）
-    predict_from_lgbm_box,                    # ボックスレベルLightGBM
+    predict_from_digit_repetition_model_n4,
+    predict_from_digit_continuation_model_n4,
+    predict_from_large_change_model_n4,
+    predict_from_realistic_frequency_model_n4,
+    predict_from_lightgbm,
+    predict_from_lightgbm_with_probs,
+    predict_from_transition_probability_n4,
+    predict_from_global_frequency_n4,
+    predict_from_box_pattern_analysis_n4,
+    predict_from_hot_pair_combination_n4,
+    predict_from_digit_frequency_box_n4,
+    predict_from_model_state_v2,
+    predict_from_cold_number_revival_n4,
+    predict_from_ml_neighborhood_search_n4,
+    predict_from_even_odd_pattern_n4,
+    predict_from_low_sum_specialist_n4,
+    predict_from_sequential_pattern_n4,
+    predict_from_adjacent_digit_pattern_n4,
+    predict_from_lgbm_box,
     aggregate_predictions,
     apply_diversity_penalty
 )
-# v11.0 ボックス特化型モデル（NEW!）
 from numbers4.box_learning import (
     load_box_model,
     predict_boxes_from_model,
@@ -60,28 +53,21 @@ from numbers4.box_learning import (
 from numbers4.save_prediction_history import save_ensemble_prediction
 from numbers4.save_prediction_json import save_prediction_to_json
 from numbers4.online_learning import load_model_weights
-# learn_model_from_data は不要になったので削除
 
-# --- 合計値ボーナス設定 ---
-# 理論的な平均値: 4桁 x 4.5 = 18
-# 標準偏差: 約5.7
-# v12.0改善: 2404（合計10）のような低合計値も捕捉するため、許容範囲を拡大
-# 実データ分析より、合計値10-26が約80%を占める
-SUM_IDEAL = 18  # 理想的な合計値
-SUM_TOLERANCE = 8  # 許容範囲（±8で10-26をカバー）← 6→8に拡大
-SUM_BONUS_MAX = 0.25  # 最大ボーナス（25%）← 30%→25%に調整（範囲拡大の代わり）
+from src.config import NUMBERS4_CONFIG, DEFAULT_WEIGHTS
 
-# 過去出現に基づくボックスタイプ分布（実データから計測）
-DEFAULT_BOX_DISTRIBUTION = {
-    'ABCD': 0.51,
-    'AABC': 0.42,
-    'AABB': 0.025,
-    'AAAB': 0.035,
-    'AAAA': 0.002,
-}
+SUM_IDEAL = NUMBERS4_CONFIG.sum_ideal
+SUM_TOLERANCE = NUMBERS4_CONFIG.sum_tolerance
+SUM_BONUS_MAX = NUMBERS4_CONFIG.sum_bonus_max
+SUM_OUT_OF_RANGE_PENALTY = NUMBERS4_CONFIG.sum_out_of_range_penalty
 
-# 保存用に展開する候補数の上限
-MAX_PERMUTATION_CANDIDATES = 400
+DEFAULT_BOX_DISTRIBUTION = NUMBERS4_CONFIG.default_box_distribution.copy()
+
+MAX_PERMUTATION_CANDIDATES = NUMBERS4_CONFIG.max_permutation_candidates
+
+ABCD_MIN_IN_TOP20 = NUMBERS4_CONFIG.abcd_min_in_top20
+
+LEARNING_BLEND_RATIO = NUMBERS4_CONFIG.learning_blend_ratio
 
 
 def apply_sum_bonus(
@@ -89,7 +75,7 @@ def apply_sum_bonus(
     ideal_sum: int = SUM_IDEAL, 
     tolerance: int = SUM_TOLERANCE,
     max_bonus: float = SUM_BONUS_MAX,
-    out_of_range_penalty: float = 0.95
+    out_of_range_penalty: float = SUM_OUT_OF_RANGE_PENALTY
 ) -> pd.DataFrame:
     """
     合計値ボーナスを適用: 理想的な合計値に近い候補のスコアを上げる
@@ -572,20 +558,24 @@ def generate_ensemble_prediction(progress_callback=None):
         if hot_models_short and hot_models_short[0][1] > 0:
             top_model = hot_models_short[0][0]
 
-            # 1位のモデルには特別ボーナス（元の重みの1.5倍、最大+20.0）
             if top_model in ensemble_weights:
-                bonus = min(20.0, ensemble_weights[top_model] * 0.5)
+                bonus = min(
+                    NUMBERS4_CONFIG.hot_model_max_bonus,
+                    ensemble_weights[top_model] * NUMBERS4_CONFIG.hot_model_bonus_multiplier
+                )
                 ensemble_weights[top_model] += bonus
                 report_progress(
                     0.996,
                     f"🔥 Hot Model【{top_model}】にボーナス +{bonus:.1f} を付与！",
                 )
 
-            # 2位のモデルにも少しボーナス
             if len(hot_models_short) > 1 and hot_models_short[1][1] > 0:
                 second_model = hot_models_short[1][0]
                 if second_model in ensemble_weights:
-                    bonus = min(10.0, ensemble_weights[second_model] * 0.2)
+                    bonus = min(
+                        NUMBERS4_CONFIG.second_hot_model_max_bonus,
+                        ensemble_weights[second_model] * NUMBERS4_CONFIG.second_hot_model_bonus_multiplier
+                    )
                     ensemble_weights[second_model] += bonus
                     report_progress(
                         0.996,
@@ -645,9 +635,12 @@ def generate_ensemble_prediction(progress_callback=None):
     # 重み付けして集計（スコア正規化を有効化）
     final_predictions_df = aggregate_predictions(predictions_by_model, ensemble_weights, normalize_scores=True)
     
-    # 多様性ペナルティを適用（類似した候補のスコアを下げる）
-    # v10.1: penalty_strength を 0.2 → 0.4 に強化
-    final_predictions_df = apply_diversity_penalty(final_predictions_df, penalty_strength=0.4, similarity_threshold=2)
+    # 多様性ペナルティを適用
+    final_predictions_df = apply_diversity_penalty(
+        final_predictions_df,
+        penalty_strength=NUMBERS4_CONFIG.diversity_penalty_strength,
+        similarity_threshold=NUMBERS4_CONFIG.diversity_similarity_threshold
+    )
     
     # 合計値ボーナスを適用 (合計値15-24の範囲にある候補を優遇)
     # v10.1: 合計値が理想的な範囲にある候補にボーナスを付与
@@ -788,17 +781,12 @@ def generate_similar_patterns_n4(number: str, count: int = 3, all_draws_df=None,
         base_digits = [int(d) for d in number]
 
         def sum_bonus_multiplier(num_str: str) -> float:
-            # predict_ensemble.py の apply_sum_bonus と同じ思想（理想18±6を優遇）
-            ideal_sum = SUM_IDEAL
-            tolerance = SUM_TOLERANCE
-            max_bonus = SUM_BONUS_MAX
-            out_of_range_penalty = 0.95
             s = sum(int(d) for d in num_str)
-            dist = abs(s - ideal_sum)
-            if dist <= tolerance:
-                bonus = max_bonus * (1 - dist / tolerance)
+            dist = abs(s - SUM_IDEAL)
+            if dist <= SUM_TOLERANCE:
+                bonus = SUM_BONUS_MAX * (1 - dist / SUM_TOLERANCE)
                 return 1.0 + bonus
-            return out_of_range_penalty
+            return SUM_OUT_OF_RANGE_PENALTY
 
         def ml_logp(num_str: str) -> float:
             eps = 1e-12

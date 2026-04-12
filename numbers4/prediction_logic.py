@@ -15,7 +15,6 @@ from numbers4.learn_from_predictions import (
     rank_numbers_from_state,
 )
 from numbers4.permutation_pick import best_straight_for_sorted_box
-# from numbers4.predict_numbers_with_model import predict_top_k as _predict_top_k_model  # 削除されたファイル
 
 
 # --- ML近傍探索モデル（v11.1 NEW!）---
@@ -119,9 +118,15 @@ def predict_from_basic_stats(df: pd.DataFrame, limit: int = 5):
     基本的な統計情報（出現頻度、最新の数字）に基づいて予測を生成する。
     改善版：時系列重み付け、多様性向上。
     """
-    # 最近のデータにより高い重みを付与（指数減衰）
+    if df is None or df.empty:
+        return []
+    
+    required_cols = ['d1', 'd2', 'd3', 'd4']
+    if not all(col in df.columns for col in required_cols):
+        return []
+    
     n = len(df)
-    weights = np.exp(np.linspace(-2, 0, n))  # 最新に近いほど重みが大きい
+    weights = np.exp(np.linspace(-2, 0, n))
     weights = weights / weights.sum()
     
     # 各桁の重み付き出現頻度を計算
@@ -310,14 +315,13 @@ def predict_with_model(
     return list(predictions)
 
 
-# --- 3b. Wrapper for new ML model API expected by ensemble ---
+# --- 3b. Legacy ML model wrapper ---
 def predict_with_new_ml_model(df: pd.DataFrame, limit: int = 12):
     """
-    新しいMLモデルの予測を返すための互換ラッパー関数。
-    削除されたファイルの代わりに、基本的な統計予測を返す。
+    互換性のため用意されたラッパー関数。
+    フォールバックとして基本的な統計予測を返す。
     """
     try:
-        # 削除されたファイルの代わりに、基本的な統計予測を使用
         return predict_from_basic_stats(df, limit)
     except Exception:
         return []
