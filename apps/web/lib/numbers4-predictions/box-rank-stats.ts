@@ -153,34 +153,40 @@ export async function computeBoxRankStats(options: {
   const draws = await fetchRecentNumbers4DrawNumbersWithResults(lastN);
   const hadSupabaseDraws = draws.length > 0;
 
-  const perDraw: PerDrawBoxRankRow[] = [];
+  // 全回分の result + bundle を並列取得
+  const perDrawData = await Promise.all(
+    draws.map(async (drawNumber) => {
+      const [result, bundle] = await Promise.all([
+        fetchNumbers4DrawResult(drawNumber),
+        loadNumbers4PredictionBundleForDraw(drawNumber),
+      ]);
+      return { drawNumber, result, bundle };
+    }),
+  );
 
-  for (const drawNumber of draws) {
-    const result = await fetchNumbers4DrawResult(drawNumber);
-    const winning = result?.numbers
-      ? (normalizeNumbers4(String(result.numbers)) ?? String(result.numbers))
-      : null;
-
-    const bundle = await loadNumbers4PredictionBundleForDraw(drawNumber);
-
-    const ensList = orderedEnsembleNumbers(bundle?.ensemble ?? null);
-    const rankEnsemble =
-      winning != null
-        ? findBoxHitRank(ensList, winning, topK)
+  const perDraw: PerDrawBoxRankRow[] = perDrawData.map(
+    ({ drawNumber, result, bundle }) => {
+      const winning = result?.numbers
+        ? (normalizeNumbers4(String(result.numbers)) ?? String(result.numbers))
         : null;
 
-    const ranks = {} as Record<BoxRankSourceKey, number | null>;
-    ranks.ensemble = rankEnsemble;
+      const ensList = orderedEnsembleNumbers(bundle?.ensemble ?? null);
+      const rankEnsemble =
+        winning != null ? findBoxHitRank(ensList, winning, topK) : null;
 
-    for (const slug of METHOD_SLUGS_FOR_STATS) {
-      const row = bundle?.methodRows.find((m) => m.slug === slug);
-      const preds = row?.topPredictions.map((t) => t.number) ?? [];
-      ranks[slug] =
-        winning != null ? findBoxHitRank(preds, winning, topK) : null;
-    }
+      const ranks = {} as Record<BoxRankSourceKey, number | null>;
+      ranks.ensemble = rankEnsemble;
 
-    perDraw.push({ drawNumber, winning, ranks });
-  }
+      for (const slug of METHOD_SLUGS_FOR_STATS) {
+        const row = bundle?.methodRows.find((m) => m.slug === slug);
+        const preds = row?.topPredictions.map((t) => t.number) ?? [];
+        ranks[slug] =
+          winning != null ? findBoxHitRank(preds, winning, topK) : null;
+      }
+
+      return { drawNumber, winning, ranks };
+    },
+  );
 
   const sourceKeys: BoxRankSourceKey[] = [
     "ensemble",

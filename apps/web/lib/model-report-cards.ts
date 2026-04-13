@@ -51,7 +51,10 @@ export async function buildNumbers3ModelReportCards(
   options?: { limit?: number },
 ): Promise<ModelReportCard[]> {
   const targetDrawNumber = await resolveNumbers3TargetDrawNumber();
-  const draws = await fetchOfficialWinningDrawsBeforeTargetNumbers3(targetDrawNumber, lastN);
+  const draws = await fetchOfficialWinningDrawsBeforeTargetNumbers3(
+    targetDrawNumber,
+    lastN,
+  );
   if (draws.length === 0) return [];
 
   const hits = await buildWinningModelHitsForDrawListNumbers3(draws);

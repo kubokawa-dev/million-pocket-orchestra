@@ -1116,7 +1116,12 @@ export async function Numbers4PredictionsHub({
     data = await loadNumbers4PredictionBundle();
   }
 
-  const resultRow = await fetchNumbers4DrawResult(data.targetDrawNumber);
+  // 独立したデータを並列取得
+  const [resultRow, governance, officialPastFiveDraws] = await Promise.all([
+    fetchNumbers4DrawResult(data.targetDrawNumber),
+    buildNumbers4ModelGovernance(30),
+    fetchOfficialWinningDrawsBeforeTarget(data.targetDrawNumber, 5),
+  ]);
   const winningRaw = resultRow?.numbers ?? null;
   const winningNorm = normalizeNumbers4(winningRaw);
 
@@ -1127,7 +1132,6 @@ export async function Numbers4PredictionsHub({
         .sort((a, b) => b[1] - a[1])
         .slice(0, 14)
     : [];
-  const governance = await buildNumbers4ModelGovernance(30);
   const trustAdjustedWeights = buildTrustAdjustedWeights(weights, governance);
   const hotModels = buildTrustAdjustedHotModels(latest?.hot_models || [], governance);
   const recentFlow = [...(latest?.recent_flow ?? [])].sort(
@@ -1143,10 +1147,6 @@ export async function Numbers4PredictionsHub({
       ? contributorsForEnsembleNumber(winningNorm, data.methodRows)
       : null;
 
-  const officialPastFiveDraws = await fetchOfficialWinningDrawsBeforeTarget(
-    data.targetDrawNumber,
-    5,
-  );
   const officialPastFiveHits = await buildWinningModelHitsForDrawList(
     officialPastFiveDraws,
   );

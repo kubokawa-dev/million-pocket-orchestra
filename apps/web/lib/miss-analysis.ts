@@ -70,7 +70,14 @@ export async function buildNumbers4MissAnalysis(
     };
   }
 
-  const boxStats = await computeBoxRankStats({ lastN: draws.length, topK: 20, thresholds: [10, 20] });
+  // boxStats と bundle 並列取得を同時に開始
+  const [boxStats, bundles] = await Promise.all([
+    computeBoxRankStats({ lastN: draws.length, topK: 20, thresholds: [10, 20] }),
+    Promise.all(
+      draws.map((draw) => loadNumbers4PredictionBundleForDraw(draw.draw_number)),
+    ),
+  ]);
+
   const ensembleAggregate = boxStats.aggregates.find((row) => row.key === "ensemble");
   const top10BoxRatePct = Number((ensembleAggregate?.atOrBelow[10]?.pct ?? 0).toFixed(1));
   const top20BoxRatePct = Number((ensembleAggregate?.atOrBelow[20]?.pct ?? 0).toFixed(1));
@@ -81,10 +88,10 @@ export async function buildNumbers4MissAnalysis(
   let exactTop20 = 0;
   let oneDigitOffTop1 = 0;
 
-  for (const draw of draws) {
-    const winning = normalizeNumbers4(draw.numbers);
+  for (let i = 0; i < draws.length; i++) {
+    const winning = normalizeNumbers4(draws[i].numbers);
     if (!winning) continue;
-    const bundle = await loadNumbers4PredictionBundleForDraw(draw.draw_number);
+    const bundle = bundles[i];
     const run = getLatestEnsembleRunNumbers4(bundle?.ensemble ?? null);
     const predictions = (run?.top_predictions ?? [])
       .map((item) => normalizeNumbers4(item.number != null ? String(item.number) : ""))
@@ -126,16 +133,21 @@ export async function buildNumbers3MissAnalysis(
     };
   }
 
+  // 全 draw 分のバンドルを並列取得
+  const bundles = await Promise.all(
+    draws.map((draw) => loadNumbers3PredictionBundleForDraw(draw.draw_number)),
+  );
+
   let top10Box = 0;
   let top20Box = 0;
   let exactTop20 = 0;
   let oneDigitOffTop1 = 0;
   const boxRanks: number[] = [];
 
-  for (const draw of draws) {
-    const winning = normalizeNumbers3(draw.numbers);
+  for (let i = 0; i < draws.length; i++) {
+    const winning = normalizeNumbers3(draws[i].numbers);
     if (!winning) continue;
-    const bundle = await loadNumbers3PredictionBundleForDraw(draw.draw_number);
+    const bundle = bundles[i];
     const run = getLatestEnsembleRunNumbers3(bundle?.ensemble ?? null);
     const predictions = (run?.top_predictions ?? [])
       .map((item) => normalizeNumbers3(item.number != null ? String(item.number) : ""))

@@ -74,11 +74,11 @@ export default async function Numbers3ResultDrawPredictionsPage({
     notFound();
   }
 
-  const row = await getCachedNumbers3DrawFullRow(drawNumber);
-  const [adjacent, sameMonthDraws] = await Promise.all([
+  const [row, adjacent] = await Promise.all([
+    getCachedNumbers3DrawFullRow(drawNumber),
     fetchNumbers3AdjacentDrawNumbers(drawNumber),
-    fetchNumbers3SameMonthDrawNumbers(row?.draw_date, drawNumber),
   ]);
+  const sameMonthDraws = await fetchNumbers3SameMonthDrawNumbers(row?.draw_date, drawNumber);
   const origin = getSiteOrigin();
   const description = buildNumbers3DrawPageDescription(drawNumber, row);
   const pageName = `第${drawNumber}回 ナンバーズ3 モデル試算と当選照合`;
