@@ -1,0 +1,47 @@
+{
+  "cli_version": "0.4.4",
+  "checkpoint_id": "2ecbf9372039",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "apps/web/app/en/blog/[slug]/opengraph-image.tsx",
+    "apps/web/app/loto6/page.tsx",
+    "apps/web/app/loto6/result/[draw_number]/page.tsx",
+    "apps/web/app/loto6/result/page.tsx",
+    "apps/web/app/loto6/stats/page.tsx",
+    "apps/web/app/numbers3/page.tsx",
+    "apps/web/app/numbers3/result/[draw_number]/page.tsx",
+    "apps/web/app/numbers3/result/page.tsx",
+    "apps/web/app/numbers4/page.tsx",
+    "apps/web/app/numbers4/result/[draw_number]/opengraph-image.tsx",
+    "apps/web/app/numbers4/result/[draw_number]/page.tsx",
+    "apps/web/app/numbers4/result/page.tsx",
+    "apps/web/app/numbers4/stats/page.tsx",
+    "apps/web/app/numbers4/trend/page.tsx",
+    "apps/web/app/sitemap.ts",
+    "apps/web/lib/content-last-modified.ts",
+    "apps/web/lib/loto6-predictions/load-bundles.ts",
+    "apps/web/lib/numbers3-draw-neighbors.ts",
+    "apps/web/lib/numbers3-predictions/load-numbers3.ts",
+    "apps/web/lib/numbers4-draw-neighbors.ts",
+    "apps/web/lib/numbers4-predictions/load-6949.ts",
+    "apps/web/lib/supabase/static.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/2e/cbf9372039/0/metadata.json",
+      "transcript": "/2e/cbf9372039/0/full.jsonl",
+      "context": "/2e/cbf9372039/0/context.md",
+      "content_hash": "/2e/cbf9372039/0/content_hash.txt",
+      "prompt": "/2e/cbf9372039/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 224,
+    "cache_creation_tokens": 92911,
+    "cache_read_tokens": 5425152,
+    "output_tokens": 18183,
+    "api_call_count": 73
+  }
+}
