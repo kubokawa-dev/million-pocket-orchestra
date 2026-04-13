@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "تاكاراكوجي AI — البوابة العربية";
+export const alt = "Takarakuji AI — Arabic Entry";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -80,16 +80,16 @@ export default function OgImage() {
                 background: "rgba(255,250,240,0.68)",
               }}
             >
-              <span
-                style={{
-                  fontSize: 20,
-                  letterSpacing: "0.08em",
-                  color: "#8a6b2f",
-                  fontWeight: 700,
-                }}
-              >
-                البوابة العربية
-              </span>
+                <span
+                  style={{
+                    fontSize: 20,
+                    letterSpacing: "0.08em",
+                    color: "#8a6b2f",
+                    fontWeight: 700,
+                  }}
+                >
+                  Arabic Entry
+                </span>
             </div>
           </div>
 
@@ -112,9 +112,9 @@ export default function OgImage() {
                 textAlign: "right",
               }}
             >
-              أصل بيانات وتحليلات
+              Curated Arabic entry
               <br />
-              بواجهة عربية مختارة
+              for strategic visitors
             </span>
             <span
               style={{
@@ -125,8 +125,8 @@ export default function OgImage() {
                 textAlign: "right",
               }}
             >
-              مدخل مخصص للزوّار الدوليين والشركاء من الخليج، بنبرة هادئة
-              وسردية أقرب إلى العلامة التحليلية من صفحة تنبؤات عادية.
+              A Gulf-friendly narrative layer for international visitors, partner
+              introductions, and premium-facing review.
             </span>
           </div>
 
@@ -153,7 +153,7 @@ export default function OgImage() {
                 gap: 12,
               }}
             >
-              {["واجهة عربية", "7 مداخل لغة", "طرح هادئ"].map((item) => (
+              {["Arabic layer", "7 language entries", "Calm tone"].map((item) => (
                 <div
                   key={item}
                   style={{
