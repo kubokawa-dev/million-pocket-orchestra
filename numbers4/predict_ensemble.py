@@ -55,6 +55,11 @@ from numbers4.save_prediction_json import save_prediction_to_json
 from numbers4.online_learning import load_model_weights
 
 from src.config import NUMBERS4_CONFIG, DEFAULT_WEIGHTS
+from src.trust_first import (
+    apply_trust_first_hot_models,
+    apply_trust_first_weights,
+    compute_numbers4_governance,
+)
 
 SUM_IDEAL = NUMBERS4_CONFIG.sum_ideal
 SUM_TOLERANCE = NUMBERS4_CONFIG.sum_tolerance
@@ -631,6 +636,20 @@ def generate_ensemble_prediction(progress_callback=None):
         # model_state
         'state_chain': predictions_state_chain,
     }
+
+    try:
+        report_progress(0.997, "trust-first 補正を重みに反映中...")
+        governance = compute_numbers4_governance(
+            methods=list(predictions_by_model.keys()),
+            recent_limit=30,
+        )
+        ensemble_weights = apply_trust_first_weights(ensemble_weights, governance)
+        if hot_models_short is not None:
+            hot_models_short = apply_trust_first_hot_models(hot_models_short, governance)
+        if hot_models_for_json is not None:
+            hot_models_for_json = apply_trust_first_hot_models(hot_models_for_json, governance)
+    except Exception as e:
+        print(f"trust-first 補正中にエラー: {e}")
 
     # 重み付けして集計（スコア正規化を有効化）
     final_predictions_df = aggregate_predictions(predictions_by_model, ensemble_weights, normalize_scores=True)

@@ -8,6 +8,8 @@ import {
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { AnalysisTransparencyCallout } from "@/components/analysis-transparency-callout";
+import { TodayReferencePanel } from "@/components/today-reference-panel";
 import { buttonVariants } from "@/components/ui/button-variants";
 import {
   Card,
@@ -120,6 +122,21 @@ export default async function Loto6Page() {
           </Card>
         ) : null}
 
+        <TodayReferencePanel
+          title="Today view"
+          latestLabel="最新取り込み / 次回参考対象"
+          latestValue={`${latestDraw ? `取り込み: 第 ${latestDraw} 回` : "取り込み: 未取得"}${nextTarget != null ? ` / 次回: 第 ${nextTarget} 回` : ""}`}
+          primaryHref={latestHref}
+          primaryLabel={latestDraw ? `第 ${latestDraw} 回を見る` : "一覧を見る"}
+          secondaryHref="/loto6/result"
+          secondaryLabel="当選番号一覧"
+          statsHref="/loto6/stats"
+          statsLabel="出現回数の統計"
+          apiHref="/api/loto6/latest"
+          apiLabel="GET /api/loto6/latest"
+          accentClassName="border-amber-500/20 bg-amber-500/5"
+        />
+
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Card className="border-border/80 shadow-sm ring-1 ring-black/5 dark:ring-white/10">
             <CardHeader className="pb-3">
@@ -209,6 +226,17 @@ export default async function Loto6Page() {
             </Link>
           </CardContent>
         </Card>
+
+        <AnalysisTransparencyCallout
+          basis={[
+            "公開された当選結果と、ある場合は日次の MVP モデル JSON を参照しています。",
+            "一覧・統計・最新回ページをつないでいます。",
+          ]}
+          limitations={[
+            "モデル表示は参考用で、当せん確率を保証しません。",
+            "払戻やルールの最終確認は必ず公式情報で行ってください。",
+          ]}
+        />
       </div>
     </div>
   );

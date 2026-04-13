@@ -16,6 +16,7 @@ from numbers3.core import (
 )
 from numbers3.save_prediction_history import save_ensemble_prediction
 from numbers3.save_prediction_json import save_prediction_to_json
+from src.trust_first import apply_trust_first_weights, compute_numbers3_governance
 
 
 DEFAULT_WEIGHTS = {
@@ -47,22 +48,29 @@ def run_ensemble_prediction_cli() -> None:
     predictions_by_model = {
         method: predict_by_method(df, method, limit=200) for method in METHODS
     }
+    ensemble_weights = DEFAULT_WEIGHTS.copy()
+    try:
+        governance = compute_numbers3_governance(METHODS, recent_limit=20)
+        ensemble_weights = apply_trust_first_weights(ensemble_weights, governance)
+    except Exception as e:
+        print(f"⚠️ trust-first 補正をスキップ: {e}")
+
     final_df = aggregate_method_predictions(
         predictions_by_model,
-        method_weights=DEFAULT_WEIGHTS,
+        method_weights=ensemble_weights,
         top_n=300,
     )
 
     save_ensemble_prediction(
         predictions_df=final_df,
-        ensemble_weights=DEFAULT_WEIGHTS,
+        ensemble_weights=ensemble_weights,
         predictions_by_model=predictions_by_model,
         target_draw_number=target_draw,
         notes="numbers3 ensemble prediction",
     )
     save_prediction_to_json(
         predictions_df=final_df,
-        ensemble_weights=DEFAULT_WEIGHTS,
+        ensemble_weights=ensemble_weights,
         target_draw_number=target_draw,
         top_n=20,
     )

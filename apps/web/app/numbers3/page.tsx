@@ -11,6 +11,11 @@ import {
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { AnalysisTransparencyCallout } from "@/components/analysis-transparency-callout";
+import { MissAnalysisCards } from "@/components/miss-analysis-cards";
+import { ModelGovernancePanel } from "@/components/model-governance-panel";
+import { ModelReportCards } from "@/components/model-report-cards";
+import { TodayReferencePanel } from "@/components/today-reference-panel";
 import { buttonVariants } from "@/components/ui/button-variants";
 import {
   Card,
@@ -20,6 +25,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { buildBreadcrumbJsonLd } from "@/lib/breadcrumb-jsonld";
+import { buildNumbers3MissAnalysis } from "@/lib/miss-analysis";
+import { buildNumbers3ModelGovernance } from "@/lib/model-governance";
+import { buildNumbers3ModelReportCards } from "@/lib/model-report-cards";
 import { resolveNumbers3TargetDrawNumber } from "@/lib/numbers3-predictions/load-numbers3";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -40,6 +48,9 @@ export const metadata: Metadata = {
 };
 
 export default async function Numbers3Page() {
+  const reportCards = await buildNumbers3ModelReportCards(20);
+  const missAnalysis = await buildNumbers3MissAnalysis(20);
+  const governance = await buildNumbers3ModelGovernance(20);
   const supabase = await createClient();
   const { data } = await supabase
     .from("numbers3_draws")
@@ -83,6 +94,21 @@ export default async function Numbers3Page() {
         </header>
 
         <div className="grid gap-4 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <TodayReferencePanel
+              title="Today view"
+              latestLabel="最新の参考対象回"
+              latestValue={`試算: 第 ${latestPredictTarget} 回 / 取り込み: ${latestImportedDraw ? `第 ${latestImportedDraw} 回` : "未取得"}`}
+              primaryHref={latestPredictHref}
+              primaryLabel={`第 ${latestPredictTarget} 回を見る`}
+              secondaryHref="/numbers3/result"
+              secondaryLabel="当選番号一覧"
+              apiHref="/api/numbers3/latest"
+              apiLabel="GET /api/numbers3/latest"
+              accentClassName="border-emerald-500/20 bg-emerald-500/5"
+            />
+          </div>
+
           <Card className="border-border/80 shadow-sm ring-1 ring-black/5 dark:ring-white/10 sm:col-span-2">
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
@@ -183,6 +209,42 @@ export default async function Numbers3Page() {
             </CardDescription>
           </CardHeader>
         </Card>
+
+        <AnalysisTransparencyCallout
+          basis={[
+            "公開された抽選結果と日次モデル JSON を参照しています。",
+            "最新回と最新取り込み回を分けて表示しています。",
+          ]}
+          limitations={[
+            "モデル表示は参考用で、当せん確率を保証しません。",
+            "取り込みには遅延が出ることがあります。",
+          ]}
+        />
+
+        <ModelReportCards
+          title="Model report cards"
+          description="直近20回の公式当選との照合から、どのモデルが候補に載せていたかを簡潔に出しています。Numbers3 ではストレート一致とボックス相当を分けて見ます。"
+          cards={reportCards}
+          primaryMetricLabel="hit rate"
+          sampleCaption="直近 {n} 回"
+          secondaryMetricLabel="exact / box"
+          secondaryMetric={(card) =>
+            `${card.exactHits ?? 0} / ${card.boxHits ?? 0}`
+          }
+        />
+
+        <MissAnalysisCards
+          title="外れ方分析"
+          description="Numbers3 でも、完全一致の有無だけでなく、ensemble がどこまで近かったかを要約しています。近い外れ方を見える化して、買い目の広げ方や期待の置き方を調整しやすくします。"
+          summary={missAnalysis}
+          oneDigitOffLabel="top1 1桁違い圏"
+        />
+
+        <ModelGovernancePanel
+          title="モデル淘汰ルール"
+          description="Numbers3 でも、直近で弱いモデルを主役のまま並べないようにしています。完全に捨てる前に `様子見` を挟み、継続監視の対象として分けています。"
+          summary={governance}
+        />
       </div>
     </div>
   );

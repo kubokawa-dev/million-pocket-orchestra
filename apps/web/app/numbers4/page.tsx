@@ -11,6 +11,11 @@ import {
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { AnalysisTransparencyCallout } from "@/components/analysis-transparency-callout";
+import { MissAnalysisCards } from "@/components/miss-analysis-cards";
+import { ModelGovernancePanel } from "@/components/model-governance-panel";
+import { ModelReportCards } from "@/components/model-report-cards";
+import { TodayReferencePanel } from "@/components/today-reference-panel";
 import { buttonVariants } from "@/components/ui/button-variants";
 import {
   Card,
@@ -20,6 +25,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { buildBreadcrumbJsonLd } from "@/lib/breadcrumb-jsonld";
+import { buildNumbers4MissAnalysis } from "@/lib/miss-analysis";
+import { buildNumbers4ModelGovernance } from "@/lib/model-governance";
+import { buildNumbers4ModelReportCards } from "@/lib/model-report-cards";
 import { resolveTargetDrawNumber } from "@/lib/numbers4-predictions/load-6949";
 import { cn } from "@/lib/utils";
 
@@ -40,6 +48,9 @@ export const metadata: Metadata = {
 
 export default async function Numbers4Page() {
   const latestDraw = await resolveTargetDrawNumber();
+  const reportCards = await buildNumbers4ModelReportCards(30);
+  const missAnalysis = await buildNumbers4MissAnalysis(30);
+  const governance = await buildNumbers4ModelGovernance(30);
   const latestHref = `/numbers4/result/${latestDraw}`;
 
   const breadcrumbJsonLd = buildBreadcrumbJsonLd([
@@ -69,6 +80,23 @@ export default async function Numbers4Page() {
         </header>
 
         <div className="grid gap-4 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <TodayReferencePanel
+              title="Today view"
+              latestLabel="いまの参考対象回"
+              latestValue={`第 ${latestDraw} 回`}
+              primaryHref={latestHref}
+              primaryLabel={`第 ${latestDraw} 回を見る`}
+              secondaryHref="/numbers4/result"
+              secondaryLabel="当選番号一覧"
+              statsHref="/numbers4/trend"
+              statsLabel="Hot Model トレンド"
+              apiHref="/api/numbers4/latest"
+              apiLabel="GET /api/numbers4/latest"
+              accentClassName="border-violet-500/20 bg-violet-500/5"
+            />
+          </div>
+
           <Card className="border-border/80 shadow-sm ring-1 ring-black/5 dark:ring-white/10 sm:col-span-2">
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
@@ -180,6 +208,42 @@ export default async function Numbers4Page() {
             </CardDescription>
           </CardHeader>
         </Card>
+
+        <AnalysisTransparencyCallout
+          basis={[
+            "公開された抽選結果と日次モデル JSON を参照しています。",
+            "最新回への導線と、統計・トレンドへの導線を同時に出しています。",
+          ]}
+          limitations={[
+            "モデル表示は参考用で、当せん確率を保証しません。",
+            "統計やトレンドは過去記述であり、将来の優位性を約束しません。",
+          ]}
+        />
+
+        <ModelReportCards
+          title="Model report cards"
+          description="直近30回のボックス一致集計から、最近の見え方をカードで要約しています。過去成績の要約であり、将来の優位性を保証するものではありません。"
+          cards={reportCards}
+          primaryMetricLabel="box hit rate"
+          sampleCaption="直近 {n} 回"
+          secondaryMetricLabel="top 10"
+          secondaryMetric={(card) =>
+            card.top10Pct != null ? `${card.top10Pct}%` : null
+          }
+        />
+
+        <MissAnalysisCards
+          title="外れ方分析"
+          description="完全一致だけでは見えない、ensemble の近さを要約しています。上位何位で近い候補が出ていたかを見ることで、候補の広げ方や重複の減らし方を判断しやすくします。"
+          summary={missAnalysis}
+          oneDigitOffLabel="top1 1桁違い圏"
+        />
+
+        <ModelGovernancePanel
+          title="モデル淘汰ルール"
+          description="直近成績の弱いモデルをそのまま横並びで見せ続けないために、扱いを分けています。ここで `控えめ` に入るモデルは、予測ページでも過信しない前提で読むべき対象です。"
+          summary={governance}
+        />
       </div>
     </div>
   );

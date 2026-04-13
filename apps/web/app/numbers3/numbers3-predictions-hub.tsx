@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 
 import { AnalysisTransparencyCallout } from "@/components/analysis-transparency-callout";
+import { BudgetStrategyOverview } from "@/components/budget-strategy-overview";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button-variants";
 import {
@@ -68,7 +69,9 @@ import type {
   MonthlySimulationPayload,
   SetPlanPayload,
 } from "@/lib/numbers4-predictions/types";
+import { buildNumbers3ModelGovernance } from "@/lib/model-governance";
 import type { Numbers3PredictionBundle } from "@/lib/numbers3-predictions/load-numbers3";
+import { buildTrustAdjustedHotModels, buildTrustAdjustedWeights } from "@/lib/trust-first-weights";
 import { cn } from "@/lib/utils";
 
 import { Numbers4RecentModelHits } from "../numbers4/result/numbers4-recent-model-hits";
@@ -1124,7 +1127,9 @@ export async function Numbers3PredictionsHub({
         .sort((a, b) => b[1] - a[1])
         .slice(0, 14)
     : [];
-  const hotModels = latest?.hot_models || [];
+  const governance = await buildNumbers3ModelGovernance(20);
+  const trustAdjustedWeights = buildTrustAdjustedWeights(weights, governance);
+  const hotModels = buildTrustAdjustedHotModels(latest?.hot_models || [], governance);
   const recentFlow = [...(latest?.recent_flow ?? [])].sort(
     (a, b) => (a.draw ?? 0) - (b.draw ?? 0),
   );
@@ -1723,32 +1728,50 @@ export async function Numbers3PredictionsHub({
                   </div>
                   <p className="text-muted-foreground mb-2 text-[0.7rem] leading-snug">
                     <code className="font-mono text-[0.65rem]">ensemble_weights</code>
-                    。英字キーは開発用ID、括弧内は日本語の意味です。
+                    。直近成績をもとに trust-first の減衰をかけ、弱いモデルは控えめに並べています。英字キーは開発用ID、括弧内は日本語の意味です。
                   </p>
                   <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
-                    {weights.length === 0 ? (
+                    {trustAdjustedWeights.length === 0 ? (
                       <p className="text-muted-foreground text-sm">—</p>
                     ) : (
-                      weights.map(([name, w]) => {
-                        const ja = getEnsembleWeightJaLabel(name);
+                      trustAdjustedWeights.map((item) => {
+                        const ja = getEnsembleWeightJaLabel(item.slug);
+                        const bucketLabel =
+                          item.bucket === "preferred"
+                            ? "主役"
+                            : item.bucket === "watch"
+                              ? "様子見"
+                              : item.bucket === "deprioritized"
+                                ? "控えめ"
+                                : "未分類";
                         return (
                           <div
-                            key={name}
+                            key={item.slug}
                             className="flex items-start justify-between gap-3 text-sm"
                           >
                             <span className="text-foreground min-w-0 flex-1 text-xs leading-snug break-words">
-                              <span className="font-mono">{name}</span>
+                              <span className="font-mono">{item.slug}</span>
                               {ja != null && ja !== "" ? (
                                 <span className="text-muted-foreground">
                                   ({ja})
                                 </span>
                               ) : null}
+                              <span className="text-muted-foreground ml-1">
+                                [{bucketLabel}]
+                              </span>
                             </span>
-                            <span className="text-muted-foreground shrink-0 tabular-nums">
-                              {w.toLocaleString("ja-JP", {
-                                maximumFractionDigits: 2,
-                              })}
-                            </span>
+                            <div className="text-right">
+                              <span className="text-foreground block shrink-0 tabular-nums">
+                                {item.adjustedWeight.toLocaleString("ja-JP", {
+                                  maximumFractionDigits: 2,
+                                })}
+                              </span>
+                              <span className="text-muted-foreground block text-[0.65rem] tabular-nums">
+                                raw {item.rawWeight.toLocaleString("ja-JP", {
+                                  maximumFractionDigits: 2,
+                                })} × {item.multiplier.toFixed(2)}
+                              </span>
+                            </div>
                           </div>
                         );
                       })
@@ -1762,15 +1785,23 @@ export async function Numbers3PredictionsHub({
                         title="直近50回の成績から算出したトレンドスコア"
                       >
                         <FlameIcon className="size-3.5" />
-                        Hot Model トレンド
+                        Hot Model トレンド（trust-first補正後）
                       </div>
                       <p className="text-muted-foreground mb-3 text-[0.7rem] leading-snug">
-                        直近50回で最も成績が良かったモデルのランキングです。上位モデルには予測時にボーナスが加算されます。
+                        直近50回のトレンドスコアに、直近成績ベースの減衰を掛けた並びです。弱いモデルは補助的に読み、強いモデルを先に見るための表示です。
                       </p>
                       <div className="max-h-64 space-y-2.5 overflow-y-auto pr-1">
                         {hotModels.slice(0, 5).map((item, index) => {
                           const maxScore = hotModels[0].score || 1;
                           const percentage = Math.max(2, (item.score / maxScore) * 100);
+                          const bucketLabel =
+                            item.bucket === "preferred"
+                              ? "主役"
+                              : item.bucket === "watch"
+                                ? "様子見"
+                                : item.bucket === "deprioritized"
+                                  ? "控えめ"
+                                  : "未分類";
 
                           let medal = "✨";
                           if (index === 0) medal = "🥇";
@@ -1783,6 +1814,9 @@ export async function Numbers3PredictionsHub({
                                 <span className="text-foreground min-w-0 flex-1 leading-snug break-words flex items-center gap-1.5">
                                   <span className="w-4 text-center">{medal}</span>
                                   <span className="font-mono">{item.model}</span>
+                                  <span className="text-muted-foreground text-[0.65rem]">
+                                    [{bucketLabel}]
+                                  </span>
                                 </span>
                                 <span className="text-muted-foreground shrink-0 tabular-nums">
                                   {item.score.toFixed(1)}
@@ -1923,6 +1957,14 @@ export async function Numbers3PredictionsHub({
               ) : null}
             </div>
           )}
+
+          <div className="lg:col-span-2">
+            <BudgetStrategyOverview
+              title="買い方の戦略サマリー"
+              description="細かい予算カードに入る前に、今あるプランを戦略ごとに整理しています。狙いは当たりを保証することではなく、重複を減らしながら予算の使い方を判断しやすくすることです。"
+              budgetPlan={data.budgetPlan}
+            />
+          </div>
 
           <BudgetPlanCard
             title="予算プラン · 1,000円枠"
