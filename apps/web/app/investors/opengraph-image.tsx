@@ -44,7 +44,6 @@ export default function OgImage() {
         <div
           style={{
             position: "relative",
-            zIndex: 1,
             display: "flex",
             width: "100%",
             padding: "56px 64px",

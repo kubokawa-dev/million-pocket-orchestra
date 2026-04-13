@@ -58,7 +58,7 @@ export default function OgImage() {
           }}
         >
           <span style={{ color: "#fff", fontSize: 22, fontWeight: 700 }}>
-            ✦ 宝くじAI
+            Takarakuji AI
           </span>
         </div>
 
