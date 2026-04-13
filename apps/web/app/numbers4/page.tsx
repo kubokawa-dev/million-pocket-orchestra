@@ -31,7 +31,7 @@ import { buildNumbers4ModelReportCards } from "@/lib/model-report-cards";
 import { resolveTargetDrawNumber } from "@/lib/numbers4-predictions/load-6949";
 import { cn } from "@/lib/utils";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "ナンバーズ4",
@@ -47,10 +47,12 @@ export const metadata: Metadata = {
 };
 
 export default async function Numbers4Page() {
-  const latestDraw = await resolveTargetDrawNumber();
-  const reportCards = await buildNumbers4ModelReportCards(30);
-  const missAnalysis = await buildNumbers4MissAnalysis(30);
-  const governance = await buildNumbers4ModelGovernance(30);
+  const [latestDraw, reportCards, missAnalysis, governance] = await Promise.all([
+    resolveTargetDrawNumber(),
+    buildNumbers4ModelReportCards(30),
+    buildNumbers4MissAnalysis(30),
+    buildNumbers4ModelGovernance(30),
+  ]);
   const latestHref = `/numbers4/result/${latestDraw}`;
 
   const breadcrumbJsonLd = buildBreadcrumbJsonLd([

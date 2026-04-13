@@ -2,7 +2,7 @@ import { blogPosts } from "@/lib/blog/posts";
 import { blogPostsEn } from "@/lib/blog/posts-en";
 import { resolvePublicSupabaseConfig } from "@/lib/env";
 import { numbers4DrawDateToIsoDate } from "@/lib/numbers4-draw-page-seo";
-import { createClient } from "@/lib/supabase/server";
+import { createStaticClient } from "@/lib/supabase/static";
 
 /** ブログ記事の最新更新日（公開日ベース） */
 export function getLatestBlogLastModified(): Date {
@@ -24,7 +24,7 @@ export async function getLatestNumbers4DrawLastModified(): Promise<Date | null> 
       return null;
     }
     if (!hasConfig) return null;
-    const supabase = await createClient();
+    const supabase = createStaticClient();
     const { data, error } = await supabase
       .from("numbers4_draws")
       .select("draw_date")

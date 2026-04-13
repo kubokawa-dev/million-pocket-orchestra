@@ -22,7 +22,7 @@ import { buildBreadcrumbJsonLd } from "@/lib/breadcrumb-jsonld";
 import { computeBoxRankStats } from "@/lib/numbers4-predictions/box-rank-stats";
 import { cn } from "@/lib/utils";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "ボックス順位の統計 | ナンバーズ4",

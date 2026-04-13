@@ -6,7 +6,7 @@ export const alt = "ナンバーズ4 回別ダッシュボード";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 type ImageProps = {
   params: Promise<{ draw_number: string }>;

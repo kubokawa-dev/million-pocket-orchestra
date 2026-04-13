@@ -24,10 +24,10 @@ import {
   maxMainCount,
   type Loto6DrawRowLite,
 } from "@/lib/loto6-stats";
-import { createClient } from "@/lib/supabase/server";
+import { createStaticClient } from "@/lib/supabase/static";
 import { cn } from "@/lib/utils";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "出現回数の統計 | ロト6",
@@ -56,7 +56,7 @@ export default async function Loto6StatsPage({ searchParams }: PageProps) {
   const sp = await searchParams;
   const window = parseWindow(sp.window);
 
-  const supabase = await createClient();
+  const supabase = createStaticClient();
   const { data, error } = await supabase
     .from("loto6_draws")
     .select("draw_number, draw_date, numbers, bonus_number")

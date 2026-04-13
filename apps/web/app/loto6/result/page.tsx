@@ -10,14 +10,14 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { buildBreadcrumbJsonLd } from "@/lib/breadcrumb-jsonld";
-import { createClient } from "@/lib/supabase/server";
+import { createStaticClient } from "@/lib/supabase/static";
 import { getSiteOrigin } from "@/lib/site";
 import { LOTO6_PAGE_SIZE, type Loto6DrawRow } from "@/lib/loto6";
 
 import { Loto6DrawsTable } from "./loto6-draws-table";
 import { Loto6Pagination } from "./loto6-pagination";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "ロト6 当選番号一覧",
@@ -45,7 +45,7 @@ export default async function Loto6ResultPage({ searchParams }: PageProps) {
   const { page: pageParam } = await searchParams;
   const requestedPage = parsePage(pageParam);
 
-  const supabase = await createClient();
+  const supabase = createStaticClient();
   const { count, error: countError } = await supabase
     .from("loto6_draws")
     .select("*", { count: "exact", head: true });

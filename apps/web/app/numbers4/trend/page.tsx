@@ -15,7 +15,7 @@ import { buildBreadcrumbJsonLd } from "@/lib/breadcrumb-jsonld";
 import { loadNumbers4PredictionBundleForDraw, resolveTargetDrawNumber } from "@/lib/numbers4-predictions/load-6949";
 import { cn } from "@/lib/utils";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "Hot Model トレンド分析 | ナンバーズ4",
@@ -53,7 +53,9 @@ async function fetchTrendData(targetDraw: number) {
 
 export default async function HotModelTrendPage() {
   const latestDraw = await resolveTargetDrawNumber();
-  const { hotModels, recentFlow, nextPredictions } = await fetchTrendData(latestDraw);
+  const { hotModels, recentFlow, nextPredictions } = await fetchTrendData(
+    latestDraw,
+  );
 
   const breadcrumbJsonLd = buildBreadcrumbJsonLd([
     { name: "ナンバーズ4", path: "/numbers4" },

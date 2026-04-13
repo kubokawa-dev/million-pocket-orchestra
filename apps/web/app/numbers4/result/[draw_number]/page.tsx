@@ -15,7 +15,7 @@ import {
 import { getCachedNumbers4DrawFullRow } from "@/lib/numbers4-predictions/load-6949";
 import { getSiteOrigin } from "@/lib/site";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 type PageProps = {
   params: Promise<{ draw_number: string }>;

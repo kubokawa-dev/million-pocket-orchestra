@@ -16,7 +16,7 @@ import { getSiteOrigin } from "@/lib/site";
 
 import { Numbers3PredictionsHub } from "../../numbers3-predictions-hub";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 type PageProps = {
   params: Promise<{ draw_number: string }>;

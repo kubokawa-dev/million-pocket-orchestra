@@ -24,10 +24,10 @@ import {
   loadLoto6PredictionBundle,
   resolveNextLoto6TargetDrawNumber,
 } from "@/lib/loto6-predictions/load-bundles";
-import { createClient } from "@/lib/supabase/server";
+import { createStaticClient } from "@/lib/supabase/static";
 import { cn } from "@/lib/utils";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "ロト6",
@@ -43,18 +43,20 @@ export const metadata: Metadata = {
 };
 
 export default async function Loto6Page() {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("loto6_draws")
-    .select("draw_number")
-    .order("draw_number", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const supabase = createStaticClient();
+  const [{ data }, nextTarget] = await Promise.all([
+    supabase
+      .from("loto6_draws")
+      .select("draw_number")
+      .order("draw_number", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    resolveNextLoto6TargetDrawNumber(),
+  ]);
 
   const latestDraw = data?.draw_number ?? null;
   const latestHref = latestDraw ? `/loto6/result/${latestDraw}` : "/loto6/result";
 
-  const nextTarget = await resolveNextLoto6TargetDrawNumber();
   const predictionBundle =
     nextTarget != null ? await loadLoto6PredictionBundle(nextTarget) : null;
 

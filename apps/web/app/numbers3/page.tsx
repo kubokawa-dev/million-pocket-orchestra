@@ -29,10 +29,10 @@ import { buildNumbers3MissAnalysis } from "@/lib/miss-analysis";
 import { buildNumbers3ModelGovernance } from "@/lib/model-governance";
 import { buildNumbers3ModelReportCards } from "@/lib/model-report-cards";
 import { resolveNumbers3TargetDrawNumber } from "@/lib/numbers3-predictions/load-numbers3";
-import { createClient } from "@/lib/supabase/server";
+import { createStaticClient } from "@/lib/supabase/static";
 import { cn } from "@/lib/utils";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "ナンバーズ3",
@@ -48,19 +48,21 @@ export const metadata: Metadata = {
 };
 
 export default async function Numbers3Page() {
-  const reportCards = await buildNumbers3ModelReportCards(20);
-  const missAnalysis = await buildNumbers3MissAnalysis(20);
-  const governance = await buildNumbers3ModelGovernance(20);
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("numbers3_draws")
-    .select("draw_number")
-    .order("draw_number", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const supabase = createStaticClient();
+  const [reportCards, missAnalysis, governance, { data }, latestPredictTarget] =
+    await Promise.all([
+      buildNumbers3ModelReportCards(20),
+      buildNumbers3MissAnalysis(20),
+      buildNumbers3ModelGovernance(20),
+      supabase
+        .from("numbers3_draws")
+        .select("draw_number")
+        .order("draw_number", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      resolveNumbers3TargetDrawNumber(),
+    ]);
   const latestImportedDraw = data?.draw_number ?? null;
-
-  const latestPredictTarget = await resolveNumbers3TargetDrawNumber();
   const latestPredictHref = `/numbers3/result/${latestPredictTarget}`;
 
   const breadcrumbJsonLd = buildBreadcrumbJsonLd([

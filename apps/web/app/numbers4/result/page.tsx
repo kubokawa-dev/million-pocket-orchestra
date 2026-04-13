@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { buildBreadcrumbJsonLd } from "@/lib/breadcrumb-jsonld";
-import { createClient } from "@/lib/supabase/server";
+import { createStaticClient } from "@/lib/supabase/static";
 import { getSiteOrigin } from "@/lib/site";
 import { NUMBERS4_PAGE_SIZE, type Numbers4DrawRow } from "@/lib/numbers4";
 
@@ -20,7 +20,7 @@ import { Numbers4DrawsTable } from "./numbers4-draws-table";
 import { Numbers4Pagination } from "./numbers4-pagination";
 import { Numbers4RecentModelHits } from "./numbers4-recent-model-hits";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "ナンバーズ4 当選番号一覧",
@@ -49,15 +49,24 @@ export default async function Numbers4ResultPage({ searchParams }: PageProps) {
   const { page: pageParam } = await searchParams;
   const requestedPage = parsePage(pageParam);
 
-  const supabase = await createClient();
+  const supabase = createStaticClient();
 
-  const { count, error: countError } = await supabase
-    .from("numbers4_draws")
-    .select("*", { count: "exact", head: true });
+  // count と recentForHits は並列で取得できる
+  const [{ count, error: countError }, { data: recentForHits, error: recentHitsError }] =
+    await Promise.all([
+      supabase
+        .from("numbers4_draws")
+        .select("*", { count: "exact", head: true }),
+      supabase
+        .from("numbers4_draws")
+        .select("draw_number, numbers")
+        .not("numbers", "is", null)
+        .order("draw_number", { ascending: false })
+        .limit(100),
+    ]);
 
-  if (countError) {
-    throw new Error(countError.message);
-  }
+  if (countError) throw new Error(countError.message);
+  if (recentHitsError) throw new Error(recentHitsError.message);
 
   const totalCount = count ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalCount / NUMBERS4_PAGE_SIZE));
@@ -70,39 +79,28 @@ export default async function Numbers4ResultPage({ searchParams }: PageProps) {
   const from = (page - 1) * NUMBERS4_PAGE_SIZE;
   const to = from + NUMBERS4_PAGE_SIZE - 1;
 
-  const { data, error } = await supabase
-    .from("numbers4_draws")
-    .select("*")
-    .order("draw_number", { ascending: false })
-    .range(from, to);
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  const rows = (data ?? []) as Numbers4DrawRow[];
-
-  const { data: recentForHits, error: recentHitsError } = await supabase
-    .from("numbers4_draws")
-    .select("draw_number, numbers")
-    .not("numbers", "is", null)
-    .order("draw_number", { ascending: false })
-    .limit(100);
-
-  if (recentHitsError) {
-    throw new Error(recentHitsError.message);
-  }
-
+  // ページデータと model hits を並列取得
   const recentHitRows = (recentForHits ?? []) as Pick<
     Numbers4DrawRow,
     "draw_number" | "numbers"
   >[];
-  const winningModelHits = await buildWinningModelHitsForDrawList(
-    recentHitRows.map((r) => ({
-      draw_number: r.draw_number,
-      numbers: r.numbers,
-    })),
-  );
+  const [{ data, error }, winningModelHits] = await Promise.all([
+    supabase
+      .from("numbers4_draws")
+      .select("*")
+      .order("draw_number", { ascending: false })
+      .range(from, to),
+    buildWinningModelHitsForDrawList(
+      recentHitRows.map((r) => ({
+        draw_number: r.draw_number,
+        numbers: r.numbers,
+      })),
+    ),
+  ]);
+
+  if (error) throw new Error(error.message);
+
+  const rows = (data ?? []) as Numbers4DrawRow[];
 
   const breadcrumbJsonLd = buildBreadcrumbJsonLd([
     { name: "ナンバーズ4", path: "/numbers4" },

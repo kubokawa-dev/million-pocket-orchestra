@@ -2,7 +2,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { cache } from "react";
 
-import { createClient } from "@/lib/supabase/server";
+import { createStaticClient } from "@/lib/supabase/static";
 import type { Numbers4DrawRow } from "@/lib/numbers4";
 
 import {
@@ -50,7 +50,7 @@ async function maxDrawFromFilesystem(repoRoot: string): Promise<number | null> {
 
 async function maxDrawFromSupabase(): Promise<number | null> {
   try {
-    const supabase = await createClient();
+    const supabase = createStaticClient();
     const { data, error } = await supabase
       .from("numbers4_daily_prediction_documents")
       .select("target_draw_number")
@@ -94,7 +94,7 @@ async function loadBundleFromDatabase(
     "ensemble" | "budgetPlan" | "methodRows"
   > | null
 > {
-  const supabase = await createClient();
+  const supabase = createStaticClient();
   const { data: rows, error } = await supabase
     .from("numbers4_daily_prediction_documents")
     .select("doc_kind, method_slug, payload, relative_path")
@@ -173,7 +173,7 @@ async function fetchMethodRowsGroupedByDraw(
   if (uniq.length === 0) return map;
 
   try {
-    const supabase = await createClient();
+    const supabase = createStaticClient();
     const { data, error } = await supabase
       .from("numbers4_daily_prediction_documents")
       .select("target_draw_number, method_slug, payload, relative_path")
@@ -363,7 +363,7 @@ export async function fetchNumbers4DrawFullRow(
   drawNumber: number,
 ): Promise<Numbers4DrawRow | null> {
   try {
-    const supabase = await createClient();
+    const supabase = createStaticClient();
     const { data, error } = await supabase
       .from("numbers4_draws")
       .select("*")
@@ -391,7 +391,7 @@ export async function fetchOfficialWinningDrawsBeforeTarget(
   if (!Number.isFinite(targetDrawNumber) || targetDrawNumber < 1) return [];
   if (!Number.isFinite(limit) || limit < 1) return [];
   try {
-    const supabase = await createClient();
+    const supabase = createStaticClient();
     const { data, error } = await supabase
       .from("numbers4_draws")
       .select("draw_number, numbers")
@@ -422,7 +422,7 @@ export async function fetchRecentNumbers4DrawNumbersWithResults(
 ): Promise<number[]> {
   if (!Number.isFinite(limit) || limit < 1) return [];
   try {
-    const supabase = await createClient();
+    const supabase = createStaticClient();
     const { data, error } = await supabase
       .from("numbers4_draws")
       .select("draw_number, numbers")

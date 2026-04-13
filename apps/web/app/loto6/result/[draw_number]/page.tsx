@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/table";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { Loto6PredictionsPanel } from "@/components/loto6-predictions-panel";
-import { createClient } from "@/lib/supabase/server";
+import { createStaticClient } from "@/lib/supabase/static";
 import { formatYen } from "@/lib/numbers4";
 import {
   type Loto6DrawRow,
@@ -29,7 +29,7 @@ import { parseLoto6MainNumbers } from "@/lib/loto6-predictions/hit-utils";
 import { loadLoto6PredictionBundle } from "@/lib/loto6-predictions/load-bundles";
 import { cn } from "@/lib/utils";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 const TIER_LABELS = [
   { tier: 1 as const, label: "1等" },
@@ -64,19 +64,20 @@ export default async function Loto6ResultDetailPage({ params }: PageProps) {
   const n = parseInt(draw_number, 10);
   if (!Number.isFinite(n)) notFound();
 
-  const supabase = await createClient();
-  const { data: row, error } = await supabase
-    .from("loto6_draws")
-    .select("*")
-    .eq("draw_number", n)
-    .maybeSingle();
+  const supabase = createStaticClient();
+  const [{ data: row, error }, predictionBundle] = await Promise.all([
+    supabase
+      .from("loto6_draws")
+      .select("*")
+      .eq("draw_number", n)
+      .maybeSingle(),
+    loadLoto6PredictionBundle(n),
+  ]);
 
   if (error) throw new Error(error.message);
   if (!row) notFound();
 
   const r = row as Loto6DrawRow;
-
-  const predictionBundle = await loadLoto6PredictionBundle(n);
   const actualMain = parseLoto6MainNumbers(r.numbers);
 
   return (

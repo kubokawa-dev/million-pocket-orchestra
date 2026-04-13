@@ -1,6 +1,6 @@
 import { cache } from "react";
 
-import { createClient } from "@/lib/supabase/server";
+import { createStaticClient } from "@/lib/supabase/static";
 
 import type {
   Loto6EnsemblePayload,
@@ -29,7 +29,7 @@ export const loadLoto6PredictionBundle = cache(
   async (targetDrawNumber: number): Promise<Loto6PredictionBundle | null> => {
     if (!Number.isFinite(targetDrawNumber) || targetDrawNumber < 1) return null;
 
-    const supabase = await createClient();
+    const supabase = createStaticClient();
     const { data: rows, error } = await supabase
       .from("loto6_daily_prediction_documents")
       .select("doc_kind, method_slug, payload, relative_path")
@@ -62,7 +62,7 @@ export const loadLoto6PredictionBundle = cache(
 
 /** DB 上の最新取込回の「次の回号」（予測の表示ターゲット） */
 export async function resolveNextLoto6TargetDrawNumber(): Promise<number | null> {
-  const supabase = await createClient();
+  const supabase = createStaticClient();
   const { data, error } = await supabase
     .from("loto6_draws")
     .select("draw_number")

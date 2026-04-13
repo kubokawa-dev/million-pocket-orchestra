@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createStaticClient } from "@/lib/supabase/static";
 import { numbers4DrawDateToIsoDate } from "@/lib/numbers4-draw-page-seo";
 
 export async function fetchAdjacentDrawNumbers(
@@ -8,7 +8,7 @@ export async function fetchAdjacentDrawNumbers(
     return { prev: null, next: null };
   }
   try {
-    const supabase = await createClient();
+    const supabase = createStaticClient();
     const [older, newer] = await Promise.all([
       supabase
         .from("numbers4_draws")
@@ -61,7 +61,7 @@ export async function fetchSameMonthDrawNumbers(
   const monthEndExclusive = `${nextMonth}-01`;
 
   try {
-    const supabase = await createClient();
+    const supabase = createStaticClient();
     const { data, error } = await supabase
       .from("numbers4_draws")
       .select("draw_number")

@@ -9,13 +9,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { createClient } from "@/lib/supabase/server";
+import { createStaticClient } from "@/lib/supabase/static";
 import { NUMBERS3_PAGE_SIZE, type Numbers3DrawRow } from "@/lib/numbers3";
 
 import { Numbers3DrawsTable } from "./numbers3-draws-table";
 import { Numbers3Pagination } from "./numbers3-pagination";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "ナンバーズ3 当選番号一覧",
@@ -42,7 +42,7 @@ export default async function Numbers3ResultPage({ searchParams }: PageProps) {
   const { page: pageParam } = await searchParams;
   const requestedPage = parsePage(pageParam);
 
-  const supabase = await createClient();
+  const supabase = createStaticClient();
   const { count, error: countError } = await supabase
     .from("numbers3_draws")
     .select("*", { count: "exact", head: true });

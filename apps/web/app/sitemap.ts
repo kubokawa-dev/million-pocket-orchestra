@@ -8,7 +8,7 @@ import {
 } from "@/lib/content-last-modified";
 import { numbers4DrawDateToIsoDate } from "@/lib/numbers4-draw-page-seo";
 import { resolvePublicSupabaseConfig } from "@/lib/env";
-import { createClient } from "@/lib/supabase/server";
+import { createStaticClient } from "@/lib/supabase/static";
 import { getSiteOrigin } from "@/lib/site";
 
 const STATIC_PATHS: {
@@ -120,11 +120,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   if (!hasSupabase) return entries;
 
   try {
-    const supabase = await createClient();
-    const { data: n3Data, error: n3Error } = await supabase
-      .from("numbers3_draws")
-      .select("draw_number, draw_date")
-      .order("draw_number", { ascending: false });
+    const supabase = createStaticClient();
+    const [
+      { data: n3Data, error: n3Error },
+      { data, error },
+      { data: l6Data, error: l6Error },
+    ] = await Promise.all([
+      supabase
+        .from("numbers3_draws")
+        .select("draw_number, draw_date")
+        .order("draw_number", { ascending: false }),
+      supabase
+        .from("numbers4_draws")
+        .select("draw_number, draw_date")
+        .order("draw_number", { ascending: false }),
+      supabase
+        .from("loto6_draws")
+        .select("draw_number, draw_date")
+        .order("draw_number", { ascending: false }),
+    ]);
 
     if (!n3Error && n3Data?.length) {
       for (const row of n3Data) {
@@ -141,11 +155,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }
     }
 
-    const { data, error } = await supabase
-      .from("numbers4_draws")
-      .select("draw_number, draw_date")
-      .order("draw_number", { ascending: false });
-
     if (!error && data?.length) {
       for (const row of data) {
         const iso = numbers4DrawDateToIsoDate(
@@ -159,11 +168,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         });
       }
     }
-
-    const { data: l6Data, error: l6Error } = await supabase
-      .from("loto6_draws")
-      .select("draw_number, draw_date")
-      .order("draw_number", { ascending: false });
 
     if (!l6Error && l6Data?.length) {
       for (const row of l6Data) {
