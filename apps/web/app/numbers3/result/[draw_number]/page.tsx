@@ -1,30 +1,20 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { Numbers3DrawPageChrome } from "@/components/numbers3-draw-page-chrome";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  buildNumbers3DrawPageDescription,
+  numbers3DrawDateToIsoDate,
+  numbers3DrawEnglishMetaSuffix,
+} from "@/lib/numbers3-draw-page-seo";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { buttonVariants } from "@/components/ui/button-variants";
-import { createClient } from "@/lib/supabase/server";
-import {
-  NUMBERS3_TIER_DETAIL_LABELS,
-  type Numbers3DrawRow,
-  formatNumbers3Cell,
-} from "@/lib/numbers3";
-import { cn } from "@/lib/utils";
+  fetchNumbers3AdjacentDrawNumbers,
+  fetchNumbers3SameMonthDrawNumbers,
+} from "@/lib/numbers3-draw-neighbors";
+import { getCachedNumbers3DrawFullRow } from "@/lib/numbers3-predictions/load-numbers3";
+import { getSiteOrigin } from "@/lib/site";
+
+import { Numbers3PredictionsHub } from "../../numbers3-predictions-hub";
 
 export const dynamic = "force-dynamic";
 
@@ -32,99 +22,132 @@ type PageProps = {
   params: Promise<{ draw_number: string }>;
 };
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { draw_number } = await params;
-  const n = parseInt(draw_number, 10);
-  if (!Number.isFinite(n)) return { title: "ナンバーズ3" };
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
+  const { draw_number: raw } = await params;
+  const n = parseInt(raw, 10);
+  if (!Number.isFinite(n)) {
+    return { title: "ナンバーズ3" };
+  }
+
+  const row = await getCachedNumbers3DrawFullRow(n);
+  const description =
+    buildNumbers3DrawPageDescription(n, row) + numbers3DrawEnglishMetaSuffix(n);
+  const title = `第${n}回 ナンバーズ3 モデル試算と当選照合`;
+  const ogDate = numbers3DrawDateToIsoDate(row?.draw_date);
+
   return {
-    title: `第${n}回 ナンバーズ3 当選結果`,
+    title,
+    description,
+    keywords: [
+      "ナンバーズ3",
+      `第${n}回`,
+      "モデル試算",
+      "当選番号",
+      "アンサンブル",
+      "ボックス",
+      "宝くじAI",
+    ],
     alternates: { canonical: `/numbers3/result/${n}` },
+    openGraph: {
+      title: `${title} | 宝くじAI`,
+      description,
+      url: `/numbers3/result/${n}`,
+      type: "article",
+      ...(ogDate ? { publishedTime: ogDate } : {}),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${title} | 宝くじAI`,
+      description,
+    },
   };
 }
 
-function tierKeys(tier: 1 | 2 | 3 | 4) {
-  const w = `tier${tier}_winners` as const;
-  const y = `tier${tier}_payout_yen` as const;
-  return { w, y };
-}
+export default async function Numbers3ResultDrawPredictionsPage({
+  params,
+}: PageProps) {
+  const { draw_number: raw } = await params;
+  const drawNumber = parseInt(raw, 10);
+  if (!Number.isFinite(drawNumber)) {
+    notFound();
+  }
 
-export default async function Numbers3ResultDetailPage({ params }: PageProps) {
-  const { draw_number } = await params;
-  const n = parseInt(draw_number, 10);
-  if (!Number.isFinite(n)) notFound();
+  const row = await getCachedNumbers3DrawFullRow(drawNumber);
+  const [adjacent, sameMonthDraws] = await Promise.all([
+    fetchNumbers3AdjacentDrawNumbers(drawNumber),
+    fetchNumbers3SameMonthDrawNumbers(row?.draw_date, drawNumber),
+  ]);
+  const origin = getSiteOrigin();
+  const description = buildNumbers3DrawPageDescription(drawNumber, row);
+  const pageName = `第${drawNumber}回 ナンバーズ3 モデル試算と当選照合`;
+  const pageUrl = `${origin}/numbers3/result/${drawNumber}`;
+  const ogDate = numbers3DrawDateToIsoDate(row?.draw_date);
 
-  const supabase = await createClient();
-  const { data: row, error } = await supabase
-    .from("numbers3_draws")
-    .select("*")
-    .eq("draw_number", n)
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!row) notFound();
-
-  const r = row as Numbers3DrawRow;
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BreadcrumbList",
+        "@id": `${pageUrl}#breadcrumb`,
+        itemListElement: [
+          {
+            "@type": "ListItem",
+            position: 1,
+            name: "ホーム",
+            item: origin,
+          },
+          {
+            "@type": "ListItem",
+            position: 2,
+            name: "ナンバーズ3",
+            item: `${origin}/numbers3`,
+          },
+          {
+            "@type": "ListItem",
+            position: 3,
+            name: "当選番号一覧",
+            item: `${origin}/numbers3/result`,
+          },
+          {
+            "@type": "ListItem",
+            position: 4,
+            name: `第${drawNumber}回`,
+            item: pageUrl,
+          },
+        ],
+      },
+      {
+        "@type": "WebPage",
+        "@id": `${pageUrl}#webpage`,
+        url: pageUrl,
+        name: pageName,
+        description,
+        isPartOf: { "@id": `${origin}/#website` },
+        inLanguage: "ja",
+        ...(ogDate ? { dateModified: ogDate } : {}),
+      },
+    ],
+  };
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-8 sm:px-6 sm:py-10">
-      <Link
-        href="/numbers3/result"
-        className={cn(
-          buttonVariants({ variant: "ghost", size: "sm" }),
-          "text-muted-foreground -ml-2 hover:text-foreground",
-        )}
-      >
-        ← 一覧へ
-      </Link>
-
-      <Card className="border-border/80 shadow-sm ring-1 ring-black/5 dark:ring-white/10">
-        <CardHeader>
-          <CardTitle className="text-xl">第 {r.draw_number} 回 ナンバーズ3</CardTitle>
-          <CardDescription>抽選日: {r.draw_date}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-8">
-          <div>
-            <p className="text-muted-foreground text-sm">当選番号</p>
-            <p className="font-mono text-5xl font-bold tracking-[0.2em]">
-              {String(r.numbers)}
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <p className="text-foreground text-sm font-medium">当せん口数・払戻金</p>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[40%]">区分</TableHead>
-                  <TableHead className="text-right">当選口数</TableHead>
-                  <TableHead className="text-right">払戻金（円）</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {NUMBERS3_TIER_DETAIL_LABELS.map(({ tier, label }) => {
-                  const { w, y } = tierKeys(tier);
-                  return (
-                    <TableRow key={tier}>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {label}
-                      </TableCell>
-                      <TableCell className="text-right font-mono text-sm tabular-nums">
-                        {formatNumbers3Cell(w, r)}
-                      </TableCell>
-                      <TableCell className="text-right font-mono text-sm tabular-nums">
-                        {formatNumbers3Cell(y, r)}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-
-          <p className="text-muted-foreground text-xs">
-            1〜4等の列は、当せんデータのストレート・ボックス・セット（ストレート）・セット（ボックス）に対応しています。
-          </p>
-        </CardContent>
-      </Card>
-    </div>
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <Numbers3DrawPageChrome
+        drawNumber={drawNumber}
+        row={row}
+        prevDraw={adjacent.prev}
+        nextDraw={adjacent.next}
+        sameMonthDraws={sameMonthDraws}
+      />
+      <Numbers3PredictionsHub
+        targetDrawNumber={drawNumber}
+        showBackToResultList
+      />
+    </>
   );
 }

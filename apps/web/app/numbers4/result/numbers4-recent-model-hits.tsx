@@ -33,6 +33,10 @@ export type Numbers4RecentModelHitsProps = {
   emptyMessage?: string;
   /** 公式当選バッジ（目立たせたいとき） */
   emphasizeOfficial?: boolean;
+  /** 省略時は `/numbers4/result/{回}` */
+  resultHrefForDraw?: (drawNumber: number) => string;
+  /** 省略時は「4桁」（ナンバーズ3では "3桁" など） */
+  officialDigitsLabel?: string;
 };
 
 function SlugCell({
@@ -69,26 +73,30 @@ function SlugCell({
   );
 }
 
-const defaultDescription = (
-  <>
-    <span className="block">
-      <strong className="text-foreground">当選列の4桁は、宝くじの実際の抽選結果</strong>
-      （当サイトに取り込んだ公式当選番号）です。アンサンブル上位の予測リストから数字を拾っているわけではありません。
-    </span>
-    <span className="block">
-      そのうえで、
-      <strong className="text-foreground">同じ回号</strong> の{" "}
-      <code className="font-mono text-xs">method</code>{" "}
-      ドキュメントの直近ラン候補（最大96件）に、その公式当選番号が含まれていたモデルを出しています。
-    </span>
-    <span className="block">
-      <strong className="text-foreground">緑</strong>
-      ＝ストレート一致、
-      <strong className="text-foreground">黄</strong>
-      ＝完全一致は無いがボックス相当の並び替えが候補にあったモデルです。
-    </span>
-  </>
-);
+function defaultDescriptionFor(officialDigitsLabel: string) {
+  return (
+    <>
+      <span className="block">
+        <strong className="text-foreground">
+          当選列の{officialDigitsLabel}は、宝くじの実際の抽選結果
+        </strong>
+        （当サイトに取り込んだ公式当選番号）です。アンサンブル上位の予測リストから数字を拾っているわけではありません。
+      </span>
+      <span className="block">
+        そのうえで、
+        <strong className="text-foreground">同じ回号</strong> の{" "}
+        <code className="font-mono text-xs">method</code>{" "}
+        ドキュメントの直近ラン候補（最大96件）に、その公式当選番号が含まれていたモデルを出しています。
+      </span>
+      <span className="block">
+        <strong className="text-foreground">緑</strong>
+        ＝ストレート一致、
+        <strong className="text-foreground">黄</strong>
+        ＝完全一致は無いがボックス相当の並び替えが候補にあったモデルです。
+      </span>
+    </>
+  );
+}
 
 export function Numbers4RecentModelHits({
   hits,
@@ -97,6 +105,8 @@ export function Numbers4RecentModelHits({
   bannerLead,
   emptyMessage,
   emphasizeOfficial,
+  resultHrefForDraw,
+  officialDigitsLabel,
 }: Numbers4RecentModelHitsProps) {
   const withHits = hits.filter(
     (h) => h.exact_slugs.length > 0 || h.box_only_slugs.length > 0,
@@ -105,6 +115,10 @@ export function Numbers4RecentModelHits({
   const resolvedTitle =
     title ??
     `直近 ${hits.length} 回 · 公式当選番号が各モデル候補に載っていたか`;
+
+  const digitsLabel = officialDigitsLabel ?? "4桁";
+  const hrefForDraw =
+    resultHrefForDraw ?? ((d: number) => `/numbers4/result/${d}`);
 
   return (
     <Card
@@ -127,7 +141,7 @@ export function Numbers4RecentModelHits({
           <CardTitle className="text-lg">{resolvedTitle}</CardTitle>
         </div>
         <CardDescription className="text-pretty space-y-1.5 text-sm leading-relaxed">
-          {description ?? defaultDescription}
+          {description ?? defaultDescriptionFor(digitsLabel)}
         </CardDescription>
       </CardHeader>
       <CardContent className="px-0 pb-0 pt-0">
@@ -195,7 +209,7 @@ export function Numbers4RecentModelHits({
                       </TableCell>
                       <TableCell className="px-3 py-2.5 text-right sm:px-4">
                         <Link
-                          href={`/numbers4/result/${h.draw_number}`}
+                          href={hrefForDraw(h.draw_number)}
                           className="text-primary text-xs font-medium hover:underline"
                         >
                           開く
