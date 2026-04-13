@@ -11,6 +11,7 @@ export type ConsensusEntry = {
 export function buildMethodConsensus(
   methodRows: MethodPredictionRow[],
   topKPerMethod: number,
+  digitLength: 3 | 4 = 4,
 ): ConsensusEntry[] {
   const acc = new Map<
     string,
@@ -21,7 +22,7 @@ export function buildMethodConsensus(
     const slice = m.topPredictions.slice(0, topKPerMethod);
     for (const p of slice) {
       const num = p.number?.trim();
-      if (!num || num.length !== 4) continue;
+      if (!num || num.length !== digitLength) continue;
       const cur = acc.get(num) ?? {
         methods: new Set<string>(),
         bestScore: null as number | null,
