@@ -198,3 +198,69 @@
     );
   }
 }
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    color: #111111 !important;
+  }
+
+  body:has(.investor-deck) header,
+  body:has(.investor-deck) footer,
+  body:has(.investor-deck) [data-investor-print-hidden],
+  body:has(.investor-deck) [data-slot="age-acknowledgment-bar"] {
+    display: none !important;
+  }
+
+  body:has(.investor-deck) .app-surface,
+  body:has(.investor-deck) .app-dot-grid,
+  body:has(.investor-deck) main {
+    background: #ffffff !important;
+    background-image: none !important;
+  }
+
+  body:has(.investor-deck) .investor-deck {
+    min-height: auto !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    color: #111111 !important;
+  }
+
+  body:has(.investor-deck) .investor-deck [data-investor-section] {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    padding-top: 10mm !important;
+    padding-bottom: 6mm !important;
+  }
+
+  body:has(.investor-deck) .investor-deck a {
+    color: inherit !important;
+    text-decoration: none !important;
+  }
+
+  body:has(.investor-deck) .investor-deck [class*="bg-["],
+  body:has(.investor-deck) .investor-deck [class*="shadow-"] {
+    box-shadow: none !important;
+  }
+
+  body:has(.investor-deck) .investor-deck .text-\[\#fff8e7\],
+  body:has(.investor-deck) .investor-deck .text-\[\#f6ecd2\],
+  body:has(.investor-deck) .investor-deck .text-\[\#e7dcc1\],
+  body:has(.investor-deck) .investor-deck .text-\[\#e3d8bc\],
+  body:has(.investor-deck) .investor-deck .text-\[\#d7ccb3\],
+  body:has(.investor-deck) .investor-deck .text-\[\#d7b56c\] {
+    color: #111111 !important;
+  }
+
+  body:has(.investor-deck) .investor-deck .border-\[\#d7b56c\]\/18,
+  body:has(.investor-deck) .investor-deck .border-\[\#c8a45a\]\/20,
+  body:has(.investor-deck) .investor-deck .border-white\/10 {
+    border-color: rgba(0, 0, 0, 0.12) !important;
+  }
+}

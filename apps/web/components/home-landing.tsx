@@ -177,6 +177,19 @@ export function HomeLanding({ copy = homeLandingCopyJa }: HomeLandingProps) {
               />
             ))}
           </div>
+          <div className="mt-4 flex justify-center">
+            <Link
+              href="/investors"
+              className={cn(
+                buttonVariants({ variant: "outline", size: "sm" }),
+                "rounded-full border-amber-500/30 bg-amber-500/8 px-4 text-amber-900 shadow-sm hover:bg-amber-500/14 dark:text-amber-200",
+              )}
+            >
+              <SparklesIcon className="size-3.5" />
+              投資家向けブリーフ
+              <ArrowRightIcon className="size-3.5" />
+            </Link>
+          </div>
           <p className="text-muted-foreground mt-8 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs sm:text-sm">
             {hero.languageLinks.map((link, index) => (
               <span key={link.href} className="contents">
