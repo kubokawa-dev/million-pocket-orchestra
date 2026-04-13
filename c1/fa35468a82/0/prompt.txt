@@ -1,0 +1,100 @@
+Traceback (most recent call last):
+# Numbers4 ターゲット番号チェック
+  File "/home/runner/work/million-pocket-orchestra/million-pocket-orchestra/tools/check_numbers4_target_number.py", line 209, in <module>
+    main()
+  File "/home/runner/work/million-pocket-orchestra/million-pocket-orchestra/tools/check_numbers4_target_number.py", line 205, in main
+
+- draw: `6960`
+- target_number: `4111`
+- methods: `box_model, cold_revival`
+
+## `box_model`
+- source: `predictions/daily/methods/box_model/numbers4_6960.json`
+- prediction_batches: 7
+- exact_hit_count: 3
+- best_exact_rank: 19 (time_jst: 02:31, score: 91.0)
+- box_hit_count: 4
+- best_box_rank: 19 (number: 1114, time_jst: 01:11, score: 91.0)
+
+## `cold_revival`
+- source: `predictions/daily/methods/cold_revival/numbers4_6960.json`
+- prediction_batches: 6
+- result: not found in saved top predictions
+
+## 判定
+- verdict: `exact_hit`
+- reason: 指定番号そのものが候補に含まれています。
+- total_exact_hits: 3
+- total_box_hits: 4
+
+> NOTE: この判定は各メソッドJSONに保存された `top_predictions` の範囲で行っています。
+
+---
+
+# Numbers4 ターゲット番号チェック
+
+- draw: `6960`
+- target_number: `1263`
+- methods: `box_model, cold_revival`
+
+## `box_model`
+- source: `predictions/daily/methods/box_model/numbers4_6960.json`
+- prediction_batches: 7
+- result: not found in saved top predictions
+
+## `cold_revival`
+- source: `predictions/daily/methods/cold_revival/numbers4_6960.json`
+- prediction_batches: 6
+- result: not found in saved top predictions
+
+## 判定
+- verdict: `not_found`
+- reason: 保存済みTOP候補では確認できませんでした。
+- total_exact_hits: 0
+- total_box_hits: 0
+
+> NOTE: この判定は各メソッドJSONに保存された `top_predictions` の範囲で行っています。
+
+---
+
+# Numbers4 ターゲット番号チェック
+
+- draw: `6960`
+- target_number: `2404`
+- methods: `box_model, cold_revival`
+
+## `box_model`
+- source: `predictions/daily/methods/box_model/numbers4_6960.json`
+- prediction_batches: 7
+- exact_hit_count: 0
+- box_hit_count: 7
+- best_box_rank: 10 (number: 0424, time_jst: 01:11, score: 95.5)
+
+## `cold_revival`
+- source: `predictions/daily/methods/cold_revival/numbers4_6960.json`
+- prediction_batches: 6
+- result: not found in saved top predictions
+
+## 判定
+- verdict: `box_only_hit`
+- reason: 指定番号そのものは無いが、ボックス一致の候補があります。
+- total_exact_hits: 0
+- total_box_hits: 7
+
+> NOTE: この判定は各メソッドJSONに保存された `top_predictions` の範囲で行っています。
+
+    print(f"saved: {out_path.relative_to(ROOT)}")
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/pathlib.py", line 730, in relative_to
+    raise ValueError("{!r} is not in the subpath of {!r}"
+ValueError: '/tmp/numbers4_target_check.md' is not in the subpath of '/home/runner/work/million-pocket-orchestra/million-pocket-orchestra' OR one path is relative and the other is absolute.
+Error: Process completed with exit code 1.
+0s
+0s
+0s
+0s
+0s
+0s
+
+
+ここでテストこけているよ？修正調整おねがいできますか？？
