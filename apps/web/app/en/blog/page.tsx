@@ -16,9 +16,17 @@ import { absoluteUrl } from "@/lib/site";
 export const revalidate = 3600;
 
 export const metadata: Metadata = {
-  title: "Blog — Numbers4 guides (English)",
+  title: "English blog — Japan Numbers4, Numbers3, and Loto6 guides",
   description:
-    "English articles: what Numbers4 is, how to use the results list, and how to read predictions, stats, and trends on Takarakuji AI.",
+    "English guides for Japan Numbers4, Numbers3, and Loto6: latest results, prediction context, official verification, stats, trends, and how to use Takarakuji AI.",
+  keywords: [
+    "Japan Numbers4 results",
+    "Numbers4 prediction today",
+    "Numbers3 result today Japan",
+    "latest Loto6 results Japan",
+    "official Numbers4 results",
+    "Takarakuji AI English blog",
+  ],
   alternates: {
     canonical: "/en/blog",
     languages: {
@@ -27,13 +35,19 @@ export const metadata: Metadata = {
     },
   },
   openGraph: {
-    title: "Blog (English) | Takarakuji AI",
+    title: "English blog | Takarakuji AI",
     description:
-      "Guides for international readers: Numbers4 basics and how to navigate this dashboard.",
+      "English guides for international readers: latest Japan lottery results, prediction context, official verification, stats, and trends.",
     url: absoluteUrl("/en/blog"),
     locale: "en_US",
     alternateLocale: ["ja_JP"],
     type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "English blog | Takarakuji AI",
+    description:
+      "English guides for Numbers4, Numbers3, and Loto6 in Japan: latest results, official verification, stats, and trends.",
   },
 };
 
@@ -60,9 +74,10 @@ export default function EnglishBlogIndexPage() {
             English articles
           </h1>
           <p className="text-muted-foreground text-sm leading-relaxed sm:text-base">
-            Short guides for overseas visitors and LLM-friendly context. The
-            app UI is mostly Japanese; these posts explain how to use it
-            responsibly.{" "}
+            English guides for international readers looking for Japan Numbers4,
+            Numbers3, and Loto6 results, prediction context, official verification,
+            stats, and trend pages. The app UI is mostly Japanese; these posts explain
+            how to use it responsibly.{" "}
             <Link
               href="/blog"
               className="text-primary font-medium underline-offset-4 hover:underline"

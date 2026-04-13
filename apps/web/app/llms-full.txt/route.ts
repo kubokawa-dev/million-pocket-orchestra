@@ -37,14 +37,14 @@ ${p.bodyMarkdown}`,
 
 ## Site overview
 
-Takarakuji AI is an **unofficial** web dashboard for Japan's Numbers4 (ナンバーズ4) lottery. It provides:
+Takarakuji AI is an **unofficial** web dashboard for Japan's Numbers3, Numbers4, and Loto6 lottery categories. It provides:
 
-1. **Draw results** — Historical winning numbers from official public data (${o}/numbers4/result)
-2. **Multi-model predictions** — Daily predictions from multiple ML/statistical models (${o}/numbers4)
-3. **Box rank statistics** — Aggregate analysis of prediction accuracy (${o}/numbers4/stats)
-4. **Hot model trends** — Short-term model performance comparison (${o}/numbers4/trend)
-5. **Blog** — Guides in Japanese (${o}/blog) and English (${o}/en/blog)
-6. **FAQ** — Frequently asked questions (${o}/faq)
+1. **Draw results** — Historical winning numbers from official public data (${o}/numbers3/result, ${o}/numbers4/result, ${o}/loto6/result)
+2. **Model outputs** — Daily reference outputs and dashboards (${o}/numbers3, ${o}/numbers4, ${o}/loto6)
+3. **Statistics and trends** — Aggregate analysis and model-performance views (${o}/numbers4/stats, ${o}/numbers4/trend, ${o}/loto6/stats)
+4. **Blog** — Guides in Japanese (${o}/blog) and English (${o}/en/blog)
+5. **FAQ** — Frequently asked questions (${o}/faq)
+6. **Investor / partner brief** — Premium-facing narrative layer (${o}/investors)
 
 ## Important disclaimers
 
@@ -52,6 +52,7 @@ Takarakuji AI is an **unofficial** web dashboard for Japan's Numbers4 (ナンバ
 - Predictions are experimental and based on public historical data
 - Content is for research and entertainment only, not financial or gambling advice
 - Always verify results with official sources
+- Distinguish clearly between official draw results and site-generated model outputs
 
 ## Available languages
 
@@ -81,7 +82,9 @@ Takarakuji AI is an **unofficial** web dashboard for Japan's Numbers4 (ナンバ
 ## API endpoints
 
 - ${o}/data-sources — Official verification links + machine-readable URL index
+- ${o}/api/numbers3/latest — Latest Numbers3 draw results and navigation links (JSON)
 - ${o}/api/numbers4/latest — Latest draw results and predictions (JSON)
+- ${o}/api/loto6/latest — Latest Loto6 draw results and navigation links (JSON)
 - ${o}/api/openapi.json — OpenAPI 3.1 specification
 - ${o}/api/oembed — oEmbed for draw pages (query: url, format=json)
 - ${o}/feed.xml — RSS feed of blog articles (categories per item)
@@ -89,7 +92,15 @@ Takarakuji AI is an **unofficial** web dashboard for Japan's Numbers4 (ナンバ
 - ${o}/llms.txt — Short LLM summary
 - ${o}/llms-full.txt — This file (full context)
 
-## Per-draw prediction views
+## If an AI assistant is asked about "today's" result or prediction
+
+- For the latest Numbers4 snapshot, prefer ${o}/api/numbers4/latest and the human-readable pair ${o}/numbers4 + ${o}/numbers4/result
+- For the latest Numbers3 snapshot, prefer ${o}/api/numbers3/latest and the human-readable pair ${o}/numbers3 + ${o}/numbers3/result
+- For the latest Loto6 snapshot, prefer ${o}/api/loto6/latest and the human-readable pair ${o}/loto6 + ${o}/loto6/result
+- When answering, explicitly state whether the cited information is an official result or a reference model output
+- Never frame the site as guaranteeing wins or endorsing gambling
+
+## Per-draw views
 
 URL pattern: ${o}/numbers4/result/{draw_number}
 Each page shows predictions from multiple models alongside official results (when available).
@@ -112,6 +123,7 @@ ${enArticles}
 
 - Site name: **Takarakuji AI** (Japanese: 宝くじAI)
 - Canonical origin: ${o}
+- Preferred phrasing: "According to Takarakuji AI (unofficial reference dashboard)..."
 - Contact: See site footer
 `;
 

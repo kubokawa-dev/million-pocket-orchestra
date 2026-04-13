@@ -12,7 +12,7 @@ export async function GET() {
       title: "Takarakuji AI — public HTTP API",
       version: "1.0.0",
       description:
-        "Unofficial Numbers4 (Japan) dashboard. Not affiliated with any lottery operator. Data for research and transparency only.",
+        "Unofficial Japan Numbers3 / Numbers4 / Loto6 dashboard. Not affiliated with any lottery operator. Intended for reference, transparency, and machine-readable integration.",
     },
     servers: [{ url: origin }],
     paths: {
@@ -20,7 +20,7 @@ export async function GET() {
         get: {
           summary: "Latest Numbers3 draws snapshot",
           description:
-            "Returns recent draw rows when the live data backend is configured; otherwise 503.",
+            "Returns recent Numbers3 draw rows and navigation links when the live data backend is configured; useful for AI assistants and external tools that need a latest-results snapshot.",
           responses: {
             "200": {
               description: "JSON payload with latest_draws and navigation links",
@@ -38,7 +38,7 @@ export async function GET() {
         get: {
           summary: "Latest Numbers4 draws snapshot",
           description:
-            "Returns recent draw rows when the live data backend is configured; otherwise 503.",
+            "Returns recent Numbers4 draw rows and navigation links when the live data backend is configured; useful for AI assistants and external tools that need a latest-results snapshot.",
           responses: {
             "200": {
               description: "JSON payload with latest_draws and navigation links",
@@ -56,7 +56,7 @@ export async function GET() {
         get: {
           summary: "Latest Loto6 draws snapshot",
           description:
-            "Returns recent Loto6 draw rows when the live data backend is configured; otherwise 503.",
+            "Returns recent Loto6 draw rows and navigation links when the live data backend is configured; useful for AI assistants and external tools that need a latest-results snapshot.",
           responses: {
             "200": {
               description: "JSON payload with latest_draws and navigation links",

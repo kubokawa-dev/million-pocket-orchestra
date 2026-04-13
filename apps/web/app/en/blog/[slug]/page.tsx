@@ -27,6 +27,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     title: post.title,
     description: post.description,
+    keywords: [
+      post.title,
+      "Takarakuji AI",
+      "Japan lottery results",
+      "Numbers4",
+      "Numbers3",
+      "Loto6",
+      "official verification",
+      "reference dashboard",
+    ],
     alternates: {
       canonical: `/en/blog/${post.slug}`,
       languages: {
@@ -42,6 +52,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       publishedTime: post.publishedAt,
       locale: "en_US",
       alternateLocale: ["ja_JP"],
+      images: [absoluteUrl(`/en/blog/${post.slug}/opengraph-image`)],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${post.title} · Takarakuji AI`,
+      description: post.description,
+      images: [absoluteUrl(`/en/blog/${post.slug}/opengraph-image`)],
     },
   };
 }

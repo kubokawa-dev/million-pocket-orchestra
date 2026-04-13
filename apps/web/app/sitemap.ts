@@ -26,6 +26,7 @@ const STATIC_PATHS: {
   { path: "/loto6/stats", changeFrequency: "daily", priority: 0.82 },
     { path: "/numbers4/stats", changeFrequency: "daily", priority: 0.85 },
     { path: "/numbers4/trend", changeFrequency: "daily", priority: 0.85 },
+    { path: "/investors", changeFrequency: "monthly", priority: 0.74 },
     { path: "/blog", changeFrequency: "weekly", priority: 0.75 },
     { path: "/faq", changeFrequency: "monthly", priority: 0.7 },
     { path: "/responsible-use", changeFrequency: "monthly", priority: 0.68 },
