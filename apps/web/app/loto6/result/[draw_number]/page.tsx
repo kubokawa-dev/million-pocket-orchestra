@@ -75,10 +75,13 @@ export default async function Loto6ResultDetailPage({ params }: PageProps) {
   ]);
 
   if (error) throw new Error(error.message);
-  if (!row) notFound();
+  const hasPredictionData =
+    predictionBundle != null &&
+    (predictionBundle.ensemble != null || predictionBundle.methodRows.length > 0);
+  if (!row && !hasPredictionData) notFound();
 
-  const r = row as Loto6DrawRow;
-  const actualMain = parseLoto6MainNumbers(r.numbers);
+  const r = (row as Loto6DrawRow | null) ?? null;
+  const actualMain = r ? parseLoto6MainNumbers(r.numbers) : [];
 
   return (
     <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-8 sm:px-6 sm:py-10">
@@ -92,73 +95,82 @@ export default async function Loto6ResultDetailPage({ params }: PageProps) {
         ← 一覧へ
       </Link>
 
-      <Card className="border-border/80 shadow-sm ring-1 ring-black/5 dark:ring-white/10">
-        <CardHeader>
-          <CardTitle className="text-xl">第 {r.draw_number} 回 ロト6</CardTitle>
-          <CardDescription>抽選日: {r.draw_date}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-8">
-          <div>
-            <p className="text-muted-foreground text-sm">本数字</p>
-            <p className="font-mono text-2xl font-bold tracking-wide sm:text-3xl">
-              {formatLoto6NumbersCell(r.numbers)}
-            </p>
-            <p className="text-muted-foreground mt-3 text-sm">ボーナス数字</p>
-            <p className="text-foreground font-mono text-3xl font-bold sm:text-4xl">
-              {r.bonus_number}
-            </p>
-          </div>
+      {r ? (
+        <Card className="border-border/80 shadow-sm ring-1 ring-black/5 dark:ring-white/10">
+          <CardHeader>
+            <CardTitle className="text-xl">第 {r.draw_number} 回 ロト6</CardTitle>
+            <CardDescription>抽選日: {r.draw_date}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-8">
+            <div>
+              <p className="text-muted-foreground text-sm">本数字</p>
+              <p className="font-mono text-2xl font-bold tracking-wide sm:text-3xl">
+                {formatLoto6NumbersCell(r.numbers)}
+              </p>
+              <p className="text-muted-foreground mt-3 text-sm">ボーナス数字</p>
+              <p className="text-foreground font-mono text-3xl font-bold sm:text-4xl">
+                {r.bonus_number}
+              </p>
+            </div>
 
-          <div className="space-y-2">
-            <p className="text-foreground text-sm font-medium">等級別 当せん口数・払戻金</p>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[30%]">等級</TableHead>
-                  <TableHead className="text-right">当選口数</TableHead>
-                  <TableHead className="text-right">払戻金（円）</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {TIER_LABELS.map(({ tier, label }) => {
-                  const { w, y } = tierKeys(tier);
-                  const wc = r[w];
-                  const yc = r[y];
-                  return (
-                    <TableRow key={tier}>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {label}
-                      </TableCell>
-                      <TableCell className="text-right font-mono text-sm tabular-nums">
-                        {wc === null || wc === undefined ? "—" : String(wc)}
-                      </TableCell>
-                      <TableCell className="text-right font-mono text-sm tabular-nums">
-                        {formatYen(yc as number | string | null)}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
+            <div className="space-y-2">
+              <p className="text-foreground text-sm font-medium">等級別 当せん口数・払戻金</p>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[30%]">等級</TableHead>
+                    <TableHead className="text-right">当選口数</TableHead>
+                    <TableHead className="text-right">払戻金（円）</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {TIER_LABELS.map(({ tier, label }) => {
+                    const { w, y } = tierKeys(tier);
+                    const wc = r[w];
+                    const yc = r[y];
+                    return (
+                      <TableRow key={tier}>
+                        <TableCell className="text-muted-foreground text-sm">
+                          {label}
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-sm tabular-nums">
+                          {wc === null || wc === undefined ? "—" : String(wc)}
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-sm tabular-nums">
+                          {formatYen(yc as number | string | null)}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
 
-          <div>
-            <p className="text-muted-foreground text-sm">キャリーオーバー</p>
-            <p className="font-mono text-lg font-semibold tabular-nums">
-              {formatYen(r.carryover_yen as number | string | null)}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+            <div>
+              <p className="text-muted-foreground text-sm">キャリーオーバー</p>
+              <p className="font-mono text-lg font-semibold tabular-nums">
+                {formatYen(r.carryover_yen as number | string | null)}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="border-dashed border-amber-500/40 bg-amber-500/[0.04] shadow-none">
+          <CardHeader>
+            <CardTitle className="text-xl">第 {n} 回 ロト6（抽選前プレビュー）</CardTitle>
+            <CardDescription>
+              この回の当選番号はまだ取り込まれていないため、「あたり」表示はありません。開催後、公式結果が反映されると自動で照合されます。
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      )}
 
-      {predictionBundle &&
-      (predictionBundle.ensemble != null ||
-        predictionBundle.methodRows.length > 0) ? (
+      {hasPredictionData && predictionBundle ? (
         <section className="border-border/60 rounded-2xl border bg-card/40 p-5 shadow-sm ring-1 ring-black/5 sm:p-6 dark:ring-white/10">
           <Loto6PredictionsPanel
             bundle={predictionBundle}
-            actualMain={actualMain.length === 6 ? actualMain : undefined}
-            actualBonus={r.bonus_number}
+            actualMain={r && actualMain.length === 6 ? actualMain : undefined}
+            actualBonus={r?.bonus_number}
           />
         </section>
       ) : null}

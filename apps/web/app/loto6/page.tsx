@@ -124,6 +124,26 @@ export default async function Loto6Page() {
           </Card>
         ) : null}
 
+        {nextTarget != null ? (
+          <Card className="border-amber-500/30 bg-amber-500/[0.04] shadow-sm ring-1 ring-amber-500/15 dark:ring-amber-400/20">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">最新回のモデル試算を見る</CardTitle>
+              <CardDescription>
+                第 {nextTarget} 回向けの予測・照合ページへ移動します（抽選前はプレビュー表示）。
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <Link
+                href={`/loto6/result/${nextTarget}`}
+                className={cn(buttonVariants({ size: "lg" }), "w-full gap-2 sm:w-auto")}
+              >
+                第 {nextTarget} 回へ進む
+                <ArrowRightIcon className="size-4" />
+              </Link>
+            </CardContent>
+          </Card>
+        ) : null}
+
         <TodayReferencePanel
           title="Today view"
           latestLabel="最新取り込み / 次回参考対象"
