@@ -1,0 +1,114 @@
+{
+  "target_draw_number": 2096,
+  "created_at": "2026-04-21T05:22:22+09:00",
+  "planner_version": "loto6-mvp-budget-1",
+  "monthly_budget_guide": {
+    "max_yen_per_month": 30000,
+    "default_per_draw_yen": 1000,
+    "max_per_draw_yen": 2000,
+    "yen_per_ticket": 200,
+    "note": "ロト6の実際の券種・口数・当せん金額は公式ルールに従ってください。ここは MVP アンサンブル上位を「複数候補の割り振り例」として並べた参考 JSON です。"
+  },
+  "plan_5": {
+    "budget": "1,000円相当（上位5通を候補として列挙）",
+    "slots": 5,
+    "recommendations": [
+      {
+        "priority": "#1",
+        "number": "3,17,18,23,24,41",
+        "buy_method": "通常（参考）",
+        "reason": "ensemble rank 1 / score 100.0"
+      },
+      {
+        "priority": "#2",
+        "number": "4,11,17,25,26,28",
+        "buy_method": "通常（参考）",
+        "reason": "ensemble rank 2 / score 99.62"
+      },
+      {
+        "priority": "#3",
+        "number": "11,22,28,31,36,38",
+        "buy_method": "通常（参考）",
+        "reason": "ensemble rank 3 / score 99.24"
+      },
+      {
+        "priority": "#4",
+        "number": "13,22,24,29,33,41",
+        "buy_method": "通常（参考）",
+        "reason": "ensemble rank 4 / score 98.86"
+      },
+      {
+        "priority": "#5",
+        "number": "6,13,26,32,33,37",
+        "buy_method": "通常（参考）",
+        "reason": "ensemble rank 5 / score 98.48"
+      }
+    ]
+  },
+  "plan_10": {
+    "budget": "2,000円相当（上位10通を候補として列挙）",
+    "slots": 10,
+    "recommendations": [
+      {
+        "priority": "#1",
+        "number": "3,17,18,23,24,41",
+        "buy_method": "通常（参考）",
+        "reason": "ensemble rank 1 / score 100.0"
+      },
+      {
+        "priority": "#2",
+        "number": "4,11,17,25,26,28",
+        "buy_method": "通常（参考）",
+        "reason": "ensemble rank 2 / score 99.62"
+      },
+      {
+        "priority": "#3",
+        "number": "11,22,28,31,36,38",
+        "buy_method": "通常（参考）",
+        "reason": "ensemble rank 3 / score 99.24"
+      },
+      {
+        "priority": "#4",
+        "number": "13,22,24,29,33,41",
+        "buy_method": "通常（参考）",
+        "reason": "ensemble rank 4 / score 98.86"
+      },
+      {
+        "priority": "#5",
+        "number": "6,13,26,32,33,37",
+        "buy_method": "通常（参考）",
+        "reason": "ensemble rank 5 / score 98.48"
+      },
+      {
+        "priority": "#6",
+        "number": "2,11,20,28,34,39",
+        "buy_method": "通常（参考）",
+        "reason": "ensemble rank 6 / score 98.1"
+      },
+      {
+        "priority": "#7",
+        "number": "1,13,28,30,31,39",
+        "buy_method": "通常（参考）",
+        "reason": "ensemble rank 7 / score 97.72"
+      },
+      {
+        "priority": "#8",
+        "number": "1,4,5,21,30,32",
+        "buy_method": "通常（参考）",
+        "reason": "ensemble rank 8 / score 97.34"
+      },
+      {
+        "priority": "#9",
+        "number": "10,12,26,28,35,39",
+        "buy_method": "通常（参考）",
+        "reason": "ensemble rank 9 / score 96.96"
+      },
+      {
+        "priority": "#10",
+        "number": "1,12,18,30,35,37",
+        "buy_method": "通常（参考）",
+        "reason": "ensemble rank 10 / score 96.58"
+      }
+    ]
+  }
+}
