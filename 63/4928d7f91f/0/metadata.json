@@ -1,0 +1,36 @@
+{
+  "cli_version": "0.4.4",
+  "checkpoint_id": "634928d7f91f",
+  "session_id": "75ba1156-1019-4675-8552-34a52a97d7bb",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-20T15:49:27.751588762Z",
+  "branch": "main",
+  "checkpoints_count": 4,
+  "files_touched": [
+    ".github/workflows/daily-loto6-summary.yml",
+    "apps/web/supabase/migrations/20260420120000_loto6_daily_prediction_documents_budget_plan.sql",
+    "tools/check_loto6_target_numbers.py",
+    "tools/generate_loto6_budget_plan.py",
+    "tools/load_loto6_csv_to_sqlite.py",
+    "tools/load_numbers3_csv_to_sqlite.py",
+    "tools/summarize_loto6_mvp_md.py"
+  ],
+  "agent": "Claude Code",
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-20T15:49:27.57961421Z",
+    "agent_lines": 601,
+    "human_added": 894,
+    "human_modified": 127,
+    "human_removed": 0,
+    "total_committed": 1622,
+    "agent_percentage": 37.05302096177559
+  },
+  "transcript_path": ".cursor/projects/home-kbkkbk-Develop-kubocchi-million-pocket-orchestra/agent-transcripts/75ba1156-1019-4675-8552-34a52a97d7bb/75ba1156-1019-4675-8552-34a52a97d7bb.jsonl"
+}
