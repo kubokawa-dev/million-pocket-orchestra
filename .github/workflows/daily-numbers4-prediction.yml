@@ -35,7 +35,7 @@ jobs:
     
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           # 最新のコミットを取得（他のワークフロー実行分も含む）
           fetch-depth: 0
