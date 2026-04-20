@@ -22,6 +22,7 @@ import {
 } from "@/lib/loto6-predictions/hit-utils";
 import { lastLoto6PredictionRun } from "@/lib/loto6-predictions/load-bundles";
 import type {
+  Loto6BudgetPlanPayload,
   Loto6MethodPayload,
   Loto6PredictionBundle,
   Loto6TopPrediction,
@@ -138,6 +139,55 @@ function TicketsTable({
   );
 }
 
+function BudgetPlanSection({ plan }: { plan: Loto6BudgetPlanPayload }) {
+  const guide = plan.monthly_budget_guide;
+  const note =
+    guide && typeof guide.note === "string" ? guide.note : null;
+
+  return (
+    <Card className="border-border/70 shadow-sm ring-1 ring-black/5 dark:ring-white/10">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base">予算プラン（MVP・参考）</CardTitle>
+        <CardDescription className="text-xs">
+          {plan.planner_version ? `planner: ${plan.planner_version}` : null}
+          {plan.created_at ? ` · ${plan.created_at}` : null}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4 text-sm">
+        {note ? (
+          <p className="text-muted-foreground leading-relaxed">{note}</p>
+        ) : null}
+        {plan.plan_5?.recommendations?.length ? (
+          <div>
+            <p className="text-foreground mb-2 font-medium">{plan.plan_5.budget ?? "plan_5"}</p>
+            <ul className="text-muted-foreground list-inside list-disc space-y-1">
+              {plan.plan_5.recommendations.map((r, i) => (
+                <li key={i}>
+                  <span className="font-mono text-foreground">{r.number ?? "—"}</span>
+                  {r.reason ? ` — ${r.reason}` : null}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+        {plan.plan_10?.recommendations?.length ? (
+          <div>
+            <p className="text-foreground mb-2 font-medium">{plan.plan_10.budget ?? "plan_10"}</p>
+            <ul className="text-muted-foreground list-inside list-disc space-y-1">
+              {plan.plan_10.recommendations.map((r, i) => (
+                <li key={i}>
+                  <span className="font-mono text-foreground">{r.number ?? "—"}</span>
+                  {r.reason ? ` — ${r.reason}` : null}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
 function MethodLabel(slug: string): string {
   if (slug === "cold_six") return "コールド6（出現少なめ寄り）";
   if (slug === "hot_six") return "ホット6（出現多め寄り）";
@@ -243,6 +293,12 @@ export function Loto6PredictionsPanel({
             />
           </CardContent>
         </Card>
+      ) : null}
+
+      {bundle.budgetPlan &&
+      (bundle.budgetPlan.plan_5?.recommendations?.length ||
+        bundle.budgetPlan.plan_10?.recommendations?.length) ? (
+        <BudgetPlanSection plan={bundle.budgetPlan} />
       ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">

@@ -1,0 +1,206 @@
+# ロト6 日次サマリー（予測 JSON → Markdown + Supabase 再同期）。ナンバーズ4の daily-numbers4-summary に相当。
+name: Daily Loto6 Summary
+
+on:
+  schedule:
+    # 平日 JST 12:15（予測ジョブ完了後を想定）= UTC 03:15
+    - cron: "15 3 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      target_draw:
+        description: "対象回（空欄＝predictions/daily の最新 loto6_*.json）"
+        required: false
+        type: string
+        default: ""
+      check_main:
+        description: "固定チェック用・本数字6個（カンマ区切り）"
+        required: false
+        type: string
+        default: "3,4,9,11,25,38"
+      check_bonus:
+        description: "固定チェック用・ボーナス（空なら本数字のみ一致で判定）"
+        required: false
+        type: string
+        default: ""
+      check_methods_preset:
+        description: "固定チェックで見る手法の範囲"
+        required: false
+        type: choice
+        default: "標準"
+        options:
+          - 標準
+          - 全8手法
+
+concurrency:
+  group: loto6-summary-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  summarize:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_USE_REST: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Pull latest changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git pull origin main --rebase || true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Initialize database
+        run: python tools/utils.py
+
+      - name: Load Loto6 historical CSV into SQLite
+        run: python tools/load_loto6_csv_to_sqlite.py
+
+      - name: Upsert Loto6 draws to Supabase
+        run: |
+          python tools/load_loto6_csv_to_postgres.py --skip-if-unconfigured --source csv
+
+      - name: Resolve target draw number
+        id: draw
+        run: |
+          set -e
+          MANUAL="${{ inputs.target_draw }}"
+          if [ -n "$MANUAL" ] && [ "$MANUAL" != "null" ]; then
+            echo "draw_number=$MANUAL" >> "$GITHUB_OUTPUT"
+            echo "✅ Manual draw: $MANUAL"
+            exit 0
+          fi
+          LATEST=$(ls -1 predictions/daily/loto6_*.json 2>/dev/null | sort -t_ -k2 -n | tail -1 || true)
+          if [ -z "$LATEST" ]; then
+            echo "⚠️ No predictions/daily/loto6_*.json"
+            echo "draw_number=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          BASENAME=$(basename "$LATEST" .json)
+          DRAW="${BASENAME#loto6_}"
+          echo "draw_number=$DRAW" >> "$GITHUB_OUTPUT"
+          echo "✅ Latest: $LATEST (draw $DRAW)"
+
+      - name: Check MVP method files
+        id: check_methods
+        run: |
+          DRAW="${{ steps.draw.outputs.draw_number }}"
+          if [ -z "$DRAW" ]; then
+            echo "all_methods_ready=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          EXPECTED="cold_six hot_six pair_cooccur last_draw_shift sum_streak odd_even_cold zone_heat spread_wheel"
+          FOUND=0
+          TOTAL=0
+          for M in $EXPECTED; do
+            TOTAL=$((TOTAL + 1))
+            F="predictions/daily/methods/${M}/loto6_${DRAW}.json"
+            if [ -f "$F" ]; then
+              FOUND=$((FOUND + 1))
+              echo "✅ $M"
+            else
+              echo "❌ missing $F"
+            fi
+          done
+          echo "found_count=$FOUND" >> "$GITHUB_OUTPUT"
+          echo "total_count=$TOTAL" >> "$GITHUB_OUTPUT"
+          if [ "$FOUND" -ge 1 ]; then
+            echo "all_methods_ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "all_methods_ready=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Generate Loto6 budget plan JSON
+        if: steps.check_methods.outputs.all_methods_ready == 'true'
+        run: |
+          DRAW="${{ steps.draw.outputs.draw_number }}"
+          python tools/generate_loto6_budget_plan.py --draw "$DRAW"
+
+      - name: Generate Loto6 MVP markdown summary
+        if: steps.check_methods.outputs.all_methods_ready == 'true'
+        id: summary
+        run: |
+          DRAW="${{ steps.draw.outputs.draw_number }}"
+          OUT="predictions/loto6_${DRAW}.md"
+          python tools/summarize_loto6_mvp_md.py --draw "$DRAW" --output "$OUT"
+          echo "output_file=$OUT" >> "$GITHUB_OUTPUT"
+
+      - name: Append fixed target ticket check
+        if: steps.check_methods.outputs.all_methods_ready == 'true'
+        run: |
+          DRAW="${{ steps.draw.outputs.draw_number }}"
+          OUT="${{ steps.summary.outputs.output_file }}"
+          MAIN="${{ inputs.check_main }}"
+          BONUS="${{ inputs.check_bonus }}"
+          PRESET="${{ inputs.check_methods_preset }}"
+          if [ -z "$MAIN" ] || [ "$MAIN" = "null" ]; then MAIN="3,4,9,11,25,38"; fi
+          if [ "$PRESET" = "全8手法" ]; then
+            METHODS="cold_six,hot_six,pair_cooccur,last_draw_shift,sum_streak,odd_even_cold,zone_heat,spread_wheel"
+          else
+            METHODS="cold_six,hot_six,pair_cooccur"
+          fi
+          if [ -n "$BONUS" ] && [ "$BONUS" != "null" ]; then
+            python tools/check_loto6_target_numbers.py \
+              --draw "$DRAW" --main "$MAIN" --bonus "$BONUS" \
+              --methods "$METHODS" --output /tmp/loto6_target_check.md
+          else
+            python tools/check_loto6_target_numbers.py \
+              --draw "$DRAW" --main "$MAIN" \
+              --methods "$METHODS" --output /tmp/loto6_target_check.md
+          fi
+          {
+            echo ""
+            echo "## 固定ターゲット券チェック（CI）"
+            echo ""
+            cat /tmp/loto6_target_check.md
+          } >> "$OUT"
+          echo "## 固定ターゲット券チェック" >> "$GITHUB_STEP_SUMMARY"
+          cat /tmp/loto6_target_check.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upsert loto6_daily_prediction_documents (Supabase)
+        if: steps.check_methods.outputs.all_methods_ready == 'true'
+        run: |
+          DRAW="${{ steps.draw.outputs.draw_number }}"
+          EXTRA=""
+          if [ -n "$DRAW" ]; then EXTRA="--target-draw-number $DRAW"; fi
+          python tools/load_loto6_daily_json_to_postgres.py --skip-if-unconfigured --chunk-size 16 $EXTRA
+
+      - name: Commit summary
+        if: steps.check_methods.outputs.all_methods_ready == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add predictions/loto6_*.md || true
+          git add predictions/daily/budget_plan_loto6_*.json || true
+          if git diff --staged --quiet; then
+            echo "📝 No Loto6 summary to commit"
+          else
+            TS=$(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M')
+            git commit -m "docs(loto6): daily MVP summary ${TS}"
+            bash tools/git_push_with_retry.sh main || true
+          fi
+
+      - name: Summary
+        run: |
+          echo "📊 Methods: ${{ steps.check_methods.outputs.found_count }}/${{ steps.check_methods.outputs.total_count }}"
+          if [ "${{ steps.check_methods.outputs.all_methods_ready }}" = "true" ]; then
+            echo "✅ Loto6 summary: ${{ steps.summary.outputs.output_file }}"
+          else
+            echo "⚠️ Skipped (no draw or no method JSON)"
+          fi

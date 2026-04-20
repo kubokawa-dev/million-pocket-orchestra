@@ -146,9 +146,11 @@ function SourceBadges({ data }: { data: Numbers4PredictionBundle }) {
   const sourceLabel =
     data.source === "database"
       ? "オンラインの最新データ"
-      : data.source === "repository_files"
-        ? "サイト同梱の日次ファイル"
-        : "内蔵デモ";
+      : data.source === "mixed"
+        ? "オンライン + 日次ファイルの併用"
+        : data.source === "repository_files"
+          ? "サイト同梱の日次ファイル"
+          : "内蔵デモ";
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -156,7 +158,11 @@ function SourceBadges({ data }: { data: Numbers4PredictionBundle }) {
         第 {data.targetDrawNumber} 回
       </Badge>
       <Badge
-        variant={data.source === "database" ? "default" : "secondary"}
+        variant={
+          data.source === "database" || data.source === "mixed"
+            ? "default"
+            : "secondary"
+        }
         className="text-xs"
       >
         <DatabaseIcon className="mr-1 inline size-3" />
@@ -1177,11 +1183,19 @@ export async function Numbers4PredictionsHub({
               <strong className="text-foreground"> ensemble / method / budget_plan </strong>
               の3種類の予測ドキュメントを一覧しやすくまとめています。当選番号がサイトに取り込まれていれば、予測との一致も表示します。
             </p>
-            {data.source !== "database" && (
+            {data.source === "repository_files" ||
+            data.source === "embedded" ? (
               <p className="text-muted-foreground border-border/80 bg-muted/40 max-w-2xl rounded-lg border px-3 py-2 text-xs leading-relaxed">
                 オンライン側に該当データが無いため、サイト同梱の日次ファイルまたはお試し用データを表示しています。
               </p>
-            )}
+            ) : null}
+            {data.source === "mixed" ? (
+              <p className="text-muted-foreground border-border/80 bg-muted/40 max-w-2xl rounded-lg border px-3 py-2 text-xs leading-relaxed">
+                オンラインに無い ensemble / method / budget
+                はリポジトリの日次 JSON で補完しています。同一 slug
+                の手法はオンライン側を優先します。
+              </p>
+            ) : null}
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <Link

@@ -77,7 +77,9 @@ export default async function Loto6ResultDetailPage({ params }: PageProps) {
   if (error) throw new Error(error.message);
   const hasPredictionData =
     predictionBundle != null &&
-    (predictionBundle.ensemble != null || predictionBundle.methodRows.length > 0);
+    (predictionBundle.ensemble != null ||
+      predictionBundle.budgetPlan != null ||
+      predictionBundle.methodRows.length > 0);
   if (!row && !hasPredictionData) notFound();
 
   const r = (row as Loto6DrawRow | null) ?? null;

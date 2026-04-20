@@ -182,7 +182,7 @@ export type MethodPredictionRow = {
 };
 
 export type Numbers4PredictionBundle = {
-  source: "database" | "repository_files" | "embedded";
+  source: "database" | "repository_files" | "embedded" | "mixed";
   targetDrawNumber: number;
   ensemble: EnsemblePayload | null;
   budgetPlan: BudgetPlanPayload | null;

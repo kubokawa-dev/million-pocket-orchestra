@@ -44,8 +44,32 @@ export type Loto6MethodRow = {
   payload: Loto6MethodPayload;
 };
 
+/** predictions/daily/budget_plan_loto6_{n}.json（MVP・簡易） */
+export type Loto6BudgetRecommendation = {
+  priority?: string;
+  number?: string;
+  buy_method?: string;
+  reason?: string;
+};
+
+export type Loto6BudgetPlanSlice = {
+  budget?: string;
+  slots?: number;
+  recommendations?: Loto6BudgetRecommendation[];
+};
+
+export type Loto6BudgetPlanPayload = {
+  target_draw_number?: number;
+  created_at?: string;
+  planner_version?: string;
+  monthly_budget_guide?: Record<string, unknown>;
+  plan_5?: Loto6BudgetPlanSlice;
+  plan_10?: Loto6BudgetPlanSlice;
+};
+
 export type Loto6PredictionBundle = {
   targetDrawNumber: number;
   ensemble: Loto6EnsemblePayload | null;
+  budgetPlan: Loto6BudgetPlanPayload | null;
   methodRows: Loto6MethodRow[];
 };

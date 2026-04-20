@@ -1,35 +1,31 @@
-# 初回: Supabase に apps/web/supabase/migrations/20260412130000_loto6_daily_prediction_documents.sql
-# を適用しないと、JSON UPSERT が PGRST205 (テーブルなし) で失敗します。
-name: Daily Loto6 Prediction (MVP)
+# ロト6 MVP 予測。ナンバーズ4系と同様に DB 初期化 → スクレイプで CSV 更新 → Supabase 同期 → 予測生成。
+# 初回: Supabase に apps/web/supabase/migrations/20260412130000_loto6_daily_prediction_documents.sql を適用。
+name: Daily Loto6 Prediction
 
 on:
   schedule:
     # ロト6は原則 月・木 当せん。GitHub の cron は UTC（JST = UTC+9）。
     # 各「予測ウィンドウ」で 1 日 5 回・最終開始 JST 11:30（想定所要 ~1h なら 13:00 JST 前に完了しやすい）。
-    #
-    # A) 月曜当せん後〜木曜当せん前: 火・水・木 (JST) 各日 05:00 / 07:00 / 09:00 / 10:30 / 11:30
-    - cron: "0 20 * * 1,2,3" # JST 火水木 05:00
-    - cron: "0 22 * * 1,2,3" # JST 火水木 07:00
-    - cron: "0 0 * * 2,3,4" # JST 火水木 09:00
-    - cron: "30 1 * * 2,3,4" # JST 火水木 10:30
-    - cron: "30 2 * * 2,3,4" # JST 火水木 11:30
-    #
-    # B) 木曜当せん後〜翌週月曜当せん前: 金・土・日・月 (JST) 同じく 1 日 5 回
-    - cron: "0 20 * * 4,5,6,0" # JST 金土日月 05:00
-    - cron: "0 22 * * 4,5,6,0" # JST 金土日月 07:00
-    - cron: "0 0 * * 5,6,0,1" # JST 金土日月 09:00
-    - cron: "30 1 * * 5,6,0,1" # JST 金土日月 10:30
-    - cron: "30 2 * * 5,6,0,1" # JST 金土日月 11:30
+    - cron: "0 20 * * 1,2,3"
+    - cron: "0 22 * * 1,2,3"
+    - cron: "0 0 * * 2,3,4"
+    - cron: "30 1 * * 2,3,4"
+    - cron: "30 2 * * 2,3,4"
+    - cron: "0 20 * * 4,5,6,0"
+    - cron: "0 22 * * 4,5,6,0"
+    - cron: "0 0 * * 5,6,0,1"
+    - cron: "30 1 * * 5,6,0,1"
+    - cron: "30 2 * * 5,6,0,1"
   workflow_dispatch:
     inputs:
       target_draw:
-        description: "予測対象回（空欄＝loto6/*.csv の最新+1）"
+        description: "予測対象回（空欄＝CSV 最新の当せん回+1）"
         required: false
         type: string
         default: ""
 
 concurrency:
-  group: loto6-predictions-${{ github.ref }}
+  group: loto6-prediction-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -61,6 +57,17 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Initialize database
+        run: python tools/utils.py
+
+      - name: Scrape Loto6 back numbers (Rakuten → loto6/*.csv + lottery.db)
+        run: |
+          echo "🌐 前月・当月の月次ページを取得し CSV / SQLite を更新します"
+          python tools/scrape_loto6_rakuten.py --sqlite
+
+      - name: Load Loto6 historical CSV into SQLite
+        run: python tools/load_loto6_csv_to_sqlite.py
+
       - name: Sync Loto6 draws (CSV → Supabase)
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
@@ -71,30 +78,40 @@ jobs:
 
       - name: Generate Loto6 MVP predictions
         run: |
-          T="${{ github.event.inputs.target_draw }}"
+          T="${{ inputs.target_draw }}"
           if [ -n "$T" ] && [ "$T" != "null" ]; then
             echo "🎯 target_draw=$T"
             python tools/generate_loto6_predictions_mvp.py --target-draw "$T"
+            python tools/generate_loto6_budget_plan.py --draw "$T"
           else
             python tools/generate_loto6_predictions_mvp.py
+            LAST=$(ls -1 predictions/daily/loto6_*.json 2>/dev/null | sort -t_ -k2 -n | tail -1 || true)
+            if [ -n "$LAST" ]; then
+              D=$(basename "$LAST" .json)
+              D="${D#loto6_}"
+              python tools/generate_loto6_budget_plan.py --draw "$D"
+            fi
           fi
 
       - name: Upsert loto6_daily_prediction_documents (Supabase)
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_USE_REST: "1"
         run: |
-          T="${{ github.event.inputs.target_draw }}"
+          T="${{ inputs.target_draw }}"
           EXTRA=""
           if [ -n "$T" ] && [ "$T" != "null" ]; then EXTRA="--target-draw-number $T"; fi
           python tools/load_loto6_daily_json_to_postgres.py --skip-if-unconfigured --chunk-size 16 $EXTRA
 
-      - name: Commit prediction JSON
+      - name: Commit prediction JSON and CSV
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add predictions/daily/loto6_*.json || true
+          git add predictions/daily/budget_plan_loto6_*.json || true
           git add predictions/daily/methods/**/loto6_*.json || true
+          git add loto6/*.csv || true
           if git diff --staged --quiet; then
             echo "No new Loto6 prediction files to commit"
           else
@@ -105,4 +122,4 @@ jobs:
 
       - name: Summary
         run: |
-          echo "✅ Loto6 prediction job finished (draws sync + generate + JSON upsert + commit)."
+          echo "✅ Loto6 prediction job finished (init + scrape + draws sync + generate + JSON upsert + commit)."

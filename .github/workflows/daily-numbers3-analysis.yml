@@ -46,6 +46,9 @@ jobs:
       - name: Initialize database
         run: python tools/utils.py
 
+      - name: Load Numbers3 historical CSV into SQLite
+        run: python tools/load_numbers3_csv_to_sqlite.py
+
       - name: Scrape latest Numbers3 (if script exists)
         run: |
           if [ -f "tools/scrape_numbers3_rakuten.py" ]; then

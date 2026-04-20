@@ -55,6 +55,10 @@ def classify_json_path_for_lottery(
         m = re.fullmatch(r"predictions/daily/budget_plan_numbers3_(\d+)\.json", rel)
         if m:
             return ("budget_plan", int(m.group(1)), "")
+    elif lottery == "loto6":
+        m = re.fullmatch(r"predictions/daily/budget_plan_loto6_(\d+)\.json", rel)
+        if m:
+            return ("budget_plan", int(m.group(1)), "")
 
     return None
 

@@ -1,4 +1,5 @@
-# Numbers3 日次予測。Supabase スキーマ: apps/web/supabase/migrations/*numbers3*
+# Numbers3 日次予測（ナンバーズ4の daily-numbers4-prediction と同型のスロット分割）。
+# SQLite は tools/load_numbers3_csv_to_sqlite で毎回 numbers3/*.csv から再構築する（予測の target 回がズレないようにする）。
 name: Daily Numbers3 Prediction
 
 on:
@@ -12,16 +13,27 @@ on:
         required: false
         type: string
         default: ""
+      run_ensemble:
+        description: "アンサンブル予測も実行する"
+        required: false
+        type: boolean
+        default: false
+      run_all_methods:
+        description: "全14メソッドを一括実行"
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: numbers3-prediction-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   predict:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    env:
-      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      SUPABASE_USE_REST: "1"
+      actions: write
 
     steps:
       - name: Checkout repository
@@ -49,22 +61,131 @@ jobs:
       - name: Initialize database
         run: python tools/utils.py
 
-      - name: Upsert Numbers3 draws to Supabase
+      - name: Load Numbers3 historical CSV into SQLite
         run: |
-          echo "📤 numbers3/*.csv → Supabase numbers3_draws（本番・リモート同期）"
+          echo "📂 numbers3/*.csv → lottery.db（予測の resolve_target と一致させる）"
+          python tools/load_numbers3_csv_to_sqlite.py
+
+      - name: Select method batch
+        id: batch
+        run: |
+          ALL_METHODS="box_model,ml_neighborhood,even_odd_pattern,lgbm_box,sequential_pattern,cold_revival,hot_pair,adjacent_digit,digit_freq_box,global_frequency,lightgbm,state_chain,box_pattern,low_sum_specialist"
+
+          MANUAL_METHODS="${{ inputs.methods }}"
+          MANUAL_ENSEMBLE="${{ inputs.run_ensemble }}"
+          MANUAL_ALL="${{ inputs.run_all_methods }}"
+
+          if [ "$MANUAL_ALL" = "true" ]; then
+            METHODS="$ALL_METHODS"
+            RUN_ENSEMBLE="true"
+            echo "🖐️ 手動実行: 全メソッド一括"
+          elif [ -n "$MANUAL_METHODS" ]; then
+            METHODS="$MANUAL_METHODS"
+            RUN_ENSEMBLE="${MANUAL_ENSEMBLE:-false}"
+            echo "🖐️ 手動実行: $METHODS"
+          else
+            NOW_HOUR=$(TZ=Asia/Tokyo date +%H)
+            NOW_MIN=$(TZ=Asia/Tokyo date +%M)
+            HOUR=$((10#$NOW_HOUR))
+            MIN=$((10#$NOW_MIN))
+
+            if [ "$HOUR" -lt 1 ] || [ "$HOUR" -gt 11 ]; then
+              SLOT=0
+            else
+              MINUTES_SINCE_START=$(( (HOUR - 1) * 60 + MIN ))
+              SLOT=$(( MINUTES_SINCE_START / 20 ))
+            fi
+
+            GROUP=$(( SLOT % 4 ))
+
+            case "$GROUP" in
+              0) METHODS="box_model,ml_neighborhood,even_odd_pattern,lgbm_box" ;;
+              1) METHODS="sequential_pattern,cold_revival,hot_pair,adjacent_digit" ;;
+              2) METHODS="digit_freq_box,global_frequency,lightgbm,state_chain" ;;
+              3) METHODS="box_pattern,low_sum_specialist" ;;
+            esac
+
+            if [ "$SLOT" -eq 0 ]; then
+              RUN_ENSEMBLE="true"
+            else
+              RUN_ENSEMBLE="false"
+            fi
+
+            echo "🧭 Slot: $SLOT (Group: $GROUP)"
+          fi
+
+          echo "methods=$METHODS" >> $GITHUB_OUTPUT
+          echo "run_ensemble=$RUN_ENSEMBLE" >> $GITHUB_OUTPUT
+          echo "🧪 Methods: $METHODS"
+          echo "🔮 Run ensemble: $RUN_ENSEMBLE"
+
+      - name: Upsert Numbers3 draws to Supabase (公式 CSV)
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_USE_REST: "1"
+        run: |
+          echo "📤 numbers3/*.csv → Supabase numbers3_draws"
           python tools/load_numbers3_csv_to_postgres.py --skip-if-unconfigured
 
-      - name: Run Numbers3 prediction pipeline
+      - name: Run Numbers3 prediction pipeline (ensemble + scrape)
+        if: steps.batch.outputs.run_ensemble == 'true'
         run: python tools/run_numbers3_pipeline.py
 
       - name: Run Numbers3 method predictions
         run: |
           python tools/run_numbers3_method_predictions.py \
-            --methods "${{ inputs.methods }}" \
+            --methods "${{ steps.batch.outputs.methods }}" \
             --limit 200 \
             --top 20
 
+      - name: Write prediction methods summary
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          preds_dir = Path("predictions/daily")
+          files = sorted(
+              preds_dir.glob("numbers3_*.json"),
+              key=lambda p: p.stat().st_mtime,
+              reverse=True,
+          )
+          if not files:
+              print("No numbers3 prediction JSON found.")
+              raise SystemExit(0)
+
+          data = json.loads(files[0].read_text(encoding="utf-8"))
+          preds = data.get("predictions") or []
+          if not preds:
+              print("No prediction entries in latest JSON.")
+              raise SystemExit(0)
+
+          latest = preds[-1]
+          weights = latest.get("ensemble_weights") or {}
+
+          lines = []
+          lines.append("## 予測手法（アンサンブル重み）")
+          if not weights:
+              lines.append("- 重み情報が見つかりませんでした")
+          else:
+              for name, weight in sorted(weights.items(), key=lambda x: (-x[1], x[0])):
+                  lines.append(f"- `{name}`: {weight}")
+
+          summary = "\n".join(lines)
+          summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+          if summary_path:
+              with open(summary_path, "a", encoding="utf-8") as f:
+                  f.write(summary + "\n")
+          print(summary)
+          PY
+
       - name: Upsert numbers3_daily_prediction_documents (Supabase)
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_USE_REST: "1"
         run: |
           python tools/load_numbers3_daily_json_to_postgres.py --skip-if-unconfigured --chunk-size 12
 
@@ -72,13 +193,22 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
+
           git add predictions/daily/numbers3_*.json || true
+          git add predictions/daily/budget_plan_numbers3_*.json || true
           git add predictions/daily/methods/**/numbers3_*.json || true
           git add numbers3/*.csv || true
+
           if git diff --staged --quiet; then
             echo "📝 No new Numbers3 predictions to commit"
           else
             TIMESTAMP=$(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M')
             git commit -m "🔮 Numbers3 prediction $TIMESTAMP"
             bash tools/git_push_with_retry.sh main
+            echo "✅ Prediction committed and pushed!"
           fi
+
+      - name: Summary
+        run: |
+          echo "✅ Numbers3 prediction completed successfully!"
+          echo "📊 Predictions: predictions/daily/numbers3_*.json"

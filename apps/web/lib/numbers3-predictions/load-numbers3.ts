@@ -203,19 +203,23 @@ async function fetchMethodRowsGroupedByDraw(
   }
 
   const repoRoot = path.join(process.cwd(), "..", "..");
-  const missing = uniq.filter((d) => (map.get(d) ?? []).length === 0);
   const batchSize = 8;
-  for (let i = 0; i < missing.length; i += batchSize) {
-    const chunk = missing.slice(i, i + batchSize);
+  for (let i = 0; i < uniq.length; i += batchSize) {
+    const chunk = uniq.slice(i, i + batchSize);
     const results = await Promise.all(
       chunk.map(async (d) => {
-        const rows = await scanMethodsForDraw(repoRoot, d);
-        return [d, rows] as const;
+        const fromDb = map.get(d) ?? [];
+        const fromFs = await scanMethodsForDraw(repoRoot, d);
+        const bySlug = new Map<string, MethodPredictionRow>();
+        for (const r of fromFs) bySlug.set(r.slug, r);
+        for (const r of fromDb) bySlug.set(r.slug, r);
+        const merged = [...bySlug.values()].sort((a, b) =>
+          a.slug.localeCompare(b.slug),
+        );
+        return [d, merged] as const;
       }),
     );
-    for (const [d, rows] of results) {
-      map.set(d, rows);
-    }
+    for (const [d, rows] of results) map.set(d, rows);
   }
 
   return map;
@@ -286,40 +290,71 @@ async function loadBundleFromFilesystem(
   };
 }
 
+type BundleCore = Pick<
+  Numbers3PredictionBundle,
+  "ensemble" | "budgetPlan" | "methodRows"
+>;
+
+function bundleCoreHasContent(core: BundleCore): boolean {
+  return !!(core.ensemble || core.budgetPlan || core.methodRows.length > 0);
+}
+
+function mergeBundleCore(db: BundleCore | null, fs: BundleCore): BundleCore {
+  const ensemble = db?.ensemble ?? fs.ensemble ?? null;
+  const budgetPlan = db?.budgetPlan ?? fs.budgetPlan ?? null;
+  const bySlug = new Map<string, MethodPredictionRow>();
+  for (const row of fs.methodRows) bySlug.set(row.slug, row);
+  for (const row of db?.methodRows ?? []) bySlug.set(row.slug, row);
+  return {
+    ensemble,
+    budgetPlan,
+    methodRows: [...bySlug.values()].sort((a, b) =>
+      a.slug.localeCompare(b.slug),
+    ),
+  };
+}
+
+function inferBundleSource(
+  dbHadAny: boolean,
+  fsHadAny: boolean,
+): "database" | "repository_files" | "mixed" {
+  if (dbHadAny && fsHadAny) return "mixed";
+  if (dbHadAny) return "database";
+  return "repository_files";
+}
+
 async function tryLoadBundleForDraw(
   targetDrawNumber: number,
 ): Promise<Numbers3PredictionBundle | null> {
+  let db: BundleCore | null = null;
   try {
-    const bundle = await loadBundleFromDatabase(targetDrawNumber);
-    if (
-      bundle &&
-      (bundle.ensemble || bundle.budgetPlan || bundle.methodRows.length > 0)
-    ) {
-      return {
-        source: "database",
-        targetDrawNumber,
-        ...bundle,
-      };
-    }
+    db = await loadBundleFromDatabase(targetDrawNumber);
   } catch {
     /* env 未設定など */
   }
 
   const repoRoot = path.join(process.cwd(), "..", "..");
   const fsBundle = await loadBundleFromFilesystem(repoRoot, targetDrawNumber);
-  if (
+
+  const dbHadAny = !!(
+    db?.ensemble ||
+    db?.budgetPlan ||
+    (db?.methodRows.length ?? 0) > 0
+  );
+  const fsHadAny = !!(
     fsBundle.ensemble ||
     fsBundle.budgetPlan ||
     fsBundle.methodRows.length > 0
-  ) {
-    return {
-      source: "repository_files",
-      targetDrawNumber,
-      ...fsBundle,
-    };
-  }
+  );
 
-  return null;
+  const merged = mergeBundleCore(db, fsBundle);
+  if (!bundleCoreHasContent(merged)) return null;
+
+  return {
+    source: inferBundleSource(dbHadAny, fsHadAny),
+    targetDrawNumber,
+    ...merged,
+  };
 }
 
 export async function loadNumbers3PredictionBundleForDraw(

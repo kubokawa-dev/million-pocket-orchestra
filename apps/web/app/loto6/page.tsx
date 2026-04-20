@@ -93,7 +93,7 @@ export default async function Loto6Page() {
                 {" "}
                 次回予定の{" "}
                 <strong className="text-foreground">第 {nextTarget} 回</strong>
-                向けの MVP モデル試算は、下のパネルで確認できます（データがある場合。当せんの保証ではありません）。
+                向けの MVP モデル試算は、下のパネルで確認できます（Supabase とリポジトリの JSON は欠けをマージして表示。当せんの保証ではありません）。
               </>
             ) : null}
           </p>
@@ -101,6 +101,7 @@ export default async function Loto6Page() {
 
         {predictionBundle &&
         (predictionBundle.ensemble != null ||
+          predictionBundle.budgetPlan != null ||
           predictionBundle.methodRows.length > 0) ? (
           <section className="border-border/60 rounded-2xl border bg-card/40 p-5 shadow-sm ring-1 ring-black/5 sm:p-6 dark:ring-white/10">
             <Loto6PredictionsPanel bundle={predictionBundle} />
@@ -110,7 +111,9 @@ export default async function Loto6Page() {
             <CardHeader className="pb-2">
               <CardTitle className="text-base">モデル試算（MVP）</CardTitle>
               <CardDescription>
-                第 {nextTarget} 回向けの試算 JSON がまだ Supabase に入っていません。リポジトリで{" "}
+                第 {nextTarget} 回向けの試算が Supabase になく、リポジトリの{" "}
+                <code className="font-mono text-xs">predictions/daily/</code>{" "}
+                にも JSON が見つかりませんでした。ローカルで{" "}
                 <code className="font-mono text-xs">
                   python tools/generate_loto6_predictions_mvp.py
                 </code>{" "}
@@ -118,7 +121,7 @@ export default async function Loto6Page() {
                 <code className="font-mono text-xs">
                   python tools/load_loto6_daily_json_to_postgres.py
                 </code>{" "}
-                を実行すると表示されます（8 手法 + アンサンブル JSON）。
+                を実行するか、同ディレクトリに JSON を置くと表示されます（8 手法 + アンサンブル + 予算プラン）。
               </CardDescription>
             </CardHeader>
           </Card>

@@ -146,9 +146,11 @@ function SourceBadges({ data }: { data: Numbers3PredictionBundle }) {
   const sourceLabel =
     data.source === "database"
       ? "オンラインの最新データ"
-      : data.source === "repository_files"
-        ? "サイト同梱の日次ファイル"
-        : "内蔵デモ";
+      : data.source === "mixed"
+        ? "オンライン + 日次ファイルの併用"
+        : data.source === "repository_files"
+          ? "サイト同梱の日次ファイル"
+          : "内蔵デモ";
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -156,7 +158,11 @@ function SourceBadges({ data }: { data: Numbers3PredictionBundle }) {
         第 {data.targetDrawNumber} 回
       </Badge>
       <Badge
-        variant={data.source === "database" ? "default" : "secondary"}
+        variant={
+          data.source === "database" || data.source === "mixed"
+            ? "default"
+            : "secondary"
+        }
         className="text-xs"
       >
         <DatabaseIcon className="mr-1 inline size-3" />
@@ -1092,22 +1098,206 @@ export async function Numbers3PredictionsHub({
     if (!got) {
       const official = await fetchNumbers3DrawFullRow(targetDrawNumber);
       if (!official) notFound();
+
+      const [resultRow, officialPastFiveDraws] = await Promise.all([
+        fetchNumbers3DrawResult(targetDrawNumber),
+        fetchOfficialWinningDrawsBeforeTargetNumbers3(targetDrawNumber, 5),
+      ]);
+      const officialPastFiveHits = await buildWinningModelHitsForDrawListNumbers3(
+        officialPastFiveDraws,
+      );
+      const winningRaw = resultRow?.numbers ?? null;
+      const winningNorm = normalizeNumbers3(winningRaw);
+
       return (
         <div className="flex flex-1 flex-col">
-          {showBackToResultList ? (
-            <div className="mx-auto w-full max-w-3xl px-4 pt-8 sm:max-w-4xl sm:px-6">
-              <Link
-                href="/numbers3/result"
-                className={cn(
-                  buttonVariants({ variant: "ghost", size: "sm" }),
-                  "text-muted-foreground -ml-2 hover:text-foreground",
-                )}
-              >
-                ← 一覧へ
-              </Link>
+          <div className="mx-auto w-full max-w-[1600px] flex-1 space-y-8 px-4 py-8 sm:space-y-10 sm:px-6 sm:py-10">
+            {showBackToResultList ? (
+              <div className="-mt-2 mb-2">
+                <Link
+                  href="/numbers3/result"
+                  className={cn(
+                    buttonVariants({ variant: "ghost", size: "sm" }),
+                    "text-muted-foreground -ml-2 hover:text-foreground",
+                  )}
+                >
+                  ← 一覧へ
+                </Link>
+              </div>
+            ) : null}
+
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="outline" className="font-mono text-[0.7rem]">
+                    第 {targetDrawNumber} 回
+                  </Badge>
+                  <Badge variant="secondary" className="text-xs">
+                    予測データ未登録（公式当選のみ）
+                  </Badge>
+                </div>
+                <h1 className="text-foreground font-heading text-3xl font-semibold tracking-tight sm:text-4xl">
+                  第 {targetDrawNumber} 回 ナンバーズ3｜予測と当選照合
+                </h1>
+                <p className="text-muted-foreground max-w-2xl text-sm leading-relaxed sm:text-base">
+                  この回の{" "}
+                  <strong className="text-foreground">
+                    ensemble / method / budget_plan
+                  </strong>
+                  がまだありません。公式当選と直近回の照合表を表示しています。別回の予測は{" "}
+                  <Link
+                    href="/numbers3"
+                    className={cn(
+                      buttonVariants({ variant: "link", size: "sm" }),
+                      "h-auto p-0 align-baseline text-sm",
+                    )}
+                  >
+                    ナンバーズ3 トップ
+                  </Link>
+                  から開いてください。
+                </p>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Link
+                  href="/numbers3/result"
+                  className={cn(
+                    buttonVariants({ size: "lg" }),
+                    "justify-center shadow-sm",
+                  )}
+                >
+                  当選番号一覧へ
+                </Link>
+              </div>
             </div>
-          ) : null}
-          <Numbers3OfficialDrawDetail row={official} />
+
+            <AnalysisTransparencyCallout
+              basis={[
+                "この回は予測用 JSON（ensemble / method / budget_plan）がまだ無いため、アンサンブルや予算プランのカードは出しません。当せん番号はサイトに取り込んだ公式結果に基づきます。",
+                "予測が揃った回では、ナンバーズ4の結果ページと同じ構成で一覧・照合・スコア表示をします。アンサンブルのスコアは当せん確率の宣言ではありません。",
+              ]}
+              limitations={[
+                "過去の傾向やランキングは見え方が良くても偶然やバイアスの影響を受けやすいです。",
+                "予算プラン等は「枠の例示」に近く、継続利益や回収を保証するものではありません。",
+              ]}
+            />
+
+            <Card
+              className={cn(
+                "overflow-hidden shadow-sm ring-1 ring-black/5 dark:ring-white/10",
+                winningNorm
+                  ? "border-emerald-600/25 bg-gradient-to-br from-emerald-500/5 to-transparent"
+                  : "border-border/80",
+              )}
+            >
+              <CardHeader className="pb-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <TargetIcon className="text-muted-foreground size-5" />
+                  <CardTitle className="text-lg">
+                    第 {targetDrawNumber} 回 · 当選結果
+                  </CardTitle>
+                </div>
+                <CardDescription>
+                  当サイトに取り込んだ公式当選番号
+                  {winningNorm
+                    ? "。予測データが入れば、下の予測番号で当選と同じ数字は出現回数の範囲内だけ左から薄い赤で強調します（例: 当選に同じ数字が1個だけなら、予測側の重複は先頭から順にだけ強調）。"
+                    : "がまだ無いか、未登録です。"}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pb-6 pt-0">
+                {winningNorm ? (
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-8">
+                    <div>
+                      <p className="text-muted-foreground mb-1 text-xs font-medium uppercase tracking-wide">
+                        当選番号
+                      </p>
+                      <p className="font-mono text-4xl font-bold tracking-[0.2em] sm:text-5xl">
+                        {winningNorm}
+                      </p>
+                    </div>
+                    <p className="text-muted-foreground max-w-md text-sm">
+                      この回の予測が揃えば、ナンバーズ4と同様にアンサンブル・各手法・予算プランの番号へ、緑＝ストレート一致、黄＝桁の並び替え一致（簡易ボックス判定）のマークが付きます。
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Badge variant="outline" className="text-sm">
+                      抽選前 / 未登録
+                    </Badge>
+                    <p className="text-muted-foreground text-sm">
+                      この回の当選番号がまだ取り込まれていません。開催後、公式結果がサイトに反映されると表示されます。
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Numbers4RecentModelHits
+              hits={officialPastFiveHits}
+              emphasizeOfficial
+              officialDigitsLabel="3桁"
+              resultHrefForDraw={(d) => `/numbers3/result/${d}`}
+              title={`第 ${targetDrawNumber} 回の直前 · 公式当選5回 × モデル照合`}
+              description={
+                <>
+                  <span className="block">
+                    いま見ている対象が第 {targetDrawNumber} 回なので、
+                    <strong className="text-foreground">
+                      その一つ前の回からさかのぼって最大5回分
+                    </strong>
+                    （いずれも第 {targetDrawNumber}{" "}
+                    回より前で、すでに当選番号がサイトに取り込まれている回だけ）の
+                    <strong className="text-foreground">実際の当選3桁</strong>
+                    を1行ずつ取り、
+                    <strong className="text-foreground">同じ回号の</strong>{" "}
+                    <code className="font-mono text-xs">method</code>{" "}
+                    予測と突き合わせています。
+                  </span>
+                  <span className="block">
+                    当選数字はすべて公式抽選の結果を当サイトに取り込んだ値です。下のアンサンブル上位から数字を選んでいるわけではありません。
+                  </span>
+                </>
+              }
+              bannerLead={`表示順は新しい回が上です（全 ${officialPastFiveHits.length} 行）。`}
+              emptyMessage="直前5回の公式当選がまだ取り込まれていないか、データを読み込めませんでした。"
+            />
+
+            {winningNorm ? (
+              <Card className="border-border/80 shadow-sm ring-1 ring-black/5 dark:ring-white/10">
+                <CardHeader className="border-border/60 border-b pb-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <LayersIcon className="text-muted-foreground size-5" />
+                    <div>
+                      <CardTitle className="text-lg">
+                        第 {targetDrawNumber} 回の公式当選が、各モデル候補に載っていたか
+                      </CardTitle>
+                      <CardDescription className="text-pretty mt-1 text-sm">
+                        <span className="block">
+                          照合の左側にある当選{" "}
+                          <span className="font-mono">{winningNorm}</span> は
+                          <strong className="text-foreground">
+                            公式抽選の当選番号
+                          </strong>
+                          （当サイトに取り込んだ値）です。
+                        </span>
+                        <span className="block">
+                          各 <code className="font-mono text-xs">method</code> の
+                          <strong className="text-foreground">この回向け</strong>
+                          直近ラン上位候補（最大96件）に、その数字が含まれていたかを出しています（予測がある回では下の「モデル別」と同じデータ）。
+                        </span>
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="pb-6 pt-2">
+                  <p className="text-muted-foreground text-sm">
+                    この回の method 予測が無いため、モデル別との照合はできません。
+                  </p>
+                </CardContent>
+              </Card>
+            ) : null}
+
+            <Numbers3OfficialDrawDetail row={official} />
+          </div>
         </div>
       );
     }
@@ -1177,11 +1367,19 @@ export async function Numbers3PredictionsHub({
               <strong className="text-foreground"> ensemble / method / budget_plan </strong>
               の3種類の予測ドキュメントを一覧しやすくまとめています。当選番号がサイトに取り込まれていれば、予測との一致も表示します。
             </p>
-            {data.source !== "database" && (
+            {data.source === "repository_files" ||
+            data.source === "embedded" ? (
               <p className="text-muted-foreground border-border/80 bg-muted/40 max-w-2xl rounded-lg border px-3 py-2 text-xs leading-relaxed">
                 オンライン側に該当データが無いため、サイト同梱の日次ファイルまたはお試し用データを表示しています。
               </p>
-            )}
+            ) : null}
+            {data.source === "mixed" ? (
+              <p className="text-muted-foreground border-border/80 bg-muted/40 max-w-2xl rounded-lg border px-3 py-2 text-xs leading-relaxed">
+                オンラインに無い ensemble / method / budget
+                はリポジトリの日次 JSON で補完しています。同一 slug
+                の手法はオンライン側を優先します。
+              </p>
+            ) : null}
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <Link
