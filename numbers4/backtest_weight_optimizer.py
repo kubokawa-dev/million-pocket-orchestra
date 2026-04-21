@@ -65,36 +65,65 @@ def get_actual_result(draw_number: int) -> Optional[str]:
         conn.close()
 
 
+def _compute_time_decay_weights(
+    draw_numbers: List[int],
+    half_life: Optional[float],
+) -> Dict[int, float]:
+    """各 draw_number に対する時間減衰重みを計算する（v17.0 🅲）。
+
+    指数減衰: w_i = 0.5 ** ((latest - draw_i) / half_life)
+
+    half_life が None または 0 以下なら全て 1.0（従来通りの一様評価）。
+    """
+    if not draw_numbers:
+        return {}
+    if not half_life or half_life <= 0:
+        return {dn: 1.0 for dn in draw_numbers}
+    latest = max(draw_numbers)
+    return {dn: float(0.5 ** ((latest - dn) / half_life)) for dn in draw_numbers}
+
+
 def run_backtest(
     draw_numbers: List[int],
     top_k: int = 100,
     verbose: bool = False,
+    *,
+    half_life: Optional[float] = None,
 ) -> Dict[str, Dict]:
     """
     直近N回分のバックテストを実行し、各モデルの性能を測定。
 
+    v17.0 🅲: ``half_life`` を指定すると、各回号のスコアに指数減衰重みを掛けて
+    集計する（直近寄りの局所最適化モード）。
+
     Returns:
         {method: {
-            'box_hits': int,        # ボックス的中回数
-            'straight_hits': int,   # ストレート的中回数
-            'digit3_hits': int,     # 3桁一致回数
-            'digit2_hits': int,     # 2桁一致回数
-            'avg_score': float,     # 平均スコア
-            'total_draws': int,     # 評価した回数
-            'box_hit_rate': float,  # ボックス的中率
-            'scores': list,         # 全スコアの履歴
-            'recent_trend': float,  # 直近10回のスコアトレンド
+            'box_hits': float,         # ボックス的中回数（重み加算）
+            'straight_hits': float,    # ストレート的中回数（重み加算）
+            'digit3_hits': float,      # 3桁一致回数（重み加算）
+            'digit2_hits': float,      # 2桁一致回数（重み加算）
+            'avg_score': float,        # 重み付き平均スコア
+            'total_draws': int,        # 評価した回数（生）
+            'effective_n': float,      # 重み合計（実効サンプル数）
+            'box_hit_rate': float,     # ボックス的中率（重み付き）
+            'scores': list[float],     # 全スコアの履歴
+            'score_weights': list,     # 各スコアに対応する時間減衰重み
+            'recent_trend': float,     # 直近10回のスコアトレンド
         }}
     """
+    weights_by_draw = _compute_time_decay_weights(draw_numbers, half_life)
+
     results: Dict[str, Dict] = {}
     for method in ALL_METHODS:
         results[method] = {
-            'box_hits': 0,
-            'straight_hits': 0,
-            'digit3_hits': 0,
-            'digit2_hits': 0,
+            'box_hits': 0.0,
+            'straight_hits': 0.0,
+            'digit3_hits': 0.0,
+            'digit2_hits': 0.0,
             'total_draws': 0,
+            'effective_n': 0.0,
             'scores': [],
+            'score_weights': [],
             'box_ranks': [],
         }
 
@@ -102,6 +131,7 @@ def run_backtest(
         actual = get_actual_result(draw_num)
         if not actual:
             continue
+        decay_w = weights_by_draw.get(draw_num, 1.0)
 
         for method in ALL_METHODS:
             predictions = load_method_predictions(draw_num, method)
@@ -111,39 +141,44 @@ def run_backtest(
             evaluation = evaluate_method(predictions, actual, top_k)
             r = results[method]
             r['total_draws'] += 1
+            r['effective_n'] += decay_w
             r['scores'].append(evaluation['score'])
+            r['score_weights'].append(decay_w)
 
             if evaluation['straight_rank']:
-                r['straight_hits'] += 1
+                r['straight_hits'] += decay_w
             if evaluation['box_rank']:
-                r['box_hits'] += 1
+                r['box_hits'] += decay_w
                 r['box_ranks'].append(evaluation['box_rank'])
             if evaluation['best_digit_hits'] >= 3 or evaluation['best_position_hits'] >= 3:
-                r['digit3_hits'] += 1
+                r['digit3_hits'] += decay_w
             elif evaluation['best_digit_hits'] >= 2 or evaluation['best_position_hits'] >= 2:
-                r['digit2_hits'] += 1
+                r['digit2_hits'] += decay_w
 
         if verbose:
-            print(f"  回{draw_num} ({actual}) 完了")
+            tag = f"(decay={decay_w:.3f})" if half_life else ""
+            print(f"  回{draw_num} ({actual}) 完了 {tag}")
 
     # 集計
     for method, r in results.items():
         n = r['total_draws']
-        if n > 0:
-            r['avg_score'] = np.mean(r['scores'])
-            r['box_hit_rate'] = r['box_hits'] / n
-            r['straight_hit_rate'] = r['straight_hits'] / n
-            r['digit3_hit_rate'] = r['digit3_hits'] / n
-            # 直近10回のトレンド（上昇 > 0, 下降 < 0）
+        eff = r['effective_n']
+        if n > 0 and eff > 0:
+            scores = np.asarray(r['scores'], dtype=np.float64)
+            sw = np.asarray(r['score_weights'], dtype=np.float64)
+            r['avg_score'] = float(np.average(scores, weights=sw))
+            r['box_hit_rate'] = r['box_hits'] / eff
+            r['straight_hit_rate'] = r['straight_hits'] / eff
+            r['digit3_hit_rate'] = r['digit3_hits'] / eff
+            # 直近10回のトレンド（重みは無視して生のトレンドを見る）
             recent = r['scores'][-10:] if len(r['scores']) >= 10 else r['scores']
             if len(recent) >= 2:
-                first_half = np.mean(recent[:len(recent)//2])
-                second_half = np.mean(recent[len(recent)//2:])
+                first_half = float(np.mean(recent[:len(recent)//2]))
+                second_half = float(np.mean(recent[len(recent)//2:]))
                 r['recent_trend'] = second_half - first_half
             else:
                 r['recent_trend'] = 0.0
-            # ボックス的中時の平均順位
-            r['avg_box_rank'] = np.mean(r['box_ranks']) if r['box_ranks'] else None
+            r['avg_box_rank'] = float(np.mean(r['box_ranks'])) if r['box_ranks'] else None
         else:
             r['avg_score'] = 0.0
             r['box_hit_rate'] = 0.0
@@ -288,6 +323,14 @@ def main():
         '--top-k', type=int, default=100,
         help='評価対象のTop-K（デフォルト: 100）'
     )
+    parser.add_argument(
+        '--half-life', type=float, default=None,
+        help='v17.0 🅲: 時間減衰の半減期（回号単位）。指定すると直近を強く重み付け（推奨: 15）'
+    )
+    parser.add_argument(
+        '--focus-recent', type=int, default=None,
+        help='v17.0 🅲: 直近N回のみで局所最適化（--last-nより細かく絞り込みたい場合）'
+    )
 
     args = parser.parse_args()
 
@@ -296,11 +339,24 @@ def main():
 
     # 利用可能な回号を取得
     draw_numbers = get_available_draw_numbers(args.last_n)
+
+    # v17.0 🅲: focus-recent でさらに局所化
+    if args.focus_recent and args.focus_recent < len(draw_numbers):
+        draw_numbers = draw_numbers[-args.focus_recent:]
+        print(f"🎯 局所最適化モード: 直近{args.focus_recent}回に絞り込み")
+
     print(f"📅 対象: 第{draw_numbers[0]}回 〜 第{draw_numbers[-1]}回 ({len(draw_numbers)}回)")
+    if args.half_life:
+        print(f"⏰ 時間減衰モード: 半減期 = {args.half_life}回（直近重視）")
 
     # バックテスト実行
     print("\n🔄 バックテスト実行中...")
-    results = run_backtest(draw_numbers, top_k=args.top_k, verbose=args.verbose)
+    results = run_backtest(
+        draw_numbers,
+        top_k=args.top_k,
+        verbose=args.verbose,
+        half_life=args.half_life,
+    )
 
     # 現在の重みを読み込み
     current_weights = load_method_weights()
@@ -317,6 +373,8 @@ def main():
             'optimizer': 'backtest_weight_optimizer',
             'backtest_draws': len(draw_numbers),
             'draw_range': f"{draw_numbers[0]}-{draw_numbers[-1]}",
+            'half_life': args.half_life,
+            'focus_recent': args.focus_recent,
         }
         save_method_weights(optimized, metadata)
         print(f"✅ {WEIGHTS_FILE} を更新しました")

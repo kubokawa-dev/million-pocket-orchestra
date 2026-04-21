@@ -45,6 +45,7 @@ from numbers4.box_learning import (
     predict_numbers_from_boxes,
     rebuild_box_model,
 )
+from numbers4.precision_boosters import predict_from_repetition_pattern_n4  # v17.0
 
 
 DEFAULT_METHODS = [
@@ -60,6 +61,7 @@ DEFAULT_METHODS = [
     "global_frequency",
     "adjacent_digit",   # v13.0
     "lgbm_box",         # v14.0
+    "repetition_pattern",  # v17.0
 ]
 
 
@@ -141,6 +143,7 @@ def _build_method_map(df: pd.DataFrame) -> Dict[str, Callable[[int], List[str]]]
         "state_chain": lambda limit: predict_from_model_state_v2(limit=limit),
         "adjacent_digit": lambda limit: predict_from_adjacent_digit_pattern_n4(df, limit),  # v13.0
         "lgbm_box": lambda limit: predict_from_lgbm_box(df, limit),                        # v14.0
+        "repetition_pattern": lambda limit: predict_from_repetition_pattern_n4(df, limit),  # v17.0
     }
 
 

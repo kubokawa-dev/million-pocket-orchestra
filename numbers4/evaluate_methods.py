@@ -45,6 +45,7 @@ ALL_METHODS = [
     'state_chain',
     'adjacent_digit',  # v13.0 NEW! 隣接数字パターン
     'lgbm_box',        # v14.0 NEW! ボックスレベルLightGBM
+    'repetition_pattern',  # v17.0 NEW! 繰り返しパターン特化
 ]
 
 
@@ -65,6 +66,7 @@ def get_default_method_weights() -> Dict[str, float]:
         'state_chain': 8.0,
         'adjacent_digit': 10.0,  # v13.0 NEW! 隣接数字パターン
         'lgbm_box': 15.0,       # v14.0 NEW! ボックスレベルLightGBM
+        'repetition_pattern': 18.0,  # v17.0 NEW! 繰り返しパターン特化
     }
 
 

@@ -53,6 +53,13 @@ from numbers4.box_learning import (
 from numbers4.save_prediction_history import save_ensemble_prediction
 from numbers4.save_prediction_json import save_prediction_to_json
 from numbers4.online_learning import load_model_weights
+from numbers4.precision_boosters import (
+    apply_digit_position_boost,
+    apply_repetition_bonus,
+    apply_category_diversity_bonus,
+    predict_from_repetition_pattern_n4,
+    summarize_category_distribution,
+)
 
 from src.config import NUMBERS4_CONFIG, DEFAULT_WEIGHTS
 from src.trust_first import (
@@ -462,6 +469,16 @@ def generate_ensemble_prediction(progress_callback=None):
     predictions_lgbm_box = predict_from_lgbm_box(all_draws_df, limit=150)
     report_progress(0.992, f"- [v14.0] ボックスレベルLightGBMモデル完了: {len(predictions_lgbm_box)}件")
 
+    # 24. 繰り返しパターン特化モデル（v17.0 NEW! 9227/7323 等のゾロ目近傍対策）
+    report_progress(0.9925, "- [v17.0] 繰り返しパターン特化モデルで予測中...")
+    predictions_repetition_pattern = predict_from_repetition_pattern_n4(
+        all_draws_df, limit=150
+    )
+    report_progress(
+        0.9928,
+        f"- [v17.0] 繰り返しパターン特化モデル完了: {len(predictions_repetition_pattern)}件",
+    )
+
     # --- アンサンブル集計 ---
     report_progress(0.993, "全モデルの予測を統合・集計中...")
     
@@ -470,6 +487,9 @@ def generate_ensemble_prediction(progress_callback=None):
     
     # デフォルト重み（ベースライン）
     default_weights = {
+        # v17.0 繰り返しパターン特化モデル（NEW! ゾロ目/ペア対策）
+        'repetition_pattern': 28.0,       # 繰り返しパターン特化（NEW!）
+
         # v11.0 ボックス特化型モデル（最重要！未出現ボックスを狙う）
         'box_model': 45.0,                # ボックス特化型モデル
         
@@ -631,6 +651,8 @@ def generate_ensemble_prediction(progress_callback=None):
         'adjacent_digit': predictions_adjacent,
         # v14.0 ボックスレベルLightGBM（NEW!）
         'lgbm_box': predictions_lgbm_box,
+        # v17.0 繰り返しパターン特化モデル（NEW!）
+        'repetition_pattern': predictions_repetition_pattern,
         # ML
         'lightgbm': predictions_lgbm,
         # model_state
@@ -660,10 +682,56 @@ def generate_ensemble_prediction(progress_callback=None):
         penalty_strength=NUMBERS4_CONFIG.diversity_penalty_strength,
         similarity_threshold=NUMBERS4_CONFIG.diversity_similarity_threshold
     )
-    
+
+    # v17.0 🅰: d2/d3 を強調した桁別ブースターを適用（LightGBM 確率を利用）
+    try:
+        report_progress(0.951, "🅰 d2/d3桁別ブーストを適用中...")
+        final_predictions_df = apply_digit_position_boost(
+            final_predictions_df,
+            preds_probs=lgbm_digit_probs,
+            position_weights=(0.6, 1.4, 1.4, 0.6),
+            boost_strength=0.35,
+        )
+    except Exception as e:
+        print(f"⚠️ apply_digit_position_boost 失敗: {e}")
+
+    # v17.0 🅱: 直近の繰り返し率に応じて、ゾロ目/ペア候補にボーナス/ペナルティ
+    try:
+        report_progress(0.952, "🅱 ゾロ目/ペア候補のスコア補正中...")
+        final_predictions_df = apply_repetition_bonus(
+            final_predictions_df,
+            history_df=all_draws_df,
+            recent_window=30,
+            max_bonus=0.25,
+            max_penalty=0.10,
+        )
+    except Exception as e:
+        print(f"⚠️ apply_repetition_bonus 失敗: {e}")
+
+    # v17.0 🅳: モデルカテゴリ多様性ボーナスで Top20 の偏りを抑制
+    try:
+        report_progress(0.953, "🅳 アンサンブル多様性ボーナスを適用中...")
+        before_dist = summarize_category_distribution(
+            final_predictions_df, predictions_by_model, top_k=20
+        )
+        final_predictions_df = apply_category_diversity_bonus(
+            final_predictions_df,
+            predictions_by_model=predictions_by_model,
+            top_k=20,
+            top_n_per_model=30,
+            bonus_per_new_category=0.08,
+            max_bonus=0.30,
+        )
+        after_dist = summarize_category_distribution(
+            final_predictions_df, predictions_by_model, top_k=20
+        )
+        report_progress(0.954, f"カテゴリ分布: {before_dist} → {after_dist}")
+    except Exception as e:
+        print(f"⚠️ apply_category_diversity_bonus 失敗: {e}")
+
     # 合計値ボーナスを適用 (合計値15-24の範囲にある候補を優遇)
     # v10.1: 合計値が理想的な範囲にある候補にボーナスを付与
-    report_progress(0.95, "合計値ボーナスを適用中...")
+    report_progress(0.96, "合計値ボーナスを適用中...")
     final_predictions_df = apply_sum_bonus(final_predictions_df)
     
     # v10.2: ボックスユニーク保証 - 同じ数字の組み合わせ（順不同）を持つ候補を排除
@@ -730,7 +798,7 @@ def generate_ensemble_prediction(progress_callback=None):
             ensemble_weights=ensemble_weights,
             predictions_by_model=predictions_by_model,
             model_state=model_state,
-            notes="v11.0 Update: ボックス特化型モデル追加（未出現ボックス狙い）+ 1263問題完全対策"
+            notes="v17.0 Update: 🅰d2/d3桁ブースト + 🅱繰り返しパターン特化モデル + 🅳カテゴリ多様性ボーナス"
         )
         print(f"✅ 予測履歴の保存が完了しました (ID: {prediction_id})")
         

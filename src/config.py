@@ -70,6 +70,7 @@ class DefaultEnsembleWeights:
     """アンサンブル予測のデフォルト重み"""
 
     NUMBERS4: dict = field(default_factory=lambda: {
+        'repetition_pattern': 28.0,
         'box_model': 45.0,
         'ml_neighborhood': 30.0,
         'even_odd_pattern': 40.0,
