@@ -1,0 +1,30 @@
+{
+  "cli_version": "0.4.4",
+  "checkpoint_id": "634928d7f91f",
+  "session_id": "f595cfb6-5226-4c16-9000-8d149ff620dc",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-21T03:38:50.965344752Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "numbers4/precision_boosters.py"
+  ],
+  "agent": "Claude Code",
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-21T03:38:50.75692557Z",
+    "agent_lines": 477,
+    "human_added": 160,
+    "human_modified": 4,
+    "human_removed": 0,
+    "total_committed": 641,
+    "agent_percentage": 74.41497659906396
+  },
+  "transcript_path": ".cursor/projects/home-kbkkbk-Develop-kubocchi-million-pocket-orchestra/agent-transcripts/f595cfb6-5226-4c16-9000-8d149ff620dc/f595cfb6-5226-4c16-9000-8d149ff620dc.jsonl"
+}
