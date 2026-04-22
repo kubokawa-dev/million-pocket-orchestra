@@ -1,0 +1,131 @@
+{
+  "draw_number": 6966,
+  "target_draw_number": 6966,
+  "date": "20260422",
+  "predictions": [
+    {
+      "time": "2026-04-22T03:14:38.621890+00:00",
+      "time_jst": "12:14",
+      "ensemble_weights": {
+        "box_model": 16.5,
+        "ml_neighborhood": 13.2,
+        "even_odd_pattern": 12.1,
+        "lgbm_box": 12.1,
+        "sequential_pattern": 17.0,
+        "cold_revival": 11.0,
+        "hot_pair": 9.9,
+        "adjacent_digit": 9.9,
+        "digit_freq_box": 8.8,
+        "global_frequency": 8.8,
+        "lightgbm": 7.7,
+        "state_chain": 7.7,
+        "box_pattern": 7.7,
+        "low_sum_specialist": 6.6
+      },
+      "top_predictions": [
+        {
+          "rank": 1,
+          "number": "443",
+          "score": 54.334
+        },
+        {
+          "rank": 2,
+          "number": "043",
+          "score": 53.2505
+        },
+        {
+          "rank": 3,
+          "number": "948",
+          "score": 52.217
+        },
+        {
+          "rank": 4,
+          "number": "201",
+          "score": 49.8895
+        },
+        {
+          "rank": 5,
+          "number": "655",
+          "score": 49.7145
+        },
+        {
+          "rank": 6,
+          "number": "676",
+          "score": 49.6245
+        },
+        {
+          "rank": 7,
+          "number": "432",
+          "score": 49.471
+        },
+        {
+          "rank": 8,
+          "number": "376",
+          "score": 48.961
+        },
+        {
+          "rank": 9,
+          "number": "438",
+          "score": 48.087
+        },
+        {
+          "rank": 10,
+          "number": "698",
+          "score": 47.6005
+        },
+        {
+          "rank": 11,
+          "number": "894",
+          "score": 46.9665
+        },
+        {
+          "rank": 12,
+          "number": "879",
+          "score": 46.856
+        },
+        {
+          "rank": 13,
+          "number": "434",
+          "score": 46.092
+        },
+        {
+          "rank": 14,
+          "number": "665",
+          "score": 45.973
+        },
+        {
+          "rank": 15,
+          "number": "649",
+          "score": 45.7875
+        },
+        {
+          "rank": 16,
+          "number": "445",
+          "score": 45.2015
+        },
+        {
+          "rank": 17,
+          "number": "660",
+          "score": 45.1605
+        },
+        {
+          "rank": 18,
+          "number": "677",
+          "score": 45.0665
+        },
+        {
+          "rank": 19,
+          "number": "800",
+          "score": 44.495
+        },
+        {
+          "rank": 20,
+          "number": "433",
+          "score": 44.426
+        }
+      ]
+    }
+  ],
+  "last_updated": "2026-04-22T03:14:38.621890+00:00",
+  "prediction_count": 1
+}
