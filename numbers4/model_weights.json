@@ -1,49 +1,49 @@
 {
   "weights": {
-    "advanced_heuristics": 10.672986895512494,
-    "exploratory": 29.33349503831963,
-    "extreme_patterns": 13.099424305137534,
-    "basic_stats": 4.130714390298004,
-    "ml_model_new": 3.1589767587229747,
-    "digit_repetition": 9.002108262495769,
-    "digit_continuation": 23.500637319309273,
-    "realistic_frequency": 18.800509855447427,
-    "large_change": 14.100382391585562,
-    "lightgbm": 28.200764783171124
+    "advanced_heuristics": 10.678992589714762,
+    "exploratory": 29.321932175780592,
+    "extreme_patterns": 13.102946846941775,
+    "basic_stats": 4.172430097159626,
+    "ml_model_new": 3.1772577550699648,
+    "digit_repetition": 8.99653394254075,
+    "digit_continuation": 23.48608516466452,
+    "realistic_frequency": 18.788868131731622,
+    "large_change": 14.091651098798708,
+    "lightgbm": 28.183302197597417
   },
-  "updated_at": "2026-04-23T15:17:52.735081",
+  "updated_at": "2026-04-24T14:57:55.856587",
   "metadata": {
-    "actual_number": "0769",
+    "actual_number": "8411",
     "model_results": {
       "basic_stats": {
         "straight_rank": null,
         "box_rank": null,
-        "partial_rank": 30,
+        "partial_rank": 18,
         "partial_count": 3
       },
       "advanced_heuristics": {
         "straight_rank": null,
         "box_rank": null,
-        "partial_rank": 15,
+        "partial_rank": 34,
         "partial_count": 3
       },
       "ml_model_new": {
         "straight_rank": null,
-        "box_rank": null,
-        "partial_rank": 18,
+        "box_rank": 44,
+        "partial_rank": 37,
         "partial_count": 3
       },
       "exploratory": {
         "straight_rank": null,
         "box_rank": null,
-        "partial_rank": 2,
-        "partial_count": 3
+        "partial_rank": null,
+        "partial_count": 0
       },
       "extreme_patterns": {
         "straight_rank": null,
         "box_rank": null,
-        "partial_rank": 18,
-        "partial_count": 3
+        "partial_rank": null,
+        "partial_count": 0
       }
     }
   }
