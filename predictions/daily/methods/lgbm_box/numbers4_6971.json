@@ -1,0 +1,106 @@
+{
+  "draw_number": 6971,
+  "target_draw_number": 6971,
+  "date": "20260427",
+  "method": "lgbm_box",
+  "predictions": [
+    {
+      "time": "2026-04-27T21:39:37.463852+00:00",
+      "time_jst": "06:39",
+      "method": "lgbm_box",
+      "top_predictions": [
+        {
+          "rank": 1,
+          "number": "3003",
+          "score": 100.0
+        },
+        {
+          "rank": 2,
+          "number": "3400",
+          "score": 94.12
+        },
+        {
+          "rank": 3,
+          "number": "0380",
+          "score": 88.24
+        },
+        {
+          "rank": 4,
+          "number": "0730",
+          "score": 82.35
+        },
+        {
+          "rank": 5,
+          "number": "0306",
+          "score": 76.47
+        },
+        {
+          "rank": 6,
+          "number": "1030",
+          "score": 70.59
+        },
+        {
+          "rank": 7,
+          "number": "0302",
+          "score": 64.71
+        },
+        {
+          "rank": 8,
+          "number": "0400",
+          "score": 58.82
+        },
+        {
+          "rank": 9,
+          "number": "3023",
+          "score": 52.94
+        },
+        {
+          "rank": 10,
+          "number": "0003",
+          "score": 47.06
+        },
+        {
+          "rank": 11,
+          "number": "9300",
+          "score": 41.18
+        },
+        {
+          "rank": 12,
+          "number": "0350",
+          "score": 35.29
+        },
+        {
+          "rank": 13,
+          "number": "1330",
+          "score": 29.41
+        },
+        {
+          "rank": 14,
+          "number": "4040",
+          "score": 23.53
+        },
+        {
+          "rank": 15,
+          "number": "7330",
+          "score": 17.65
+        },
+        {
+          "rank": 16,
+          "number": "3033",
+          "score": 11.76
+        },
+        {
+          "rank": 17,
+          "number": "3803",
+          "score": 5.88
+        }
+      ],
+      "metadata": {
+        "limit": 200,
+        "total_predictions": 17
+      }
+    }
+  ],
+  "last_updated": "2026-04-27T21:39:37.463852+00:00",
+  "prediction_count": 1
+}
